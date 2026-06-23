@@ -140,7 +140,7 @@ test.describe('PDF — search highlight + navigation', () => {
     await loadSample(page, 'PDF');
     await waitForCanvasRendered(page);
 
-    await openSearch(page, 'page');
+    await openSearch(page, 'anyview');
     // Match count appears (e.g. "1 of N")
     await expect(page.locator('.dv-search-count')).toContainText(/of/i, {
       timeout: 15_000,

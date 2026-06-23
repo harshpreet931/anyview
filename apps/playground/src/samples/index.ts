@@ -31,8 +31,63 @@ const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="
   <text x="400" y="325" font-size="20" fill="white" fill-opacity="0.7" text-anchor="middle" font-family="system-ui, sans-serif">Image Rendering Sample</text>
 </svg>`;
 
-const pdfStream1 = 'BT /F1 24 Tf 72 720 Td (Hello from Anyview!) Tj ET';
-const pdfStream2 = 'BT /F1 18 Tf 72 720 Td (This is page 2 of the PDF sample.) Tj ET\nBT /F1 14 Tf 72 680 Td (Multi-page navigation works!) Tj ET';
+const pdfStream1 = `BT
+/F2 34 Tf
+72 716 Td
+(Anyview) Tj
+/F1 13 Tf
+0 -30 Td
+(One component. Every format. Zero iframes.) Tj
+/F1 11 Tf
+0 -46 Td
+(Anyview renders PDF, DOCX, XLSX, PPTX, CSV, Markdown, code, HTML) Tj
+0 -16 Td
+(and images natively in the browser - no iframes, no server round) Tj
+0 -16 Td
+(trips, no uploads. Your files never leave the page.) Tj
+/F2 16 Tf
+0 -42 Td
+(Highlights) Tj
+/F1 11 Tf
+0 -26 Td
+(- Native rendering: pdf.js runs in a Web Worker, off the main thread) Tj
+0 -18 Td
+(- Real text selection and search highlighting across every format) Tj
+0 -18 Td
+(- Annotations: highlight, free-hand ink, and sticky notes) Tj
+0 -18 Td
+(- Accessible WCAG 2.2 AA, four themes, and full i18n) Tj
+0 -18 Td
+(- Tree-shakeable, about 23 kB gzip base bundle) Tj
+/F2 16 Tf
+0 -42 Td
+(Quick start) Tj
+/F1 11 Tf
+0 -26 Td
+(npm install anyview) Tj
+0 -18 Td
+(import { DocViewer } from 'anyview';) Tj
+ET`;
+const pdfStream2 = `BT
+/F2 20 Tf
+72 716 Td
+(Every format, one component) Tj
+/F1 11 Tf
+0 -34 Td
+(PDF - native pdf.js rendering with a selectable text layer.) Tj
+0 -18 Td
+(DOCX - mammoth.js converts to clean, sanitized HTML.) Tj
+0 -18 Td
+(XLSX - SheetJS renders spreadsheets as virtualized tables.) Tj
+0 -18 Td
+(PPTX - slides parsed from the OOXML package.) Tj
+0 -18 Td
+(CSV - PapaParse, streamed into a fast table.) Tj
+0 -18 Td
+(Markdown - react-markdown with GitHub-flavored markdown.) Tj
+0 -18 Td
+(Code - Shiki highlighting for 50+ languages.) Tj
+ET`;
 const pdfContent = `%PDF-1.4
 1 0 obj
 << /Type /Catalog /Pages 2 0 R >>
@@ -41,7 +96,7 @@ endobj
 << /Type /Pages /Kids [3 0 R 6 0 R] /Count 2 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 8 0 R >> >> >>
 endobj
 4 0 obj
 << /Length ${pdfStream1.length} >>
@@ -53,7 +108,7 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 6 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 7 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 7 0 R /Resources << /Font << /F1 5 0 R /F2 8 0 R >> >> >>
 endobj
 7 0 obj
 << /Length ${pdfStream2.length} >>
@@ -61,8 +116,11 @@ stream
 ${pdfStream2}
 endstream
 endobj
+8 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
 trailer
-<< /Size 8 /Root 1 0 R >>
+<< /Size 9 /Root 1 0 R >>
 startxref
 0
 %%EOF`;
