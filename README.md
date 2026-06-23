@@ -22,7 +22,7 @@ The universal document viewer for React — **PDF, DOCX, XLSX, PPTX, CSV, Markdo
 
 ---
 
-> **Status:** `v0.1` — pre-1.0, not yet published to npm. The flagship PDF experience (native render, text selection, search highlighting, annotations) is implemented; reflowable formats (DOCX, Markdown, code, …) render and are searchable. Try it now via the [playground](#run-the-playground).
+> **Status:** `v0.1` — published on npm (`npm i anyview`), pre-1.0 and actively evolving. The flagship PDF experience (native render, text selection, search highlighting, annotations) is implemented; reflowable formats (DOCX, Markdown, code, …) render, are searchable, and have page thumbnails. Try it via the [playground](#run-the-playground).
 
 ## Why Anyview?
 
