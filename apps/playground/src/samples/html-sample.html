@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sample HTML Document</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { color: #1a1a2e; }
+    .card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+    .card h2 { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <h1>Sample HTML Document</h1>
+  <p>This is a sample HTML file rendered natively by Anyview's HTML adapter.</p>
+
+  <h2>Features Demonstrated</h2>
+  <div class="card">
+    <h3>Sanitized Rendering</h3>
+    <p>HTML content is sanitized with DOMPurify before rendering in a sandboxed container.</p>
+  </div>
+  <div class="card">
+    <h3>Heading Outline</h3>
+    <p>Heading elements (h1-h6) are extracted to build a navigable outline in the sidebar.</p>
+  </div>
+  <div class="card">
+    <h3>Style Preservation</h3>
+    <p>Safe inline styles and style blocks are preserved for visual fidelity.</p>
+  </div>
+
+  <h2>Table Example</h2>
+  <table border="1" cellpadding="8" style="border-collapse: collapse; width: 100%;">
+    <tr><th>Format</th><th>Engine</th><th>Features</th></tr>
+    <tr><td>PDF</td><td>pdf.js</td><td>Text, Search, Thumbnails</td></tr>
+    <tr><td>DOCX</td><td>mammoth.js</td><td>Text, Outline</td></tr>
+    <tr><td>XLSX</td><td>SheetJS</td><td>Sheets, Tables</td></tr>
+  </table>
+</body>
+</html>

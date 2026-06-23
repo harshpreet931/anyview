@@ -1,0 +1,189 @@
+{
+  "name": "anyview",
+  "version": "0.1.0",
+  "description": "One component. Every format. Zero iframes. The universal document viewer for React.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./pdf": {
+      "types": "./dist/adapters/pdf/index.d.ts",
+      "import": "./dist/adapters/pdf/index.js",
+      "require": "./dist/adapters/pdf/index.cjs"
+    },
+    "./docx": {
+      "types": "./dist/adapters/docx/index.d.ts",
+      "import": "./dist/adapters/docx/index.js",
+      "require": "./dist/adapters/docx/index.cjs"
+    },
+    "./xlsx": {
+      "types": "./dist/adapters/xlsx/index.d.ts",
+      "import": "./dist/adapters/xlsx/index.js",
+      "require": "./dist/adapters/xlsx/index.cjs"
+    },
+    "./pptx": {
+      "types": "./dist/adapters/pptx/index.d.ts",
+      "import": "./dist/adapters/pptx/index.js",
+      "require": "./dist/adapters/pptx/index.cjs"
+    },
+    "./image": {
+      "types": "./dist/adapters/image/index.d.ts",
+      "import": "./dist/adapters/image/index.js",
+      "require": "./dist/adapters/image/index.cjs"
+    },
+    "./markdown": {
+      "types": "./dist/adapters/markdown/index.d.ts",
+      "import": "./dist/adapters/markdown/index.js",
+      "require": "./dist/adapters/markdown/index.cjs"
+    },
+    "./code": {
+      "types": "./dist/adapters/code/index.d.ts",
+      "import": "./dist/adapters/code/index.js",
+      "require": "./dist/adapters/code/index.cjs"
+    },
+    "./csv": {
+      "types": "./dist/adapters/csv/index.d.ts",
+      "import": "./dist/adapters/csv/index.js",
+      "require": "./dist/adapters/csv/index.cjs"
+    },
+    "./html": {
+      "types": "./dist/adapters/html/index.d.ts",
+      "import": "./dist/adapters/html/index.js",
+      "require": "./dist/adapters/html/index.cjs"
+    },
+    "./text": {
+      "types": "./dist/adapters/text/index.d.ts",
+      "import": "./dist/adapters/text/index.js",
+      "require": "./dist/adapters/text/index.cjs"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js",
+      "require": "./dist/core/index.cjs"
+    },
+    "./styles": "./dist/viewer.css"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "react",
+    "document-viewer",
+    "doc-viewer",
+    "pdf",
+    "docx",
+    "xlsx",
+    "pptx",
+    "markdown",
+    "viewer",
+    "document",
+    "file-viewer",
+    "office",
+    "pdfjs",
+    "react-component"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/harshpreet931/anyview.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "comlink": "^4.4",
+    "dompurify": "^3.2",
+    "jszip": "^3.10",
+    "mammoth": "^1.8",
+    "papaparse": "^5.4",
+    "pdfjs-dist": "^4.7",
+    "react": ">=18",
+    "react-dom": ">=18",
+    "react-markdown": "^10.1",
+    "remark-gfm": "^4.0",
+    "shiki": "^4.2",
+    "xlsx": "^0.18.5"
+  },
+  "peerDependenciesMeta": {
+    "comlink": {
+      "optional": false
+    },
+    "dompurify": {
+      "optional": true
+    },
+    "mammoth": {
+      "optional": true
+    },
+    "pdfjs-dist": {
+      "optional": true
+    },
+    "xlsx": {
+      "optional": true
+    },
+    "jszip": {
+      "optional": true
+    },
+    "papaparse": {
+      "optional": true
+    },
+    "react-markdown": {
+      "optional": true
+    },
+    "remark-gfm": {
+      "optional": true
+    },
+    "shiki": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.10",
+    "comlink": "^4.4",
+    "zustand": "^5.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^19.0",
+    "@types/react-dom": "^19.0",
+    "@vitejs/plugin-react": "^4.3",
+    "dompurify": "^3.2",
+    "eslint": "^9",
+    "eslint-plugin-react-hooks": "^5",
+    "globals": "^15",
+    "jsdom": "^25",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.8",
+    "papaparse": "^5.4",
+    "pdfjs-dist": "^4.7",
+    "react": "^19.0",
+    "react-dom": "^19.0",
+    "react-markdown": "^10.1",
+    "remark-gfm": "^4.0",
+    "shiki": "^4.2",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8",
+    "vite": "^6.0",
+    "vite-plugin-dts": "^4.5",
+    "vitest": "^2",
+    "xlsx": "^0.18.5"
+  }
+}
