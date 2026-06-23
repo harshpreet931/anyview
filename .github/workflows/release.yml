@@ -48,6 +48,17 @@ jobs:
           pnpm --filter anyview typecheck
           pnpm --filter anyview build
 
+      - name: Generate package README for npm
+        # npm shows the README from the package dir; copy the root one and
+        # rewrite relative paths to absolute GitHub URLs so images/links work.
+        run: |
+          RAW="https://raw.githubusercontent.com/harshpreet931/anyview/main"
+          BLOB="https://github.com/harshpreet931/anyview/blob/main"
+          sed -E \
+            -e "s#\"\./assets/#\"$RAW/assets/#g" \
+            -e "s#\]\(\./#](${BLOB}/#g" \
+            README.md > packages/viewer/README.md
+
       - name: Publish to npm
         run: pnpm --filter anyview publish --no-git-checks --access public
         env:
