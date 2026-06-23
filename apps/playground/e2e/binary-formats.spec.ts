@@ -55,4 +55,11 @@ test.describe('binary formats — native (no iframe) rendering', () => {
     await expect(target).toContainText('Engineer');
     await expect(target).toContainText('Carol');
   });
+
+  test('PPTX renders slides via JSZip + XML', async ({ page }) => {
+    await openFile(page, 'sample.pptx');
+    const target = await reflowText(page);
+    await expect(target).toContainText('Anyview Presentation');
+    await expect(page.locator('.dv-page-count')).toContainText('2');
+  });
 });
