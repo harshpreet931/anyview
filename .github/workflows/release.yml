@@ -1,0 +1,55 @@
+name: Release
+
+# Publishes the `anyview` package to npm when a version tag is pushed.
+#
+# One-time setup:
+#   1. Create an npm "Automation" access token (npmjs.com → Access Tokens).
+#   2. Add it as a repo secret named NPM_TOKEN
+#      (Settings → Secrets and variables → Actions → New repository secret).
+#
+# To cut a release:
+#   1. Bump "version" in packages/viewer/package.json (e.g. 0.1.0 → 0.1.1).
+#   2. git commit -am "release: v0.1.1"
+#   3. git tag v0.1.1 && git push origin main --tags
+#
+# The tag push triggers this workflow, which typechecks, builds, and publishes.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck & build
+        run: |
+          pnpm --filter anyview typecheck
+          pnpm --filter anyview build
+
+      - name: Publish to npm
+        run: pnpm --filter anyview publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
