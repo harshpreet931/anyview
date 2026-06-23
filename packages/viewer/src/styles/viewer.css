@@ -419,11 +419,27 @@
 
 .dv-thumbnail-image {
   width: 100%;
-  aspect-ratio: var(--dv-thumb-ratio, 1);
-  min-height: 48px;
-  background: var(--dv-body-bg-color);
+  aspect-ratio: var(--dv-thumb-ratio, 0.77);
+  background: #fff;
   border-radius: var(--dv-radius-sm);
-  box-shadow: var(--dv-shadow-xs);
+  box-shadow: var(--dv-shadow-xs), inset 0 0 0 1px rgb(0 0 0 / 0.06);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dv-thumbnail-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dv-thumbnail-placeholder {
+  width: 42%;
+  height: 42%;
+  color: var(--dv-main-color);
 }
 
 .dv-thumbnail-label {
