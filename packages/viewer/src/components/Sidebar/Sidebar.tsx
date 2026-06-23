@@ -2,8 +2,9 @@
  * Sidebar — collapsible sidebar with view selector
  * ============================================================ */
 
+import { useEffect, useRef } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
-import type { SidebarView, PageRef } from '../../core/types';
+import type { SidebarView, PageRef, Adapter, FormatId } from '../../core/types';
 
 export function Sidebar() {
   const sidebarOpen = useViewerStore((s) => s.sidebarOpen);
@@ -11,6 +12,7 @@ export function Sidebar() {
   const setSidebarView = useViewerStore((s) => s.setSidebarView);
   const sidebarWidth = useViewerStore((s) => s.sidebarWidth);
   const document = useViewerStore((s) => s.document);
+  const adapter = useViewerStore((s) => s.adapter);
   const currentPage = useViewerStore((s) => s.currentPage);
   const goToPage = useViewerStore((s) => s.goToPage);
 
@@ -49,6 +51,8 @@ export function Sidebar() {
         {sidebarView === 'thumbnails' && (
           <ThumbnailList
             pages={document.pages}
+            format={document.format}
+            adapter={adapter}
             currentPage={currentPage}
             onThumbnailClick={goToPage}
           />
@@ -80,32 +84,129 @@ export function Sidebar() {
 
 function ThumbnailList({
   pages,
+  format,
+  adapter,
   currentPage,
   onThumbnailClick,
 }: {
   pages: readonly PageRef[];
+  format: FormatId;
+  adapter: Adapter | null;
   currentPage: number;
   onThumbnailClick: (index: number) => void;
 }) {
   return (
     <div className="dv-thumbnail-list" role="list">
       {pages.map((page, index) => (
-        <button
+        <Thumbnail
           key={index}
-          className="dv-thumbnail"
-          data-current={currentPage === index}
+          page={page}
+          index={index}
+          format={format}
+          adapter={adapter}
+          current={currentPage === index}
           onClick={() => onThumbnailClick(index)}
-          aria-label={`Page ${index + 1}`}
-          aria-current={currentPage === index ? 'page' : undefined}
-        >
-          <div
-            className="dv-thumbnail-image"
-            style={{ ['--dv-thumb-ratio' as string]: `${page.width / page.height}` }}
-          />
-          <div className="dv-thumbnail-label">{page.label || index + 1}</div>
-        </button>
+        />
       ))}
     </div>
+  );
+}
+
+const THUMB_WIDTH = 150;
+
+function Thumbnail({
+  page,
+  index,
+  format,
+  adapter,
+  current,
+  onClick,
+}: {
+  page: PageRef;
+  index: number;
+  format: FormatId;
+  adapter: Adapter | null;
+  current: boolean;
+  onClick: () => void;
+}) {
+  // Only canvas formats produce a paintable preview; reflowable formats show a
+  // page glyph (a tiny DOM re-render of reflowed content isn't legible anyway).
+  const canvasFormat = format === 'pdf' || format === 'image';
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!canvasFormat || !adapter?.renderPage) return;
+    const button = buttonRef.current;
+    const canvas = canvasRef.current;
+    if (!button || !canvas) return;
+
+    const controller = new AbortController();
+    let started = false;
+
+    const render = () => {
+      if (started) return;
+      started = true;
+      adapter
+        .renderPage({
+          page,
+          target: canvas,
+          scale: THUMB_WIDTH / page.width,
+          rotation: 0,
+          devicePixelRatio: window.devicePixelRatio,
+          signal: controller.signal,
+        })
+        .then(() => {
+          // Drop the adapter's inline size so CSS controls the display size
+          // while the backing store stays high-res for crispness.
+          canvas.style.width = '';
+          canvas.style.height = '';
+        })
+        .catch(() => {});
+    };
+
+    // Lazily render only when the thumbnail scrolls near the viewport.
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          render();
+          io.disconnect();
+        }
+      },
+      { rootMargin: '300px' },
+    );
+    io.observe(button);
+
+    return () => {
+      io.disconnect();
+      controller.abort();
+    };
+  }, [adapter, page, canvasFormat]);
+
+  return (
+    <button
+      ref={buttonRef}
+      className="dv-thumbnail"
+      data-current={current}
+      onClick={onClick}
+      aria-label={`Page ${index + 1}`}
+      aria-current={current ? 'page' : undefined}
+    >
+      <div
+        className="dv-thumbnail-image"
+        style={{ ['--dv-thumb-ratio' as string]: `${page.width / page.height}` }}
+      >
+        {canvasFormat ? (
+          <canvas ref={canvasRef} className="dv-thumbnail-canvas" />
+        ) : (
+          <svg className="dv-thumbnail-placeholder" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 2h7l5 5v15H6V2z" fill="currentColor" opacity="0.18" />
+            <path d="M13 2v5h5" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+          </svg>
+        )}
+      </div>
+      <div className="dv-thumbnail-label">{page.label || index + 1}</div>
+    </button>
   );
 }
 

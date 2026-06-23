@@ -76,6 +76,22 @@ test.describe('rendering — every sample format', () => {
     await waitForCanvasRendered(page);
     await expect(page.locator('.dv-page-count')).toContainText('2');
   });
+
+  test('PDF thumbnails render real page previews', async ({ page }) => {
+    await gotoApp(page);
+    await loadSample(page, 'PDF');
+    await waitForCanvasRendered(page);
+
+    const thumbs = page.locator('.dv-thumbnail-canvas');
+    await expect(thumbs).toHaveCount(2);
+    // A rendered portrait page is sized height > width; an unrendered canvas
+    // keeps the 300×150 default (landscape), so this proves it actually drew.
+    await expect
+      .poll(() => thumbs.first().evaluate((c: HTMLCanvasElement) => (c.height > c.width ? 1 : 0)), {
+        timeout: 15_000,
+      })
+      .toBe(1);
+  });
 });
 
 test.describe('PDF — text selection', () => {
