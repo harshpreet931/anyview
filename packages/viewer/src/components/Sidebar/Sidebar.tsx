@@ -129,17 +129,19 @@ function Thumbnail({
   current: boolean;
   onClick: () => void;
 }) {
-  // Only canvas formats produce a paintable preview; reflowable formats show a
-  // page glyph (a tiny DOM re-render of reflowed content isn't legible anyway).
+  // Canvas formats (PDF, image) paint into a <canvas>; reflowable formats
+  // render their real DOM at full size into a <div> that we shrink with a CSS
+  // transform — both produce a true preview of the page.
   const canvasFormat = format === 'pdf' || format === 'image';
   const buttonRef = useRef<HTMLButtonElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const docRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!canvasFormat || !adapter?.renderPage) return;
+    if (!adapter?.renderPage) return;
     const button = buttonRef.current;
-    const canvas = canvasRef.current;
-    if (!button || !canvas) return;
+    const target = canvasFormat ? canvasRef.current : docRef.current;
+    if (!button || !target) return;
 
     const controller = new AbortController();
     let started = false;
@@ -147,20 +149,40 @@ function Thumbnail({
     const render = () => {
       if (started) return;
       started = true;
+
+      if (canvasFormat) {
+        const canvas = canvasRef.current!;
+        adapter
+          .renderPage({
+            page,
+            target: canvas,
+            scale: THUMB_WIDTH / page.width,
+            rotation: 0,
+            devicePixelRatio: window.devicePixelRatio,
+            signal: controller.signal,
+          })
+          .then(() => {
+            // Let CSS size the display; keep the high-res backing store.
+            canvas.style.width = '';
+            canvas.style.height = '';
+          })
+          .catch(() => {});
+        return;
+      }
+
+      const doc = docRef.current!;
+      const boxWidth = doc.parentElement?.clientWidth || THUMB_WIDTH;
+      doc.style.width = `${page.width}px`;
+      doc.style.height = `${page.height}px`;
+      doc.style.transform = `scale(${boxWidth / page.width})`;
       adapter
         .renderPage({
           page,
-          target: canvas,
-          scale: THUMB_WIDTH / page.width,
+          target: doc,
+          scale: 1,
           rotation: 0,
           devicePixelRatio: window.devicePixelRatio,
           signal: controller.signal,
-        })
-        .then(() => {
-          // Drop the adapter's inline size so CSS controls the display size
-          // while the backing store stays high-res for crispness.
-          canvas.style.width = '';
-          canvas.style.height = '';
         })
         .catch(() => {});
     };
@@ -199,10 +221,7 @@ function Thumbnail({
         {canvasFormat ? (
           <canvas ref={canvasRef} className="dv-thumbnail-canvas" />
         ) : (
-          <svg className="dv-thumbnail-placeholder" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 2h7l5 5v15H6V2z" fill="currentColor" opacity="0.18" />
-            <path d="M13 2v5h5" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3" />
-          </svg>
+          <div ref={docRef} className="dv-thumbnail-doc" aria-hidden="true" />
         )}
       </div>
       <div className="dv-thumbnail-label">{page.label || index + 1}</div>
