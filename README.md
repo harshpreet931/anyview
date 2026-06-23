@@ -14,6 +14,8 @@ The universal document viewer for React — **PDF, DOCX, XLSX, PPTX, CSV, Markdo
 [![CI](https://img.shields.io/github/actions/workflow/status/harshpreet931/anyview/ci.yml?branch=main&labelColor=1a1813)](https://github.com/harshpreet931/anyview/actions)
 [![stars](https://img.shields.io/github/stars/harshpreet931/anyview?style=social)](https://github.com/harshpreet931/anyview)
 
+**[▶ Live demo](https://harshpreet931.github.io/anyview/)** &nbsp;·&nbsp; [Quick start](#quick-start) &nbsp;·&nbsp; [Why Anyview?](#why-anyview) &nbsp;·&nbsp; [FAQ](#faq)
+
 <br />
 
 <img src="./assets/screenshot.png" width="920" alt="Anyview rendering a PDF with a thumbnail rail, search, zoom, rotate, and annotation tools" />
@@ -267,6 +269,33 @@ pnpm typecheck   # tsc --noEmit
 pnpm test        # vitest
 pnpm build       # vite library build
 ```
+
+## FAQ
+
+**How do I view a DOCX / XLSX / PPTX file in React without an iframe?**
+Use Anyview. It renders Office formats **natively in the browser** — DOCX via mammoth.js, XLSX via SheetJS, PPTX via JSZip — so there is no iframe and no Microsoft/Google Online viewer involved:
+
+```tsx
+import { DocViewer } from 'anyview';
+import 'anyview/styles';
+
+<DocViewer source={{ kind: 'file', file }} />   // a File from an <input>, drag-drop, etc.
+```
+
+**Can it render private or local files (not just public URLs)?**
+Yes. Everything runs client-side, so private, authenticated, and local files work and **nothing is ever uploaded**. This is the main difference from iframe-based viewers like `@cyntler/react-doc-viewer` / `react-doc-viewer`, which render Office files through the Microsoft Office Online service and therefore **require publicly accessible URLs** and send your documents to a third party.
+
+**How do I render any document type in React with one component?**
+`<DocViewer source={…} />` auto-detects the format from the file name / MIME type and loads the matching renderer on demand — PDF, DOCX, XLSX, PPTX, CSV, Markdown, code, HTML, and images, all from one component.
+
+**Is there a free, open-source alternative to PSPDFKit / Nutrient / Apryse for viewing Office documents in React?**
+Yes — Anyview is MIT-licensed and free. It renders PDF and Office formats natively (no server, no license key) with text selection, cross-format search, and PDF annotations.
+
+**Which packages do I need to install?**
+Just `anyview` plus the parser for each format you actually use (they're optional peer dependencies): `pdfjs-dist` for PDF, `mammoth` for DOCX, `xlsx` for XLSX, `jszip` for PPTX, `papaparse` for CSV, `react-markdown` + `remark-gfm` for Markdown, `shiki` for code, `dompurify` for HTML. You ship only what you use.
+
+**Does it work with Next.js / Vite / CRA?**
+Yes — it's a standard React component (React 18+). For SSR frameworks like Next.js, render it client-side (the parsers use browser APIs and a Web Worker).
 
 ## Contributing
 
