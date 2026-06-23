@@ -20,8 +20,11 @@ export function useKeyboardShortcuts(
     if (!enabled) return;
 
     const handler = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === 'INPUT' ||
-          (e.target as HTMLElement)?.tagName === 'TEXTAREA') {
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') {
+        return;
+      }
+      if (!target?.closest('.dv-root')) {
         return;
       }
 
