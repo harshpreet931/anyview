@@ -83,15 +83,15 @@ const jsonContent = `{
     "pptx": { "engine": "JSZip" },
     "csv": { "engine": "PapaParse" },
     "html": { "engine": "DOMPurify" },
-    "markdown": { "engine": "marked" },
+    "markdown": { "engine": "react-markdown" },
     "image": { "formats": ["png", "jpg", "gif", "webp", "svg", "avif"] },
     "text": { "extensions": ["txt", "log"] },
-    "code": { "highlighter": "highlight.js" }
+    "code": { "highlighter": "Shiki" }
   },
   "bundleSize": {
-    "main": "10.93 kB gzip",
-    "css": "2.51 kB gzip",
-    "adapters": "0.14-2.03 kB gzip each"
+    "base": "~23 kB gzip",
+    "css": "~4 kB gzip",
+    "adapters": "loaded on demand, per format"
   },
   "features": [
     "virtualized-scrolling",
