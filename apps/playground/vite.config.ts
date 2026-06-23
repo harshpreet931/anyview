@@ -6,6 +6,8 @@ import react from '@vitejs/plugin-react';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  // Set to "/anyview/" by the GitHub Pages workflow; "/" everywhere else.
+  base: process.env.PAGES_BASE ?? '/',
   plugins: [react()],
   server: {
     port: 5173,
