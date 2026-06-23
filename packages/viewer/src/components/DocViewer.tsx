@@ -19,6 +19,7 @@ import { createRegistry } from '../core/registry';
 import { registerBuiltInAdapters } from '../adapters';
 import { createViewerStore } from '../core/store';
 import { ViewerStoreProvider, useViewerStore } from '../hooks/useDocViewer';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { Toolbar } from './Toolbar';
 import { Sidebar } from './Sidebar';
@@ -50,6 +51,8 @@ function DocViewerInner(
   const loadState = useViewerStore((s) => s.loadState);
   const loadError = useViewerStore((s) => s.loadError);
   const adapter = useViewerStore((s) => s.adapter);
+
+  useKeyboardShortcuts();
 
   useEffect(() => {
     setTheme(theme);
@@ -110,6 +113,13 @@ function DocViewerInner(
       <div className={rootClassName} style={rootStyle} aria-label="Document viewer">
         <div className="dv-main-container">
           {showToolbar && <Toolbar {...(features ? { features } : {})} />}
+          <div
+            className="dv-loading-bar"
+            data-active={loadState === 'loading'}
+            role="progressbar"
+            aria-label="Loading document"
+            aria-hidden={loadState !== 'loading'}
+          />
           <div style={{ display: 'flex', flex: 1, position: 'relative', overflow: 'hidden' }}>
             {showSidebar && <Sidebar />}
             <div style={{ flex: 1, position: 'relative' }}>

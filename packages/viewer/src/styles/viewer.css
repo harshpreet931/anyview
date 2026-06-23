@@ -155,7 +155,7 @@
 }
 
 .dv-loading-bar[data-active="true"] {
-  background-color: var(--dv-loading-color);
+  background-color: var(--dv-progress-bar-color, var(--dv-loading-color));
   animation: dv-loading-indeterminate 1.4s var(--dv-ease) infinite;
 }
 

@@ -16,6 +16,7 @@ export function useNavigation() {
   return {
     currentPage,
     pageCount,
+    totalPages: pageCount,
     goToPage,
     nextPage,
     prevPage,

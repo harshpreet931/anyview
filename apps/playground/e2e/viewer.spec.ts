@@ -253,6 +253,17 @@ test.describe('PDF — viewport controls', () => {
     await page.locator('button[aria-label="Next page"]').click();
     await expect(page.locator('.dv-page-input')).toHaveValue('2');
   });
+
+  test('keyboard navigation (ArrowRight) advances the page', async ({ page }) => {
+    await gotoApp(page);
+    await loadSample(page, 'PDF');
+    await waitForCanvasRendered(page);
+
+    // Shortcuts are scoped to focus inside the viewer.
+    await page.locator('.dv-viewer-container').focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.dv-page-input')).toHaveValue('2');
+  });
 });
 
 test.describe('reflowable — DOM search', () => {
