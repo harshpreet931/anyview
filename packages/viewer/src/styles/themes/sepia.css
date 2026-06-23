@@ -1,0 +1,9 @@
+/* Sepia theme overrides */
+.dv-theme-sepia {
+  --dv-body-bg-color: rgb(244 233 216);
+  --dv-main-color: rgb(90 74 50);
+  --dv-toolbar-bg-color: rgb(247 237 221);
+  --dv-sidebar-bg-color: rgb(240 228 207);
+  --dv-doorhanger-bg-color: rgb(250 240 224);
+  color-scheme: light;
+}

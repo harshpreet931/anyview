@@ -1,0 +1,96 @@
+/* ============================================================
+ * CSS Design Tokens
+ * All customizable values as CSS custom properties.
+ * ============================================================ */
+
+:root,
+.dv-root {
+  /* Layout */
+  --dv-sidebar-width: 240px;
+  --dv-sidebar-min-width: 160px;
+  --dv-sidebar-max-width: 400px;
+  --dv-sidebar-transition-duration: 200ms;
+  --dv-sidebar-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+  --dv-toolbar-height: 44px;
+  --dv-toolbar-height-compact: 36px;
+  --dv-toolbar-height-touch: 48px;
+  --dv-icon-size: 18px;
+  --dv-loading-bar-height: 3px;
+
+  /* Colors — using light-dark() */
+  --dv-main-color: light-dark(rgb(28 28 30), rgb(235 235 240));
+  --dv-body-bg-color: light-dark(rgb(242 242 245), rgb(30 30 34));
+  --dv-toolbar-bg-color: light-dark(rgb(255 255 255), rgb(40 40 44));
+  --dv-field-bg-color: light-dark(rgb(255 255 255), rgb(55 55 60));
+  --dv-field-border-color: light-dark(rgb(210 210 215), rgb(90 90 100));
+  --dv-sidebar-bg-color: light-dark(rgb(250 250 252), rgb(36 36 40));
+  --dv-doorhanger-bg-color: light-dark(rgb(255 255 255), rgb(50 50 56));
+  --dv-separator-color: light-dark(rgb(0 0 0 / 0.06), rgb(255 255 255 / 0.08));
+  --dv-button-hover-color: color-mix(in srgb, currentColor 10%, transparent);
+  --dv-toggled-bg-color: light-dark(rgb(230 230 235), rgb(60 60 68));
+  --dv-progress-bar-color: light-dark(rgb(10 132 255), rgb(0 96 223));
+  --dv-error-color: light-dark(rgb(199 35 35), rgb(255 90 90));
+  --dv-success-color: light-dark(rgb(34 160 90), rgb(50 205 124));
+  --dv-loading-color: light-dark(rgb(10 132 255), rgb(0 128 255));
+  --dv-overlay-color: light-dark(rgb(0 0 0 / 0.35), rgb(0 0 0 / 0.5));
+
+  /* Document "paper" — a rendered page is paper regardless of UI theme,
+     so its surface and ink are fixed (like a white PDF page in dark mode).
+     Reflowable adapters (DOCX, Markdown, code, CSV, …) render onto this. */
+  --dv-page-bg: #ffffff;
+  --dv-page-ink: #1f2328;
+  --dv-page-ink-soft: #57606a;
+
+  /* Shadows — layered for depth */
+  --dv-shadow-xs: 0 1px 2px rgb(0 0 0 / 0.04);
+  --dv-shadow-sm: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
+  --dv-shadow-md: 0 4px 12px rgb(0 0 0 / 0.08), 0 2px 4px rgb(0 0 0 / 0.04);
+  --dv-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.12), 0 4px 12px rgb(0 0 0 / 0.06);
+  --dv-shadow-focus: 0 0 0 3px rgb(10 132 255 / 0.25);
+
+  /* Spacing */
+  --dv-spacing-xs: 2px;
+  --dv-spacing-sm: 4px;
+  --dv-spacing-md: 8px;
+  --dv-spacing-lg: 16px;
+  --dv-spacing-xl: 24px;
+  --dv-spacing-2xl: 32px;
+
+  /* Radius — concentric scale */
+  --dv-radius-xs: 2px;
+  --dv-radius-sm: 4px;
+  --dv-radius-md: 6px;
+  --dv-radius-lg: 12px;
+  --dv-radius-xl: 16px;
+  --dv-radius-full: 9999px;
+
+  /* Transition */
+  --dv-transition-fast: 100ms;
+  --dv-transition-normal: 150ms;
+  --dv-transition-slow: 220ms;
+  --dv-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dv-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --dv-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Z-index scale */
+  --dv-z-toolbar: 10;
+  --dv-z-sidebar: 20;
+  --dv-z-loading-bar: 30;
+  --dv-z-doorhanger: 30000;
+  --dv-z-dialog: 100000;
+  --dv-z-alert: 100001;
+
+  /* Font */
+  --dv-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --dv-font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono', monospace;
+  --dv-font-size-xs: 11px;
+  --dv-font-size-sm: 12px;
+  --dv-font-size-md: 14px;
+  --dv-font-size-lg: 16px;
+  --dv-font-size-xl: 18px;
+
+  /* Font smoothing */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}

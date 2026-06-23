@@ -1,0 +1,410 @@
+/* ============================================================
+ * Anyview Playground — "paper & ink"
+ * A quiet, high-craft developer-instrument shell. The single
+ * amber accent is borrowed from the viewer's own text-search
+ * highlight, so the brand color is derived from the product.
+ * ============================================================ */
+
+.pg-root {
+  /* ---- Light (paper) ---- */
+  --pg-paper: #fbfaf8;
+  --pg-surface: #ffffff;
+  --pg-ink: #1a1813;
+  --pg-ink-2: #57534b;
+  --pg-ink-3: #8a8579;
+  --pg-line: rgb(26 24 19 / 0.10);
+  --pg-line-strong: rgb(26 24 19 / 0.16);
+  --pg-accent: #b8740f;
+  --pg-accent-tint: rgb(184 116 15 / 0.10);
+  --pg-accent-ring: rgb(184 116 15 / 0.30);
+
+  --pg-shadow-sm: 0 1px 2px rgb(26 24 19 / 0.05), 0 1px 1px rgb(26 24 19 / 0.04);
+  --pg-shadow-md: 0 2px 4px rgb(26 24 19 / 0.05), 0 6px 16px rgb(26 24 19 / 0.07);
+  --pg-shadow-lg: 0 8px 24px rgb(26 24 19 / 0.10), 0 2px 6px rgb(26 24 19 / 0.06);
+  --pg-shadow-btn: 0 1px 2px rgb(26 24 19 / 0.20), 0 2px 8px rgb(26 24 19 / 0.18);
+
+  --pg-display: 'Space Grotesk', system-ui, sans-serif;
+  --pg-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --pg-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', monospace;
+
+  --pg-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  font-family: var(--pg-sans);
+  background: var(--pg-paper);
+  color: var(--pg-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pg-root {
+    --pg-paper: #121110;
+    --pg-surface: #1a1916;
+    --pg-ink: #ecead7;
+    --pg-ink-2: #a8a399;
+    --pg-ink-3: #7a766c;
+    --pg-line: rgb(255 255 255 / 0.10);
+    --pg-line-strong: rgb(255 255 255 / 0.16);
+    --pg-accent: #e0a53d;
+    --pg-accent-tint: rgb(224 165 61 / 0.14);
+    --pg-accent-ring: rgb(224 165 61 / 0.36);
+
+    --pg-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --pg-shadow-md: 0 2px 6px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
+    --pg-shadow-lg: 0 10px 30px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.4);
+    --pg-shadow-btn: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.4);
+  }
+}
+
+/* ---------- Header ---------- */
+
+.pg-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 20px;
+  background: color-mix(in srgb, var(--pg-paper) 82%, transparent);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: inset 0 -1px 0 var(--pg-line), 0 1px 8px rgb(26 24 19 / 0.03);
+  z-index: 10;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ---------- Brand ---------- */
+
+.pg-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  animation: pg-rise 520ms var(--pg-ease) both;
+}
+
+.pg-logo {
+  width: 31px;
+  height: 31px;
+  flex-shrink: 0;
+  overflow: visible;
+  filter: drop-shadow(0 1.5px 2px rgb(26 24 19 / 0.18));
+}
+
+/* A page peeking from behind (the "stack of formats"), drawn as a clean
+   hairline so it reads crisply on both light and dark backgrounds. */
+.pg-logo-stack {
+  fill: none;
+  stroke: var(--pg-ink);
+  stroke-opacity: 0.38;
+  stroke-width: 1.6;
+}
+
+/* The amber "viewer card" holding document lines. */
+.pg-logo-card { fill: var(--pg-accent); }
+
+/* Fixed warm-dark ink so the lines stay legible on amber in either theme. */
+.pg-logo-line { fill: #211606; opacity: 0.82; }
+
+.pg-brand-text h1 {
+  font-family: var(--pg-display);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.pg-brand-text p {
+  font-size: 11.5px;
+  margin: 1px 0 0;
+  color: var(--pg-ink-2);
+  line-height: 1.2;
+  font-weight: 500;
+  text-wrap: balance;
+}
+
+/* ---------- Actions cluster ---------- */
+
+.pg-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.pg-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--pg-line-strong);
+  flex-shrink: 0;
+}
+
+/* ---------- Samples ---------- */
+
+.pg-samples {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  animation: pg-rise 520ms var(--pg-ease) 80ms both;
+}
+
+.pg-eyebrow {
+  font-family: var(--pg-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--pg-ink-3);
+  margin-right: 3px;
+  user-select: none;
+}
+
+.pg-sample-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--pg-line);
+  border-radius: 8px;
+  background: var(--pg-surface);
+  color: var(--pg-ink);
+  font-family: var(--pg-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--pg-shadow-sm);
+  transition: background-color 140ms var(--pg-ease),
+    border-color 140ms var(--pg-ease), color 140ms var(--pg-ease),
+    box-shadow 140ms var(--pg-ease), scale 120ms var(--pg-ease);
+}
+
+.pg-chip-ext {
+  font-family: var(--pg-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--pg-ink-3);
+  font-variant-numeric: tabular-nums;
+  transition: color 140ms var(--pg-ease);
+}
+
+.pg-sample-chip:hover {
+  border-color: var(--pg-line-strong);
+  box-shadow: var(--pg-shadow-md);
+}
+
+.pg-sample-chip:active { scale: 0.96; }
+
+.pg-sample-chip:focus-visible {
+  outline: none;
+  border-color: var(--pg-accent);
+  box-shadow: 0 0 0 3px var(--pg-accent-ring);
+}
+
+.pg-sample-chip[data-active='true'] {
+  background: var(--pg-accent-tint);
+  border-color: color-mix(in srgb, var(--pg-accent) 45%, transparent);
+  color: var(--pg-accent);
+}
+
+.pg-sample-chip[data-active='true'] .pg-chip-ext { color: var(--pg-accent); }
+
+/* ---------- Open file (primary, inverted ink) ---------- */
+
+.pg-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 15px;
+  background: var(--pg-ink);
+  color: var(--pg-paper);
+  border: none;
+  border-radius: 9px;
+  font-family: var(--pg-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  box-shadow: var(--pg-shadow-btn);
+  animation: pg-rise 520ms var(--pg-ease) 140ms both;
+  transition: filter 140ms var(--pg-ease), box-shadow 140ms var(--pg-ease),
+    scale 120ms var(--pg-ease);
+}
+
+.pg-upload-btn:hover { filter: brightness(1.12); box-shadow: var(--pg-shadow-md); }
+.pg-upload-btn:active { scale: 0.96; }
+.pg-upload-btn:focus-within {
+  outline: none;
+  box-shadow: var(--pg-shadow-btn), 0 0 0 3px var(--pg-accent-ring);
+}
+
+.pg-upload-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+  /* optical: the up-arrow glyph sits slightly low */
+  margin-top: -1px;
+}
+
+.pg-upload-btn input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- Theme select ---------- */
+
+.pg-theme-select {
+  height: 34px;
+  padding: 0 30px 0 12px;
+  border: 1px solid var(--pg-line);
+  border-radius: 9px;
+  background-color: var(--pg-surface);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%238a8579' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  color: var(--pg-ink);
+  font-family: var(--pg-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  box-shadow: var(--pg-shadow-sm);
+  -webkit-appearance: none;
+  appearance: none;
+  animation: pg-rise 520ms var(--pg-ease) 200ms both;
+  transition: border-color 140ms var(--pg-ease), box-shadow 140ms var(--pg-ease);
+}
+
+.pg-theme-select:hover { border-color: var(--pg-line-strong); }
+.pg-theme-select:focus-visible {
+  border-color: var(--pg-accent);
+  box-shadow: 0 0 0 3px var(--pg-accent-ring);
+}
+
+/* ---------- Stage / canvas ---------- */
+
+.pg-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 18px 20px 22px;
+}
+
+.pg-canvas {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--pg-surface);
+  box-shadow: inset 0 0 0 1px var(--pg-line), var(--pg-shadow-lg);
+  animation: pg-rise-canvas 600ms var(--pg-ease) 160ms both;
+}
+
+/* The embedded viewer fills the canvas. */
+.pg-canvas .dv-root { height: 100%; }
+
+/* ---------- Drop overlay ---------- */
+
+.pg-drop-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: color-mix(in srgb, var(--pg-paper) 55%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 9999;
+  pointer-events: none;
+  animation: pg-fade 150ms var(--pg-ease);
+}
+
+.pg-drop-overlay-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 44px 64px;
+  border: 2px dashed color-mix(in srgb, var(--pg-accent) 55%, transparent);
+  border-radius: 18px;
+  background: var(--pg-surface);
+  color: var(--pg-accent);
+  box-shadow: var(--pg-shadow-lg);
+}
+
+.pg-drop-overlay-inner svg {
+  width: 44px;
+  height: 44px;
+  fill: var(--pg-accent);
+}
+
+.pg-drop-overlay-inner span {
+  font-family: var(--pg-display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes pg-rise {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pg-rise-canvas {
+  from { opacity: 0; transform: translateY(8px) scale(0.992); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pg-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+  .pg-header { gap: 12px; padding: 10px 14px; }
+  .pg-brand-text p { display: none; }
+  .pg-main { padding: 12px 14px 16px; }
+}
+
+@media (max-width: 720px) {
+  .pg-eyebrow { display: none; }
+  .pg-divider { display: none; }
+  .pg-sample-chip { height: 28px; font-size: 12px; padding: 0 9px; }
+}
+
+@media (max-width: 560px) {
+  .pg-samples { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-brand,
+  .pg-samples,
+  .pg-upload-btn,
+  .pg-theme-select,
+  .pg-canvas,
+  .pg-drop-overlay { animation: none; }
+  .pg-sample-chip,
+  .pg-upload-btn { transition-duration: 1ms; }
+}

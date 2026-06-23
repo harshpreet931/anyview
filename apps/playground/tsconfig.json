@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "jsx": "react-jsx",
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "anyview": ["../../packages/viewer/src/index.ts"],
+      "anyview/*": ["../../packages/viewer/src/*"]
+    }
+  },
+  "include": ["src"]
+}

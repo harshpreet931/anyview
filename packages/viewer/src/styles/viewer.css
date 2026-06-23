@@ -1,0 +1,927 @@
+/* ============================================================
+ * Main Viewer Stylesheet
+ * Import this file: import 'anyview/styles';
+ * ============================================================ */
+
+@import './tokens.css';
+@import './themes/light.css';
+@import './themes/dark.css';
+@import './themes/sepia.css';
+
+/* ---------- Reset & Root ---------- */
+
+.dv-root {
+  font-family: var(--dv-font-family);
+  color: var(--dv-main-color);
+  background-color: var(--dv-body-bg-color);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.dv-root * {
+  box-sizing: border-box;
+}
+
+.dv-root button,
+.dv-root input,
+.dv-root select {
+  font-family: inherit;
+  font-size: var(--dv-font-size-md);
+}
+
+/* ---------- Main Container ---------- */
+
+.dv-main-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ---------- Toolbar ---------- */
+
+.dv-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--dv-spacing-sm);
+  height: var(--dv-toolbar-height);
+  padding: 0 var(--dv-spacing-lg);
+  background-color: color-mix(in srgb, var(--dv-toolbar-bg-color) 90%, transparent);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  box-shadow: 0 1px 0 var(--dv-separator-color), var(--dv-shadow-xs);
+  z-index: var(--dv-z-toolbar);
+}
+
+.dv-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--dv-spacing-xs);
+  animation: dv-toolbar-enter var(--dv-transition-normal) var(--dv-ease-out) backwards;
+}
+
+.dv-toolbar-group:nth-child(1) { animation-delay: 0ms; }
+.dv-toolbar-group:nth-child(2) { animation-delay: 50ms; }
+.dv-toolbar-group:nth-child(3) { animation-delay: 100ms; }
+.dv-toolbar-group:nth-child(4) { animation-delay: 150ms; }
+.dv-toolbar-group:nth-child(5) { animation-delay: 200ms; }
+
+.dv-toolbar-spacer {
+  flex: 1;
+}
+
+@keyframes dv-toolbar-enter {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Buttons ---------- */
+
+.dv-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--dv-icon-size) + 10px);
+  height: calc(var(--dv-icon-size) + 10px);
+  padding: var(--dv-spacing-xs);
+  border: none;
+  border-radius: var(--dv-radius-sm);
+  background: transparent;
+  color: var(--dv-main-color);
+  cursor: pointer;
+  transition:
+    background-color var(--dv-transition-fast) var(--dv-ease),
+    box-shadow var(--dv-transition-fast) var(--dv-ease),
+    transform var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-button:hover {
+  background-color: var(--dv-button-hover-color);
+}
+
+.dv-button:active {
+  background-color: color-mix(in srgb, currentColor 15%, transparent);
+  transform: scale(0.94);
+}
+
+.dv-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+.dv-button[data-toggled="true"] {
+  background-color: var(--dv-toggled-bg-color);
+  color: var(--dv-main-color);
+}
+
+.dv-button svg {
+  width: var(--dv-icon-size);
+  height: var(--dv-icon-size);
+  pointer-events: none;
+  transition:
+    opacity var(--dv-transition-fast) var(--dv-ease),
+    transform var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-button:hover svg {
+  transform: scale(1.08);
+}
+
+.dv-button:active svg {
+  transform: scale(0.92);
+}
+
+/* ---------- Loading Bar ---------- */
+
+.dv-loading-bar {
+  position: absolute;
+  top: var(--dv-toolbar-height);
+  left: 0;
+  right: 0;
+  height: var(--dv-loading-bar-height);
+  background-color: transparent;
+  z-index: var(--dv-z-loading-bar);
+  overflow: hidden;
+}
+
+.dv-loading-bar[data-active="true"] {
+  background-color: var(--dv-loading-color);
+  animation: dv-loading-indeterminate 1.4s var(--dv-ease) infinite;
+}
+
+@keyframes dv-loading-indeterminate {
+  0% { transform: translateX(-100%) scaleX(0.4); }
+  50% { transform: translateX(0%) scaleX(0.8); }
+  100% { transform: translateX(100%) scaleX(0.4); }
+}
+
+/* ---------- Viewer Container ---------- */
+
+.dv-viewer-container {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--dv-main-color) 20%, transparent) transparent;
+}
+
+.dv-viewer-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dv-viewer-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dv-viewer-container::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--dv-main-color) 15%, transparent);
+  border-radius: var(--dv-radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dv-viewer-container::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--dv-main-color) 25%, transparent);
+}
+
+.dv-viewer-container:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--dv-loading-color);
+}
+
+.dv-viewer-container:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--dv-loading-color);
+}
+
+/* ---------- Page ---------- */
+
+.dv-page {
+  position: relative;
+  margin: var(--dv-spacing-xl) auto;
+  border-radius: var(--dv-radius-xs);
+  box-shadow: var(--dv-shadow-md);
+  /* A page is paper: fixed light surface + dark ink in every UI theme, so
+     reflowable content inherits readable colors even in dark mode. */
+  background: var(--dv-page-bg);
+  color: var(--dv-page-ink);
+  color-scheme: light;
+  animation: dv-page-enter var(--dv-transition-slow) var(--dv-ease-out) backwards;
+  will-change: transform;
+}
+
+.dv-page canvas {
+  display: block;
+  border-radius: var(--dv-radius-xs);
+  user-select: none;
+}
+
+/* ---------- Text Layer (selectable text over the bitmap) ---------- */
+
+.dv-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  line-height: 1;
+  user-select: text;
+  z-index: 2;
+}
+
+.dv-text-layer span {
+  position: absolute;
+  white-space: pre;
+  transform-origin: 0 0;
+  color: transparent;
+  cursor: text;
+}
+
+.dv-text-layer span::selection {
+  background: color-mix(in srgb, var(--dv-loading-color) 35%, transparent);
+}
+
+/* ---------- Search Highlights — positioned (canvas formats) ---------- */
+
+.dv-search-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.dv-search-highlight {
+  position: absolute;
+  background: rgb(255 212 0 / 0.4);
+  border-radius: 1px;
+  mix-blend-mode: multiply;
+  transition: background-color var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-search-highlight-current {
+  background: rgb(255 140 0 / 0.55);
+  outline: 1.5px solid rgb(255 140 0 / 0.95);
+}
+
+/* ---------- Search Highlights — DOM ranges (reflowable formats) ---------- */
+
+::highlight(dv-search) {
+  background-color: rgb(255 212 0 / 0.45);
+}
+
+::highlight(dv-search-current) {
+  background-color: rgb(255 140 0 / 0.85);
+  color: #000;
+}
+
+/* ---------- Annotation Layer (SVG overlay) ---------- */
+
+.dv-annotation-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+
+.dv-annotation-layer[data-tool] {
+  cursor: crosshair;
+}
+
+.dv-annotation {
+  transition: opacity var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-annotation-delete circle {
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.3));
+}
+
+/* ---------- Reflowable content ---------- */
+
+.dv-reflow-target {
+  color: var(--dv-page-ink);
+}
+
+@keyframes dv-page-enter {
+  from { opacity: 0; transform: translateY(6px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- Sidebar ---------- */
+
+.dv-sidebar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--dv-sidebar-width);
+  background-color: color-mix(in srgb, var(--dv-sidebar-bg-color) 95%, transparent);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  box-shadow: 1px 0 0 var(--dv-separator-color);
+  display: flex;
+  flex-direction: column;
+  z-index: var(--dv-z-sidebar);
+  transition:
+    width var(--dv-sidebar-transition-duration) var(--dv-sidebar-transition-timing),
+    opacity var(--dv-sidebar-transition-duration) var(--dv-ease);
+}
+
+.dv-sidebar[data-open="false"] {
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  box-shadow: none;
+}
+
+.dv-sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background-color: transparent;
+  transition: background-color var(--dv-transition-normal) var(--dv-ease);
+}
+
+.dv-sidebar-resizer:hover,
+.dv-sidebar-resizer[data-active="true"] {
+  background-color: var(--dv-loading-color);
+}
+
+/* ---------- Sidebar Views ---------- */
+
+.dv-sidebar-views {
+  display: flex;
+  padding: var(--dv-spacing-sm);
+  gap: var(--dv-spacing-xs);
+}
+
+.dv-sidebar-view-tab {
+  flex: 1;
+  font-size: var(--dv-font-size-sm);
+  border-radius: var(--dv-radius-sm);
+  padding: var(--dv-spacing-xs) var(--dv-spacing-sm);
+  border: none;
+  background: transparent;
+  color: var(--dv-main-color);
+  cursor: pointer;
+  transition:
+    background-color var(--dv-transition-fast) var(--dv-ease),
+    box-shadow var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-sidebar-view-tab:hover {
+  background-color: var(--dv-button-hover-color);
+}
+
+.dv-sidebar-view-tab[data-toggled="true"] {
+  background-color: var(--dv-toggled-bg-color);
+  font-weight: 500;
+}
+
+/* ---------- Thumbnails ---------- */
+
+.dv-thumbnail-list {
+  padding: var(--dv-spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dv-spacing-sm);
+}
+
+.dv-thumbnail {
+  display: block;
+  width: 100%;
+  padding: var(--dv-spacing-sm);
+  border: 2px solid transparent;
+  border-radius: var(--dv-radius-md);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--dv-transition-fast) var(--dv-ease),
+    border-color var(--dv-transition-fast) var(--dv-ease),
+    box-shadow var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-thumbnail:hover {
+  background-color: var(--dv-button-hover-color);
+}
+
+.dv-thumbnail[data-current="true"] {
+  border-color: var(--dv-loading-color);
+  box-shadow: var(--dv-shadow-focus);
+}
+
+.dv-thumbnail-image {
+  width: 100%;
+  aspect-ratio: var(--dv-thumb-ratio, 1);
+  min-height: 48px;
+  background: var(--dv-body-bg-color);
+  border-radius: var(--dv-radius-sm);
+  box-shadow: var(--dv-shadow-xs);
+}
+
+.dv-thumbnail-label {
+  font-size: var(--dv-font-size-sm);
+  margin-top: var(--dv-spacing-xs);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+/* ---------- Outline ---------- */
+
+.dv-outline-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dv-outline-item {
+  width: 100%;
+  text-align: left;
+  justify-content: flex-start;
+  padding: var(--dv-spacing-xs) var(--dv-spacing-md);
+  font-size: var(--dv-font-size-md);
+  border-radius: var(--dv-radius-sm);
+  color: var(--dv-main-color);
+  cursor: pointer;
+  transition:
+    background-color var(--dv-transition-fast) var(--dv-ease),
+    color var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-outline-item:hover {
+  background-color: var(--dv-button-hover-color);
+  color: var(--dv-loading-color);
+}
+
+/* ---------- Attachments ---------- */
+
+.dv-attachment-list {
+  list-style: none;
+  padding: var(--dv-spacing-sm);
+  margin: 0;
+}
+
+.dv-attachment-item {
+  width: 100%;
+  justify-content: flex-start;
+  padding: var(--dv-spacing-xs) var(--dv-spacing-md);
+  border-radius: var(--dv-radius-sm);
+  font-size: var(--dv-font-size-md);
+  transition: background-color var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-attachment-item:hover {
+  background-color: var(--dv-button-hover-color);
+}
+
+.dv-attachment-size {
+  font-size: var(--dv-font-size-sm);
+  opacity: 0.5;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- States ---------- */
+
+.dv-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--dv-spacing-2xl);
+  text-align: center;
+  color: var(--dv-main-color);
+  animation: dv-state-enter var(--dv-transition-slow) var(--dv-ease-out) backwards;
+}
+
+.dv-state-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.3;
+  margin-bottom: var(--dv-spacing-lg);
+  animation: dv-state-icon-float 3s var(--dv-ease) infinite;
+}
+
+.dv-state-title {
+  font-size: var(--dv-font-size-lg);
+  font-weight: 600;
+  margin-bottom: var(--dv-spacing-sm);
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+
+.dv-state-description {
+  font-size: var(--dv-font-size-md);
+  opacity: 0.6;
+  max-width: 340px;
+  text-wrap: pretty;
+  line-height: 1.5;
+}
+
+@keyframes dv-state-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dv-state-icon-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ---------- Search Bar ---------- */
+
+.dv-page-input {
+  width: 48px;
+  text-align: center;
+  padding: var(--dv-spacing-xs) var(--dv-spacing-sm);
+  border: 1px solid var(--dv-field-border-color);
+  border-radius: var(--dv-radius-sm);
+  background-color: var(--dv-field-bg-color);
+  color: var(--dv-main-color);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--dv-font-size-sm);
+  transition:
+    border-color var(--dv-transition-fast) var(--dv-ease),
+    box-shadow var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-page-input:focus {
+  outline: none;
+  border-color: var(--dv-loading-color);
+  box-shadow: var(--dv-shadow-focus);
+}
+
+.dv-page-count {
+  font-size: var(--dv-font-size-sm);
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.dv-zoom-select {
+  width: 72px;
+  padding: var(--dv-spacing-xs) var(--dv-spacing-sm);
+  border: 1px solid var(--dv-field-border-color);
+  border-radius: var(--dv-radius-sm);
+  background-color: var(--dv-field-bg-color);
+  color: var(--dv-main-color);
+  font-size: var(--dv-font-size-sm);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color var(--dv-transition-fast) var(--dv-ease),
+    box-shadow var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-zoom-select:focus {
+  outline: none;
+  border-color: var(--dv-loading-color);
+  box-shadow: var(--dv-shadow-focus);
+}
+
+.dv-search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--dv-spacing-sm);
+  padding: var(--dv-spacing-sm) var(--dv-spacing-lg);
+  background-color: color-mix(in srgb, var(--dv-toolbar-bg-color) 90%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 var(--dv-separator-color);
+  animation: dv-search-enter var(--dv-transition-normal) var(--dv-ease-out);
+}
+
+.dv-search-input {
+  flex: 1;
+  padding: var(--dv-spacing-sm) var(--dv-spacing-md);
+  border: 1px solid var(--dv-field-border-color);
+  border-radius: var(--dv-radius-sm);
+  background-color: var(--dv-field-bg-color);
+  color: var(--dv-main-color);
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color var(--dv-transition-fast) var(--dv-ease),
+    box-shadow var(--dv-transition-fast) var(--dv-ease);
+}
+
+.dv-search-input::placeholder {
+  color: color-mix(in srgb, var(--dv-main-color) 40%, transparent);
+}
+
+.dv-search-input:focus {
+  outline: none;
+  border-color: var(--dv-loading-color);
+  box-shadow: var(--dv-shadow-focus);
+}
+
+.dv-search-count {
+  font-size: var(--dv-font-size-sm);
+  opacity: 0.6;
+  min-width: 60px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes dv-search-enter {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Dialogs ---------- */
+
+.dv-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--dv-overlay-color);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: var(--dv-z-dialog);
+  animation: dv-overlay-enter var(--dv-transition-normal) var(--dv-ease) forwards;
+  padding: var(--dv-spacing-lg);
+}
+
+.dv-dialog {
+  border: none;
+  border-radius: var(--dv-radius-lg);
+  padding: var(--dv-spacing-lg);
+  background-color: var(--dv-doorhanger-bg-color);
+  color: var(--dv-main-color);
+  max-width: 420px;
+  min-width: 320px;
+  box-shadow: var(--dv-shadow-lg);
+  animation: dv-dialog-enter var(--dv-transition-slow) var(--dv-ease-spring) backwards;
+}
+
+.dv-dialog::backdrop {
+  background-color: var(--dv-overlay-color);
+  backdrop-filter: blur(6px);
+}
+
+.dv-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: var(--dv-spacing-sm);
+  margin-bottom: var(--dv-spacing-md);
+}
+
+.dv-dialog-title {
+  font-size: var(--dv-font-size-lg);
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+
+.dv-dialog-body {
+  margin-bottom: var(--dv-spacing-md);
+}
+
+.dv-dialog-description {
+  margin: 0 0 var(--dv-spacing-sm);
+  line-height: 1.55;
+  text-wrap: pretty;
+  opacity: 0.85;
+}
+
+.dv-dialog-error {
+  color: var(--dv-error-color);
+  font-size: var(--dv-font-size-sm);
+  margin: var(--dv-spacing-sm) 0 0;
+}
+
+.dv-dialog-detail {
+  margin-top: var(--dv-spacing-sm);
+  line-height: 1.45;
+  font-size: var(--dv-font-size-sm);
+  opacity: 0.7;
+  font-family: var(--dv-font-mono);
+}
+
+.dv-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dv-spacing-sm);
+  margin-top: var(--dv-spacing-lg);
+}
+
+@keyframes dv-overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dv-dialog-enter {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ---------- Button Variants & Sizes ---------- */
+
+.dv-button-primary {
+  background-color: var(--dv-loading-color);
+  color: white;
+  padding: var(--dv-spacing-sm) var(--dv-spacing-lg);
+  border-radius: var(--dv-radius-sm);
+  font-weight: 500;
+}
+
+.dv-button-primary:hover {
+  background-color: color-mix(in srgb, var(--dv-loading-color) 88%, black);
+  box-shadow: var(--dv-shadow-sm);
+}
+
+.dv-button-primary:active {
+  transform: scale(0.96);
+  box-shadow: var(--dv-shadow-xs);
+}
+
+.dv-button-ghost {
+  padding: var(--dv-spacing-xs) var(--dv-spacing-md);
+  border-radius: var(--dv-radius-sm);
+}
+
+.dv-button-ghost:hover {
+  background-color: var(--dv-button-hover-color);
+}
+
+.dv-button-icon {
+  padding: 2px;
+}
+
+.dv-button-sm {
+  height: calc(var(--dv-icon-size) + 4px);
+  font-size: var(--dv-font-size-sm);
+  border-radius: var(--dv-radius-xs);
+}
+
+.dv-button-md {
+  height: calc(var(--dv-icon-size) + 10px);
+  font-size: var(--dv-font-size-md);
+  border-radius: var(--dv-radius-sm);
+}
+
+.dv-button-lg {
+  height: calc(var(--dv-icon-size) + 16px);
+  font-size: var(--dv-font-size-lg);
+  padding: var(--dv-spacing-xs) var(--dv-spacing-lg);
+  border-radius: var(--dv-radius-md);
+}
+
+.dv-button-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.dv-button-icon-wrap + * {
+  margin-left: var(--dv-spacing-xs);
+}
+
+/* ---------- Properties Table ---------- */
+
+.dv-properties-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--dv-font-size-sm);
+}
+
+.dv-properties-key {
+  padding: var(--dv-spacing-sm) var(--dv-spacing-md);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  width: 40%;
+  border-bottom: 1px solid var(--dv-separator-color);
+}
+
+.dv-properties-value {
+  padding: var(--dv-spacing-sm) var(--dv-spacing-md);
+  border-bottom: 1px solid var(--dv-separator-color);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Focus Visible ---------- */
+
+.dv-button:focus-visible,
+.dv-search-input:focus-visible,
+.dv-page-input:focus-visible,
+.dv-zoom-select:focus-visible,
+.dv-sidebar-view-tab:focus-visible,
+.dv-thumbnail:focus-visible,
+.dv-outline-item:focus-visible {
+  outline: none;
+  box-shadow: var(--dv-shadow-focus);
+}
+
+.dv-dialog:focus-visible {
+  outline: none;
+  box-shadow: var(--dv-shadow-lg), var(--dv-shadow-focus);
+}
+
+/* ---------- Print ---------- */
+
+@media print {
+  .dv-toolbar,
+  .dv-sidebar,
+  .dv-dialog-overlay,
+  .dv-search-bar {
+    display: none !important;
+  }
+  .dv-viewer-container {
+    overflow: visible !important;
+  }
+  .dv-page {
+    box-shadow: none !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    page-break-after: always;
+    animation: none !important;
+  }
+}
+
+/* ---------- Utility Classes ---------- */
+
+.dv-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dv-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2.5px solid color-mix(in srgb, var(--dv-loading-color) 20%, transparent);
+  border-top-color: var(--dv-loading-color);
+  border-radius: 50%;
+  animation: dv-spin 0.7s linear infinite;
+}
+
+@keyframes dv-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Responsive Breakpoints ---------- */
+
+@media (max-width: 840px) {
+  .dv-sidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: var(--dv-z-sidebar);
+    box-shadow: var(--dv-shadow-lg);
+  }
+}
+
+@media (max-width: 750px) {
+  .dv-toolbar-print,
+  .dv-toolbar-download { display: none; }
+}
+
+@media (max-width: 690px) {
+  .dv-toolbar-page-nav { display: none; }
+}
+
+@media (max-width: 560px) {
+  .dv-zoom-select { display: none; }
+  .dv-toolbar { padding: 0 var(--dv-spacing-md); }
+}
+
+/* ---------- Forced Colors & Reduced Motion ---------- */
+
+@media (forced-colors: active) {
+  .dv-root * {
+    border-color: ButtonText !important;
+    box-shadow: none !important;
+  }
+  .dv-button {
+    background: ButtonFace;
+    color: ButtonText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dv-root * {
+    --dv-sidebar-transition-duration: 0ms;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .dv-state-icon { animation: none !important; }
+}

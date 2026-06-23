@@ -1,0 +1,15 @@
+/* Light */
+.dv-theme-light { color-scheme: light; }
+
+/* Dark */
+.dv-theme-dark { color-scheme: dark; }
+
+/* Auto (follows system) */
+.dv-theme-auto { color-scheme: light dark; }
+
+/* Sepia (reading tint) */
+.dv-theme-sepia {
+  --dv-body-bg-color: rgb(244 233 216);
+  --dv-main-color: rgb(90 74 50);
+  color-scheme: light;
+}
