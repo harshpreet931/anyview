@@ -108,24 +108,32 @@ export class PptxAdapter implements Adapter {
       throw new ViewerError('RENDER_ERROR', `Slide ${ctx.page.index} not found.`);
     }
 
-    const container = document.createElement('div');
-    container.style.width = `${960 * ctx.scale}px`;
-    container.style.height = `${540 * ctx.scale}px`;
-    container.style.background = 'white';
-    container.style.position = 'relative';
-    container.style.overflow = 'hidden';
-    container.style.boxSizing = 'border-box';
-    container.style.padding = `${40 * ctx.scale}px`;
-    container.style.transform = `scale(${ctx.scale})`;
-    container.style.transformOrigin = 'top left';
-    container.innerHTML = slide.html;
+    const cssW = 960 * ctx.scale;
+    const cssH = 540 * ctx.scale;
 
-    target.appendChild(container);
+    // The slide is authored at a fixed 960×540 and scaled via transform. A
+    // sized wrapper carries the scaled layout box (transform doesn't affect
+    // layout), so the page measures correctly at any zoom.
+    const wrapper = document.createElement('div');
+    wrapper.style.width = `${cssW}px`;
+    wrapper.style.height = `${cssH}px`;
+    wrapper.style.overflow = 'hidden';
+    wrapper.style.position = 'relative';
 
-    return {
-      width: 960 * ctx.scale,
-      height: 540 * ctx.scale,
-    };
+    const slideEl = document.createElement('div');
+    slideEl.style.width = '960px';
+    slideEl.style.height = '540px';
+    slideEl.style.background = 'white';
+    slideEl.style.boxSizing = 'border-box';
+    slideEl.style.padding = '40px';
+    slideEl.style.transform = `scale(${ctx.scale})`;
+    slideEl.style.transformOrigin = 'top left';
+    slideEl.innerHTML = slide.html;
+
+    wrapper.appendChild(slideEl);
+    target.appendChild(wrapper);
+
+    return { width: cssW, height: cssH };
   }
 
   async getTextLayer(

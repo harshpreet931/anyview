@@ -48,6 +48,7 @@ export const imageManifest: AdapterManifest = {
 export class ImageAdapter implements Adapter {
   readonly manifest = imageManifest;
   private objectUrl: string | null = null;
+  private img: HTMLImageElement | null = null;
   private naturalWidth = 0;
   private naturalHeight = 0;
 
@@ -64,8 +65,10 @@ export class ImageAdapter implements Adapter {
     await new Promise<void>((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
-        this.naturalWidth = img.naturalWidth;
-        this.naturalHeight = img.naturalHeight;
+        // SVGs may report 0 intrinsic size; fall back to a sane default.
+        this.naturalWidth = img.naturalWidth || 800;
+        this.naturalHeight = img.naturalHeight || 600;
+        this.img = img;
         resolve();
       };
       img.onerror = () => reject(new Error('Failed to decode image'));
@@ -90,30 +93,40 @@ export class ImageAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const target = ctx.target as HTMLElement;
-    target.innerHTML = '';
+    // PageRenderer treats images as a canvas format, so draw the decoded
+    // image onto the provided <canvas> (appending DOM to a canvas is a no-op).
+    const cssW = ctx.page.width * ctx.scale;
+    const cssH = ctx.page.height * ctx.scale;
+    const isSideways = ctx.rotation === 90 || ctx.rotation === 270;
+    const outW = isSideways ? cssH : cssW;
+    const outH = isSideways ? cssW : cssH;
 
-    const wrapper = document.createElement('div');
-    wrapper.style.width = `${ctx.page.width * ctx.scale}px`;
-    wrapper.style.height = `${ctx.page.height * ctx.scale}px`;
-    wrapper.style.overflow = 'hidden';
+    const target = ctx.target;
+    if (!(target instanceof HTMLCanvasElement) || !this.img) {
+      return { width: outW, height: outH };
+    }
 
-    const img = document.createElement('img');
-    img.src = this.objectUrl!;
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = 'contain';
-    img.style.transform = `rotate(${ctx.rotation}deg)`;
-    img.alt = ctx.page.label || 'Image';
-    img.draggable = false;
+    const dpr = ctx.devicePixelRatio || 1;
+    target.width = Math.max(1, Math.round(outW * dpr));
+    target.height = Math.max(1, Math.round(outH * dpr));
+    target.style.width = `${outW}px`;
+    target.style.height = `${outH}px`;
 
-    wrapper.appendChild(img);
-    target.appendChild(wrapper);
+    const c = target.getContext('2d');
+    if (!c) return { width: outW, height: outH };
 
-    return {
-      width: ctx.page.width * ctx.scale,
-      height: ctx.page.height * ctx.scale,
-    };
+    c.imageSmoothingQuality = 'high';
+    c.clearRect(0, 0, target.width, target.height);
+    c.save();
+    // Rotate around the canvas centre, then draw the unrotated image centred.
+    c.translate(target.width / 2, target.height / 2);
+    c.rotate((ctx.rotation * Math.PI) / 180);
+    const dw = cssW * dpr;
+    const dh = cssH * dpr;
+    c.drawImage(this.img, -dw / 2, -dh / 2, dw, dh);
+    c.restore();
+
+    return { width: outW, height: outH };
   }
 
   async getTextLayer(
@@ -128,5 +141,6 @@ export class ImageAdapter implements Adapter {
       URL.revokeObjectURL(this.objectUrl);
       this.objectUrl = null;
     }
+    this.img = null;
   }
 }
