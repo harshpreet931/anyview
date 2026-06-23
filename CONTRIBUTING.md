@@ -48,25 +48,50 @@ The library uses a **plugin-based adapter architecture**. Each format (PDF, DOCX
 2. Implement the `Adapter` interface from `core/types.ts`:
 
 ```ts
-import type { Adapter, AdapterManifest } from '../../core/types';
+import type {
+  Adapter,
+  AdapterManifest,
+  DocumentModel,
+  FileSourceReader,
+  RenderContext,
+  RenderResult,
+} from '../../core/types';
 
 export const myFormatManifest: AdapterManifest = {
   id: 'my-format',
   label: 'My Format',
-  extensions: ['.mf'],
+  extensions: ['mf'],
   mimeTypes: ['application/x-my-format'],
-  icon: 'file',
-  features: { /* ... */ },
-  priority: 0,
+  icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h7l4 4v10H3V1z"/></svg>',
+  features: {
+    search: true, annotations: false, textSelection: true,
+    print: false, thumbnails: false, outline: false,
+    zoom: true, rotation: false, attachments: false,
+    fullscreen: true, download: true,
+  },
+  priority: 100,
   protocolVersion: 1,
 };
 
-export const MyFormatAdapter: Adapter = {
-  manifest: myFormatManifest,
-  async parse(source, signal) { /* return DocumentModel */ },
-  async renderPage(ctx) { /* render to canvas/div */ },
-  // optional: getTextLayer, search, exportDocument, dispose
-};
+// Adapters load as classes — the module's DEFAULT export is the constructor,
+// which the registry instantiates fresh per document.
+export class MyFormatAdapter implements Adapter {
+  readonly manifest = myFormatManifest;
+
+  async parse(source: FileSourceReader, signal: AbortSignal): Promise<DocumentModel> {
+    const buffer = await source.arrayBuffer();
+    if (signal.aborted) throw new Error('Parse cancelled');
+    // Parse `buffer` and return the immutable DocumentModel.
+  }
+
+  async renderPage(ctx: RenderContext): Promise<RenderResult> {
+    // Render ctx.page into ctx.target (a <canvas> or <div>) at ctx.scale.
+  }
+
+  // Optional: getTextLayer, search, exportDocument, dispose
+}
+
+export default MyFormatAdapter;
 ```
 
 3. Register it in `adapters/index.ts`:
@@ -75,9 +100,7 @@ export const MyFormatAdapter: Adapter = {
 import { myFormatManifest } from './your-format/MyFormatAdapter';
 
 // In registerBuiltInAdapters():
-registry.register(myFormatManifest, () =>
-  import('./your-format/MyFormatAdapter').then((m) => m.MyFormatAdapter)
-);
+registry.register(myFormatManifest, () => import('./your-format/MyFormatAdapter'));
 ```
 
 ## Code Style
