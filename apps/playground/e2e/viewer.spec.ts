@@ -92,6 +92,21 @@ test.describe('rendering — every sample format', () => {
       })
       .toBe(1);
   });
+
+  test('reflowable thumbnails render real document content', async ({ page }) => {
+    await gotoApp(page);
+    await loadSample(page, 'Markdown');
+    await waitForReflowContent(page);
+
+    const thumbDoc = page.locator('.dv-thumbnail-doc').first();
+    await thumbDoc.waitFor({ state: 'attached' });
+    await expect
+      .poll(
+        async () => (await thumbDoc.innerText().catch(() => '')).trim().length,
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(10);
+  });
 });
 
 test.describe('PDF — text selection', () => {

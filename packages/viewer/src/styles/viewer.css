@@ -418,28 +418,34 @@
 }
 
 .dv-thumbnail-image {
+  position: relative;
   width: 100%;
   aspect-ratio: var(--dv-thumb-ratio, 0.77);
   background: #fff;
   border-radius: var(--dv-radius-sm);
   box-shadow: var(--dv-shadow-xs), inset 0 0 0 1px rgb(0 0 0 / 0.06);
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .dv-thumbnail-canvas {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.dv-thumbnail-placeholder {
-  width: 42%;
-  height: 42%;
-  color: var(--dv-main-color);
+/* Reflowable preview: full-size DOM shrunk to the box via CSS transform. */
+.dv-thumbnail-doc {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  background: #fff;
+  color: #1f2328;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .dv-thumbnail-label {
