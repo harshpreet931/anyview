@@ -13,10 +13,12 @@ const FORMAT_SPECS: readonly FormatSpec[] = [
   },
   {
     id: 'docx',
-    extensions: ['docx', 'doc'],
+    // Only OOXML .docx — mammoth cannot read the legacy binary .doc, so
+    // claiming it would route the file to a guaranteed parse failure instead
+    // of a clean "unsupported format" message.
+    extensions: ['docx'],
     mimeTypes: [
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/msword',
     ],
   },
   {
@@ -29,10 +31,10 @@ const FORMAT_SPECS: readonly FormatSpec[] = [
   },
   {
     id: 'pptx',
-    extensions: ['pptx', 'ppt'],
+    // Only OOXML .pptx — the JSZip+XML parser can't read the legacy binary .ppt.
+    extensions: ['pptx'],
     mimeTypes: [
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'application/vnd.ms-powerpoint',
     ],
   },
   {
@@ -79,8 +81,10 @@ const FORMAT_SPECS: readonly FormatSpec[] = [
   },
   {
     id: 'text',
-    extensions: ['txt', 'log', 'rtf'],
-    mimeTypes: ['text/plain', 'text/rtf'],
+    // No 'rtf': routing it here would render raw RTF control words ({\rtf1...)
+    // as plain text rather than reporting it as unsupported.
+    extensions: ['txt', 'log'],
+    mimeTypes: ['text/plain'],
   },
 ];
 
