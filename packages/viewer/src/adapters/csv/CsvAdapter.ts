@@ -12,7 +12,8 @@ import type {
   SearchResult,
   SearchMatch,
 } from '../../core/types';
-import { ViewerError } from '../../core/errors';
+import { ViewerError, isViewerError } from '../../core/errors';
+import { loadParser } from '../../core/load-parser';
 
 export const csvManifest: AdapterManifest = {
   id: 'csv',
@@ -54,7 +55,7 @@ export class CsvAdapter implements Adapter {
     const delimiter = source.meta.name.endsWith('.tsv') ? '\t' : ',';
 
     try {
-      const Papa = (await import('papaparse')).default;
+      const Papa = (await loadParser('papaparse', () => import('papaparse'))).default;
       const result = Papa.parse<string[]>(text, {
         delimiter,
         skipEmptyLines: true,
@@ -64,6 +65,7 @@ export class CsvAdapter implements Adapter {
       this.headers = this.rows.shift() ?? [];
       this.htmlContent = this.buildHtml();
     } catch (cause) {
+      if (isViewerError(cause)) throw cause;
       throw new ViewerError('PARSE_ERROR', 'Failed to parse CSV.', { cause });
     }
 

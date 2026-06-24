@@ -242,7 +242,14 @@ function AnnotationShape({
     onSelect();
   };
 
-  const pointerStyle = { pointerEvents: interactive ? 'auto' : 'none' } as const;
+  // Highlight and ink shapes lie directly over document text. If their fills
+  // captured the pointer they would swallow the mousedown that begins a text
+  // selection, so they stay non-interactive — users select the text beneath.
+  // Sticky-note icons sit off the text flow and remain clickable.
+  const isTextOverlay =
+    annotation.type === 'highlight' || annotation.type === 'ink';
+  const bodyInteractive = interactive && !isTextOverlay;
+  const pointerStyle = { pointerEvents: bodyInteractive ? 'auto' : 'none' } as const;
 
   let body: React.ReactNode = null;
   let anchor = { x: 0, y: 0 };

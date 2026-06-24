@@ -57,16 +57,24 @@ export function Toolbar({ features }: ToolbarProps) {
   const currentMatchIndex = useViewerStore((s) => s.currentMatchIndex);
   const activeTool = useViewerStore((s) => s.activeAnnotationTool);
   const setActiveTool = useViewerStore((s) => s.setActiveTool);
+  // Search open/close lives in the store so the Ctrl/Cmd+F shortcut and the
+  // toolbar toggle drive the same panel.
+  const searchOpen = useViewerStore((s) => s.searchOpen);
+  const setSearchOpen = useViewerStore((s) => s.setSearchOpen);
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
+    if (searchOpen) {
+      searchInputRef.current?.focus();
+    } else {
+      // Closing (toolbar button, Escape, or shortcut) clears the query so a
+      // reopen starts fresh and stale highlights are dropped.
+      setSearchText('');
+      clearSearch();
     }
-  }, [searchOpen]);
+  }, [searchOpen, clearSearch]);
 
   const handleSearch = useCallback(
     (text: string) => {
@@ -89,9 +97,7 @@ export function Toolbar({ features }: ToolbarProps) {
 
   const handleCloseSearch = useCallback(() => {
     setSearchOpen(false);
-    setSearchText('');
-    clearSearch();
-  }, [clearSearch]);
+  }, [setSearchOpen]);
 
   const matchCount = searchResult?.matches.length ?? 0;
 
@@ -158,7 +164,7 @@ export function Toolbar({ features }: ToolbarProps) {
           <div className="dv-toolbar-group">
             <button
               className="dv-button"
-              onClick={() => setSearchOpen((v) => !v)}
+              onClick={() => setSearchOpen(!searchOpen)}
               aria-expanded={searchOpen}
               aria-label={strings.toolbar.searchToggle}
               title={strings.toolbar.searchToggle}
@@ -269,7 +275,7 @@ export function Toolbar({ features }: ToolbarProps) {
         )}
       </div>
 
-      {searchOpen && (
+      {searchOpen && features?.search && (
         <div className="dv-search-bar" role="search">
           <input
             ref={searchInputRef}

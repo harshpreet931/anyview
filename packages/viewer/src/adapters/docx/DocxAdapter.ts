@@ -13,7 +13,8 @@ import type {
   TextLayer,
   TextLayerItem,
 } from '../../core/types';
-import { ViewerError } from '../../core/errors';
+import { ViewerError, isViewerError } from '../../core/errors';
+import { loadParser } from '../../core/load-parser';
 
 export const docxManifest: AdapterManifest = {
   id: 'docx',
@@ -53,7 +54,7 @@ export class DocxAdapter implements Adapter {
     if (signal.aborted) throw new Error('Parse cancelled');
 
     try {
-      const mammoth = await import('mammoth');
+      const mammoth = await loadParser('mammoth', () => import('mammoth'));
       const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
       const DOMPurify = (await import('dompurify')).default;
       this.htmlContent = DOMPurify.sanitize(result.value, {
@@ -67,6 +68,7 @@ export class DocxAdapter implements Adapter {
         ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data:image):|#)/i,
       });
     } catch (cause) {
+      if (isViewerError(cause)) throw cause;
       throw new ViewerError('PARSE_ERROR', 'Failed to parse DOCX.', { cause });
     }
 

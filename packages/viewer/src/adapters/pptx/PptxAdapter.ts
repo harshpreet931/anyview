@@ -10,7 +10,8 @@ import type {
   TextLayer,
   TextLayerItem,
 } from '../../core/types';
-import { ViewerError } from '../../core/errors';
+import { ViewerError, isViewerError } from '../../core/errors';
+import { loadParser } from '../../core/load-parser';
 
 export const pptxManifest: AdapterManifest = {
   id: 'pptx',
@@ -22,7 +23,7 @@ export const pptxManifest: AdapterManifest = {
   ],
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10v14H3V1zm1 1v9h8V2H4zm0 10v2h8v-2H4z"/><path d="M5 4h6v1H5zm0 2h6v1H5zm0 2h4v1H5z" opacity="0.5"/></svg>`,
   features: {
-    search: false,
+    search: true,
     annotations: false,
     textSelection: true,
     print: false,
@@ -55,7 +56,7 @@ export class PptxAdapter implements Adapter {
     if (signal.aborted) throw new Error('Parse cancelled');
 
     try {
-      const JSZip = (await import('jszip')).default;
+      const JSZip = (await loadParser('jszip', () => import('jszip'))).default;
       const zip = await JSZip.loadAsync(buffer);
 
       const slideFiles = Object.keys(zip.files)
@@ -74,6 +75,7 @@ export class PptxAdapter implements Adapter {
         this.slides.push(content);
       }
     } catch (cause) {
+      if (isViewerError(cause)) throw cause;
       throw new ViewerError('PARSE_ERROR', 'Failed to parse PPTX.', { cause });
     }
 

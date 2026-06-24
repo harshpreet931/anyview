@@ -64,7 +64,7 @@ export class HtmlAdapter implements Adapter {
           'nav', 'ol', 'p', 'pre', 'q', 'rp', 'rt', 'ruby', 's', 'samp',
           'section', 'small', 'span', 'strong', 'sub', 'summary', 'sup',
           'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u', 'ul',
-          'var', 'wbr', 'style',
+          'var', 'wbr',
         ],
         ALLOWED_ATTR: [
           'href', 'src', 'alt', 'title', 'class', 'id', 'style', 'width',

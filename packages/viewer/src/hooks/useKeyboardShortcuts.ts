@@ -15,16 +15,33 @@ export function useKeyboardShortcuts(
   const zoomIn = useViewerStore((s) => s.zoomIn);
   const zoomOut = useViewerStore((s) => s.zoomOut);
   const toggleSidebar = useViewerStore((s) => s.toggleSidebar);
+  const setSearchOpen = useViewerStore((s) => s.setSearchOpen);
 
   useEffect(() => {
     if (!enabled) return;
 
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') {
+      if (!target?.closest('.dv-root')) {
         return;
       }
-      if (!target?.closest('.dv-root')) {
+
+      // Ctrl/Cmd+F opens the in-document search, overriding the browser's
+      // native find. Works regardless of focus so it also reaches the input.
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
+
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        // Allow Escape to dismiss search while typing in its field.
+        if (e.key === 'Escape') setSearchOpen(false);
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        setSearchOpen(false);
         return;
       }
 
@@ -71,5 +88,5 @@ export function useKeyboardShortcuts(
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [enabled, nextPage, prevPage, firstPage, lastPage, zoomIn, zoomOut, toggleSidebar]);
+  }, [enabled, nextPage, prevPage, firstPage, lastPage, zoomIn, zoomOut, toggleSidebar, setSearchOpen]);
 }

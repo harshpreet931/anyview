@@ -8,7 +8,7 @@
  * the active match into view.
  * ============================================================ */
 
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useId, useRef, type RefObject } from 'react';
 import type { SearchMatch, SearchQuery } from '../core/types';
 import { useViewerStore } from './useDocViewer';
 
@@ -25,32 +25,52 @@ function HighlightCtor(): CustomHighlightCtor | null {
   return (globalThis as unknown as { Highlight?: CustomHighlightCtor }).Highlight ?? null;
 }
 
-function clearHighlights(): void {
-  const reg = highlightRegistry();
-  reg?.delete('dv-search');
-  reg?.delete('dv-search-current');
-}
+const searchOwners = new Map<string, Range[]>();
+let currentHighlightRange: Range | null = null;
 
-function applyHighlights(ranges: Range[], currentIndex: number): void {
+function rebuildHighlights(): void {
   const reg = highlightRegistry();
   const Ctor = HighlightCtor();
   if (!reg || !Ctor) return;
   reg.delete('dv-search');
   reg.delete('dv-search-current');
-  if (ranges.length > 0) {
-    reg.set('dv-search', new Ctor(...ranges) as unknown);
-  }
-  const current = ranges[currentIndex];
-  if (current) {
-    reg.set('dv-search-current', new Ctor(current) as unknown);
+  const all: Range[] = [];
+  for (const ranges of searchOwners.values()) all.push(...ranges);
+  if (all.length > 0) reg.set('dv-search', new Ctor(...all) as unknown);
+  if (currentHighlightRange) {
+    reg.set('dv-search-current', new Ctor(currentHighlightRange) as unknown);
   }
 }
+
+function setOwnerHighlights(
+  ownerId: string,
+  ranges: Range[],
+  currentIndex: number,
+): void {
+  searchOwners.set(ownerId, ranges);
+  currentHighlightRange = ranges[currentIndex] ?? currentHighlightRange;
+  rebuildHighlights();
+}
+
+function clearOwner(ownerId: string): void {
+  searchOwners.delete(ownerId);
+  if (searchOwners.size === 0) currentHighlightRange = null;
+  rebuildHighlights();
+}
+
+// Guard against pathological queries: an over-long pattern (usually a paste
+// accident) and unbounded match counts that would freeze the main thread —
+// a user-supplied regex can be catastrophically slow or match endlessly.
+const MAX_QUERY_LENGTH = 1000;
+const MAX_MATCHES = 10_000;
 
 /** Locate query occurrences in `container`, returning DOM ranges + match records. */
 function findRanges(
   container: HTMLElement,
   query: SearchQuery,
 ): { ranges: Range[]; matches: SearchMatch[] } {
+  if (query.text.length > MAX_QUERY_LENGTH) return { ranges: [], matches: [] };
+
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       const parent = node.parentElement;
@@ -89,6 +109,7 @@ function findRanges(
           continue;
         }
         occurrences.push([m.index, m.index + m[0].length]);
+        if (occurrences.length >= MAX_MATCHES) break;
       }
     } catch {
       return { ranges, matches };
@@ -102,6 +123,7 @@ function findRanges(
       const end = idx + ndl.length;
       if (!query.wholeWord || isWholeWord(full, idx, end)) {
         occurrences.push([idx, end]);
+        if (occurrences.length >= MAX_MATCHES) break;
       }
       from = end;
     }
@@ -163,6 +185,7 @@ export function useDomSearch(
   const matchNonce = useViewerStore((s) => s.matchNonce);
   const applySearchMatches = useViewerStore((s) => s.applySearchMatches);
   const rangesRef = useRef<Range[]>([]);
+  const ownerId = useId();
 
   // Reflowable formats (passed active=true by PageRenderer) are always searched
   // against their DOM text here — even when their adapter ships a search()
@@ -177,7 +200,7 @@ export function useDomSearch(
 
     if (!searchQuery || !searchQuery.text.trim()) {
       rangesRef.current = [];
-      clearHighlights();
+      clearOwner(ownerId);
       return;
     }
 
@@ -185,17 +208,17 @@ export function useDomSearch(
     rangesRef.current = ranges;
     applySearchMatches(matches);
 
-    return () => clearHighlights();
-  }, [enabled, searchQuery, contentKey, applySearchMatches, containerRef]);
+    return () => clearOwner(ownerId);
+  }, [enabled, searchQuery, contentKey, applySearchMatches, containerRef, ownerId]);
 
   useEffect(() => {
     if (!enabled) return;
     if (rangesRef.current.length === 0) return;
-    applyHighlights(rangesRef.current, currentMatchIndex);
+    setOwnerHighlights(ownerId, rangesRef.current, currentMatchIndex);
     const range = rangesRef.current[currentMatchIndex];
     const el =
       range?.startContainer.parentElement ??
       (range?.startContainer as HTMLElement | null);
     el?.scrollIntoView({ block: 'center' });
-  }, [enabled, currentMatchIndex, matchNonce]);
+  }, [enabled, currentMatchIndex, matchNonce, ownerId]);
 }
