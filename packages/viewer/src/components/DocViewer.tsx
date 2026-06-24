@@ -163,18 +163,7 @@ export const DocViewer = forwardRef<DocViewerRef, DocViewerProps>(
       search: (query: import('../core/types').SearchQuery) => store.getState().search(query),
       nextMatch: () => store.getState().nextMatch(),
       prevMatch: () => store.getState().prevMatch(),
-      download: async () => {
-        const adapter = store.getState().adapter;
-        if (adapter?.exportDocument) {
-          const blob = await adapter.exportDocument('original');
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = store.getState().document?.meta.name ?? 'document';
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-      },
+      download: () => store.getState().downloadDocument(),
       print: async () => {
         const state = store.getState();
         const ad = state.adapter;
@@ -187,6 +176,7 @@ export const DocViewer = forwardRef<DocViewerRef, DocViewerProps>(
             const win = window.open(url);
             if (win) {
               win.addEventListener('load', () => win.print());
+              setTimeout(() => URL.revokeObjectURL(url), 60_000);
               return;
             }
             URL.revokeObjectURL(url);

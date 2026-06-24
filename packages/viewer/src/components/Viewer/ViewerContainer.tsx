@@ -58,25 +58,36 @@ export function ViewerContainer() {
     if (!scrollEl || pageCount === 0) return;
 
     let ticking = false;
+    let settleTimer: ReturnType<typeof setTimeout> | undefined;
     const onScroll = () => {
       if (isProgrammaticScroll.current) {
-        isProgrammaticScroll.current = false;
+        if (settleTimer) clearTimeout(settleTimer);
+        settleTimer = setTimeout(() => {
+          isProgrammaticScroll.current = false;
+        }, 150);
         return;
       }
       if (ticking) return;
       ticking = true;
       requestAnimationFrame(() => {
-        const virtualItems = virtualizer.getVirtualItems();
-        if (virtualItems.length > 0) {
-          setCurrentPage(virtualItems[0].index);
+        const offset = isHorizontal ? scrollEl.scrollLeft : scrollEl.scrollTop;
+        const items = virtualizer.getVirtualItems();
+        let current = items.length > 0 ? items[0].index : 0;
+        for (const it of items) {
+          if (it.start <= offset + 1) current = it.index;
+          else break;
         }
+        setCurrentPage(current);
         ticking = false;
       });
     };
 
     scrollEl.addEventListener('scroll', onScroll, { passive: true });
-    return () => scrollEl.removeEventListener('scroll', onScroll);
-  }, [virtualizer, pageCount, setCurrentPage]);
+    return () => {
+      scrollEl.removeEventListener('scroll', onScroll);
+      if (settleTimer) clearTimeout(settleTimer);
+    };
+  }, [virtualizer, pageCount, setCurrentPage, isHorizontal]);
 
   const showState =
     loadState === 'idle' ||

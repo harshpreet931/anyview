@@ -44,10 +44,12 @@ export interface DocumentSlice {
   openDocument: (source: FileSource) => Promise<void>;
   closeDocument: () => void;
   setRegistry: (registry: AdapterRegistry) => void;
+  downloadDocument: () => Promise<void>;
 
   _setDocument: (model: DocumentModel, adapter: Adapter) => void;
   _setLoadState: (state: LoadState, error?: ViewerError) => void;
   _loadController: AbortController | null;
+  _source: FileSource | null;
 }
 
 export const createDocumentSlice: StateCreator<
@@ -63,6 +65,7 @@ export const createDocumentSlice: StateCreator<
   registry: null,
   pageCache: new PageCache(),
   _loadController: null,
+  _source: null,
 
   openDocument: async (source: FileSource) => {
     get()._loadController?.abort();
@@ -107,6 +110,7 @@ export const createDocumentSlice: StateCreator<
         adapter,
         loadState: 'loaded',
         loadError: null,
+        _source: source,
         ...PER_DOCUMENT_RESET,
       });
     } catch (cause) {
@@ -139,11 +143,48 @@ export const createDocumentSlice: StateCreator<
       loadState: 'idle',
       loadError: null,
       _loadController: null,
+      _source: null,
       ...PER_DOCUMENT_RESET,
     });
   },
 
   setRegistry: (registry: AdapterRegistry) => set({ registry }),
+
+  downloadDocument: async () => {
+    const { adapter, document: model, _source } = get();
+    if (!model) return;
+
+    let blob: Blob | null = null;
+    if (adapter?.exportDocument) {
+      try {
+        blob = await adapter.exportDocument('original');
+      } catch {
+        blob = null;
+      }
+    }
+    if (!blob && _source) {
+      try {
+        const reader = await normalizeFileSource(_source);
+        const buffer = await reader.arrayBuffer();
+        blob = new Blob([buffer], {
+          type: reader.meta.mimeType || 'application/octet-stream',
+        });
+      } catch {
+        blob = null;
+      }
+    }
+    if (!blob) return;
+
+    const url = URL.createObjectURL(blob);
+    const anchor = window.document.createElement('a');
+    anchor.href = url;
+    anchor.download = model.meta.name || 'document';
+    anchor.rel = 'noopener';
+    window.document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  },
 
   _setDocument: (model: DocumentModel, adapter: Adapter) =>
     set({ document: model, adapter, loadState: 'loaded', loadError: null }),

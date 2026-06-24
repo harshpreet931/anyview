@@ -13,16 +13,20 @@ export interface UiSlice {
   sidebarOpen: boolean;
   sidebarView: SidebarView;
   sidebarWidth: number;
+  searchOpen: boolean;
   commentsPanelOpen: boolean;
   toolbarDensity: ToolbarDensity;
   recentFiles: RecentFile[];
   locale: string;
+  instanceId: string;
 
   setTheme: (theme: Theme) => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setSidebarView: (view: SidebarView) => void;
   setSidebarWidth: (width: number) => void;
+  toggleSearch: () => void;
+  setSearchOpen: (open: boolean) => void;
   toggleCommentsPanel: () => void;
   setToolbarDensity: (density: ToolbarDensity) => void;
   addRecentFile: (file: RecentFile) => void;
@@ -30,6 +34,7 @@ export interface UiSlice {
 }
 
 const MAX_RECENT_FILES = 10;
+let instanceCounter = 0;
 
 export const createUiSlice: StateCreator<
   UiSlice,
@@ -41,12 +46,18 @@ export const createUiSlice: StateCreator<
   sidebarOpen: true,
   sidebarView: 'thumbnails',
   sidebarWidth: 200,
+  searchOpen: false,
   commentsPanelOpen: false,
   toolbarDensity: 'default',
   recentFiles: [],
   locale: 'en',
+  instanceId: `dv-${++instanceCounter}`,
 
   setTheme: (theme: Theme) => set({ theme }),
+
+  toggleSearch: () => set((s) => ({ searchOpen: !s.searchOpen })),
+
+  setSearchOpen: (open: boolean) => set({ searchOpen: open }),
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 
