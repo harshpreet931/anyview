@@ -91,6 +91,15 @@ export class PageCache {
     }
   }
 
+  /**
+   * Drop least-recently-used pages down to a fraction of the budget. Called
+   * under memory pressure (e.g. when the tab is backgrounded); the evicted
+   * pages re-render lazily on return.
+   */
+  trim(fraction: number = 0.25): void {
+    this.shrinkTo(Math.floor(this.maxBytes * fraction));
+  }
+
   private dispose(page: CachedPage): void {
     if (page.bitmap instanceof ImageBitmap) {
       page.bitmap.close();

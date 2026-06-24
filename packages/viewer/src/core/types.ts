@@ -369,6 +369,11 @@ export interface DocViewerProps {
   registry?: AdapterRegistry;
   locale?: string;
   className?: string;
+  /**
+   * localStorage key for persisted UI preferences. Give each <DocViewer> on a
+   * page a distinct key so their zoom/theme/sidebar prefs don't collide.
+   */
+  persistKey?: string;
 }
 
 export interface DocViewerRef {
