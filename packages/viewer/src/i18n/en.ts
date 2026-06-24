@@ -15,6 +15,8 @@ export const en: ViewerStrings = {
     rotateCounterClockwise: 'Rotate counterclockwise',
     print: 'Print',
     download: 'Download',
+    fullscreen: 'Toggle fullscreen',
+    properties: 'Document properties',
     overflowMenu: 'More options',
   },
   navigation: {

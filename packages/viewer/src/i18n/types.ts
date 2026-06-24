@@ -13,6 +13,8 @@ export interface ViewerStrings {
     rotateCounterClockwise: string;
     print: string;
     download: string;
+    fullscreen: string;
+    properties: string;
     overflowMenu: string;
   };
   navigation: {

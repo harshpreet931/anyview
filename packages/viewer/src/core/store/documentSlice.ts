@@ -9,6 +9,7 @@ import type {
   AdapterRegistry,
   DocumentModel,
   FileSource,
+  FileSourceReader,
 } from '../types';
 import type { ViewerError } from '../errors';
 import type { NavigationSlice } from './navigationSlice';
@@ -45,11 +46,28 @@ export interface DocumentSlice {
   closeDocument: () => void;
   setRegistry: (registry: AdapterRegistry) => void;
   downloadDocument: () => Promise<void>;
+  printDocument: () => Promise<void>;
+  /** Retry the pending encrypted document with a password. */
+  submitPassword: (password: string) => Promise<void>;
+  /** Abandon a pending encrypted document (user dismissed the prompt). */
+  cancelPassword: () => void;
 
   _setDocument: (model: DocumentModel, adapter: Adapter) => void;
   _setLoadState: (state: LoadState, error?: ViewerError) => void;
   _loadController: AbortController | null;
   _source: FileSource | null;
+  _pendingPassword: {
+    adapter: Adapter;
+    reader: FileSourceReader;
+    source: FileSource;
+  } | null;
+  _runParse: (
+    adapter: Adapter,
+    reader: FileSourceReader,
+    controller: AbortController,
+    source: FileSource,
+    password?: string,
+  ) => Promise<void>;
 }
 
 export const createDocumentSlice: StateCreator<
@@ -66,9 +84,12 @@ export const createDocumentSlice: StateCreator<
   pageCache: new PageCache(),
   _loadController: null,
   _source: null,
+  _pendingPassword: null,
 
   openDocument: async (source: FileSource) => {
     get()._loadController?.abort();
+    // Discard any adapter still waiting on a password from a previous open.
+    get()._pendingPassword?.adapter.dispose?.();
     const controller = new AbortController();
 
     const registry = get().registry;
@@ -83,7 +104,12 @@ export const createDocumentSlice: StateCreator<
       return;
     }
 
-    set({ loadState: 'loading', loadError: null, _loadController: controller });
+    set({
+      loadState: 'loading',
+      loadError: null,
+      _loadController: controller,
+      _pendingPassword: null,
+    });
 
     try {
       const reader = await normalizeFileSource(source);
@@ -102,17 +128,7 @@ export const createDocumentSlice: StateCreator<
       const adapter = await registry.loadAdapter(format);
       if (controller.signal.aborted) return;
 
-      const model = await adapter.parse(reader, controller.signal);
-      if (controller.signal.aborted) return;
-
-      set({
-        document: model,
-        adapter,
-        loadState: 'loaded',
-        loadError: null,
-        _source: source,
-        ...PER_DOCUMENT_RESET,
-      });
+      await get()._runParse(adapter, reader, controller, source);
     } catch (cause) {
       if (controller.signal.aborted) return;
 
@@ -131,10 +147,80 @@ export const createDocumentSlice: StateCreator<
     }
   },
 
+  // Runs adapter.parse and applies the result. A PASSWORD_REQUIRED/INCORRECT
+  // failure keeps the adapter + reader alive so submitPassword can retry the
+  // same instance (its worker and buffer are already warm).
+  _runParse: async (adapter, reader, controller, source, password) => {
+    try {
+      const model = await adapter.parse(
+        reader,
+        controller.signal,
+        password !== undefined ? { password } : undefined,
+      );
+      if (controller.signal.aborted) return;
+
+      set({
+        document: model,
+        adapter,
+        loadState: 'loaded',
+        loadError: null,
+        _source: source,
+        _pendingPassword: null,
+        ...PER_DOCUMENT_RESET,
+      });
+    } catch (cause) {
+      if (controller.signal.aborted) return;
+
+      const { ViewerError, isViewerError } = await import('../errors');
+      const error = isViewerError(cause)
+        ? cause
+        : new ViewerError('PARSE_ERROR', 'Failed to open document.', {
+            cause,
+            retryable: false,
+          });
+
+      if (
+        error.code === 'PASSWORD_REQUIRED' ||
+        error.code === 'PASSWORD_INCORRECT'
+      ) {
+        set({
+          loadState: 'error',
+          loadError: error,
+          _pendingPassword: { adapter, reader, source },
+        });
+      } else {
+        adapter.dispose?.();
+        set({ loadState: 'error', loadError: error, _pendingPassword: null });
+      }
+    }
+  },
+
+  submitPassword: async (password: string) => {
+    const pending = get()._pendingPassword;
+    if (!pending) return;
+    get()._loadController?.abort();
+    const controller = new AbortController();
+    set({ loadState: 'loading', loadError: null, _loadController: controller });
+    await get()._runParse(
+      pending.adapter,
+      pending.reader,
+      controller,
+      pending.source,
+      password,
+    );
+  },
+
+  cancelPassword: () => {
+    const pending = get()._pendingPassword;
+    pending?.adapter.dispose?.();
+    set({ _pendingPassword: null, loadState: 'idle', loadError: null });
+  },
+
   closeDocument: () => {
     get()._loadController?.abort();
-    const { adapter, pageCache } = get();
+    const { adapter, pageCache, _pendingPassword } = get();
     adapter?.dispose?.();
+    _pendingPassword?.adapter.dispose?.();
     pageCache.clear();
 
     set({
@@ -144,6 +230,7 @@ export const createDocumentSlice: StateCreator<
       loadError: null,
       _loadController: null,
       _source: null,
+      _pendingPassword: null,
       ...PER_DOCUMENT_RESET,
     });
   },
@@ -184,6 +271,31 @@ export const createDocumentSlice: StateCreator<
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1500);
+  },
+
+  printDocument: async () => {
+    const { adapter, document: model } = get();
+    if (!model) return;
+
+    // Print the original bytes in a new tab when the adapter can export them
+    // (PDF); otherwise fall back to the browser print of the rendered DOM.
+    if (adapter?.exportDocument && model.format === 'pdf') {
+      try {
+        const blob = await adapter.exportDocument('original');
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url);
+        if (win) {
+          win.addEventListener('load', () => win.print());
+          // Revoke once the print window has had time to load the bytes.
+          setTimeout(() => URL.revokeObjectURL(url), 60_000);
+          return;
+        }
+        URL.revokeObjectURL(url);
+      } catch {
+        /* fall through to window.print() */
+      }
+    }
+    window.print();
   },
 
   _setDocument: (model: DocumentModel, adapter: Adapter) =>

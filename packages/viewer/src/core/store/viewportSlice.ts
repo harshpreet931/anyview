@@ -31,6 +31,12 @@ export interface ViewportSlice {
   setSpreadMode: (mode: SpreadMode) => void;
   setCursorMode: (mode: CursorMode) => void;
   toggleFullscreen: () => void;
+
+  /** The viewer root element, used as the fullscreen target. */
+  _rootElement: HTMLElement | null;
+  setRootElement: (el: HTMLElement | null) => void;
+  /** Sync isFullscreen with the actual document state (fullscreenchange). */
+  _setFullscreen: (value: boolean) => void;
 }
 
 const MIN_ZOOM = 0.1;
@@ -87,5 +93,20 @@ export const createViewportSlice: StateCreator<
   setScrollMode: (mode: ScrollMode) => set({ scrollMode: mode }),
   setSpreadMode: (mode: SpreadMode) => set({ spreadMode: mode }),
   setCursorMode: (mode: CursorMode) => set({ cursorMode: mode }),
-  toggleFullscreen: () => set((s) => ({ isFullscreen: !s.isFullscreen })),
+
+  _rootElement: null,
+  setRootElement: (el: HTMLElement | null) => set({ _rootElement: el }),
+  _setFullscreen: (value: boolean) => set({ isFullscreen: value }),
+
+  toggleFullscreen: () => {
+    if (typeof document === 'undefined') return;
+    // isFullscreen is not flipped optimistically here — the fullscreenchange
+    // listener in DocViewer drives it, so Esc and browser chrome stay in sync.
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+      return;
+    }
+    const el = get()._rootElement;
+    el?.requestFullscreen?.().catch(() => {});
+  },
 });

@@ -75,6 +75,20 @@
 .dv-toolbar-group:nth-child(4) { animation-delay: 150ms; }
 .dv-toolbar-group:nth-child(5) { animation-delay: 200ms; }
 
+/* Visually hidden but exposed to assistive tech (e.g. the page-change
+   live region). */
+.dv-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .dv-toolbar-spacer {
   flex: 1;
 }

@@ -9,11 +9,13 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface PasswordDialogProps {
   fileName: string;
+  /** True when a prior attempt was rejected — shows a "wrong password" hint. */
+  incorrect?: boolean;
   onSubmit: (password: string) => void;
   onCancel: () => void;
 }
 
-export function PasswordDialog({ fileName, onSubmit, onCancel }: PasswordDialogProps) {
+export function PasswordDialog({ fileName, incorrect, onSubmit, onCancel }: PasswordDialogProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -55,9 +57,9 @@ export function PasswordDialog({ fileName, onSubmit, onCancel }: PasswordDialogP
             aria-label="Password"
             style={{ width: '100%', marginTop: 'var(--dv-spacing-md)' }}
           />
-          {error && (
+          {(error || incorrect) && (
             <p className="dv-dialog-error" role="alert">
-              Please enter a password.
+              {error ? 'Please enter a password.' : 'Incorrect password. Please try again.'}
             </p>
           )}
           <div className="dv-dialog-actions">

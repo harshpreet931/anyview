@@ -19,6 +19,7 @@ import type {
   SearchQuery,
   SearchResult,
   SearchMatch,
+  ParseOptions,
 } from '../../core/types';
 import { ViewerError } from '../../core/errors';
 import type { ParsedPdf, PdfWorkerApi, PdfOutlineItem } from './types';
@@ -69,16 +70,27 @@ export class PdfAdapter implements Adapter {
   async parse(
     source: FileSourceReader,
     signal: AbortSignal,
+    options?: ParseOptions,
   ): Promise<DocumentModel> {
     const remote = this.ensureWorker();
-    const buffer = await source.arrayBuffer();
 
-    if (signal.aborted) throw new Error('Parse cancelled');
-
-    this.originalBuffer = buffer.slice(0);
+    // On a password retry the original buffer was already transferred (and
+    // detached) by the first attempt, so reuse the retained copy. Some
+    // sources (in-memory buffers) also can't be re-read.
+    let buffer: ArrayBuffer;
+    if (this.originalBuffer) {
+      buffer = this.originalBuffer.slice(0);
+    } else {
+      buffer = await source.arrayBuffer();
+      if (signal.aborted) throw new Error('Parse cancelled');
+      this.originalBuffer = buffer.slice(0);
+    }
 
     try {
-      const result = await remote.parse(Comlink.transfer(buffer, [buffer]));
+      const result = await remote.parse(
+        Comlink.transfer(buffer, [buffer]),
+        options?.password,
+      );
       this.docId = result.docId;
       this.parsedPdf = result;
 
@@ -101,10 +113,22 @@ export class PdfAdapter implements Adapter {
         },
       };
     } catch (cause) {
-      if (cause instanceof Error && cause.message.includes('password')) {
-        throw new ViewerError('PASSWORD_REQUIRED', 'This PDF is password-protected.', {
-          cause,
-        });
+      const name = (cause as { name?: string })?.name ?? '';
+      const message = (cause as { message?: string })?.message ?? '';
+      // pdf.js raises a PasswordException; its message is "No password given"
+      // (needs one) or "Incorrect Password" (wrong one). Match case-insensitively
+      // since the message casing varies, and across Comlink only name/message survive.
+      const isPasswordIssue =
+        name === 'PasswordException' || /password/i.test(message);
+      if (isPasswordIssue) {
+        const incorrect = /incorrect/i.test(message);
+        throw new ViewerError(
+          incorrect ? 'PASSWORD_INCORRECT' : 'PASSWORD_REQUIRED',
+          incorrect
+            ? 'The password is incorrect.'
+            : 'This PDF is password-protected.',
+          { cause },
+        );
       }
       throw new ViewerError('PARSE_ERROR', 'Failed to parse PDF.', { cause });
     }

@@ -287,9 +287,19 @@ export interface AdapterManifest {
   readonly protocolVersion: number;
 }
 
+export interface ParseOptions {
+  /** Password for an encrypted document, supplied on a retry after the
+   *  adapter reported PASSWORD_REQUIRED/PASSWORD_INCORRECT. */
+  readonly password?: string;
+}
+
 export interface Adapter {
   readonly manifest: AdapterManifest;
-  parse(source: FileSourceReader, signal: AbortSignal): Promise<DocumentModel>;
+  parse(
+    source: FileSourceReader,
+    signal: AbortSignal,
+    options?: ParseOptions,
+  ): Promise<DocumentModel>;
   renderPage(ctx: RenderContext): Promise<RenderResult>;
   getTextLayer?(pageIndex: number, signal?: AbortSignal): Promise<TextLayer>;
   search?(query: SearchQuery, signal: AbortSignal): Promise<SearchResult>;
