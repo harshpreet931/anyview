@@ -6,7 +6,12 @@
  * ============================================================ */
 
 import { create } from 'zustand';
-import { devtools, persist, subscribeWithSelector } from 'zustand/middleware';
+import {
+  createJSONStorage,
+  devtools,
+  persist,
+  subscribeWithSelector,
+} from 'zustand/middleware';
 import { createDocumentSlice, type DocumentSlice } from './documentSlice';
 import { createNavigationSlice, type NavigationSlice } from './navigationSlice';
 import { createViewportSlice, type ViewportSlice } from './viewportSlice';
@@ -30,6 +35,17 @@ export type ViewerStore = DocumentSlice &
   SearchSlice &
   AnnotationSlice &
   UiSlice;
+
+// Fall back to a no-op store on the server so persist doesn't touch
+// localStorage during SSR (Next.js, Remix). On the client it uses localStorage.
+const noopStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
+const safeStorage = createJSONStorage(() =>
+  typeof window !== 'undefined' ? window.localStorage : noopStorage,
+);
 
 export interface CreateViewerStoreOptions {
   /**
@@ -57,6 +73,7 @@ export const createViewerStore = (options?: CreateViewerStoreOptions) => {
           }),
           {
             name: persistKey,
+            storage: safeStorage,
             partialize: (state) => ({
               zoom: state.zoom,
               fitMode: state.fitMode,
