@@ -8,7 +8,7 @@
  * the active match into view.
  * ============================================================ */
 
-import { useEffect, useId, useRef, type RefObject } from 'react';
+import { useEffect, useId, type RefObject } from 'react';
 import type { SearchMatch, SearchQuery } from '../core/types';
 import { useViewerStore } from './useDocViewer';
 
@@ -25,37 +25,64 @@ function HighlightCtor(): CustomHighlightCtor | null {
   return (globalThis as unknown as { Highlight?: CustomHighlightCtor }).Highlight ?? null;
 }
 
-const searchOwners = new Map<string, Range[]>();
-let currentHighlightRange: Range | null = null;
+interface OwnerEntry {
+  pageIndex: number;
+  ranges: Range[];
+  matches: SearchMatch[];
+}
 
-function rebuildHighlights(): void {
+const owners = new Map<string, OwnerEntry>();
+let currentGlobalIndex = 0;
+let applyMatches: ((matches: SearchMatch[]) => void) | null = null;
+let publishScheduled = false;
+
+function orderedOwners(): OwnerEntry[] {
+  return Array.from(owners.values()).sort((a, b) => a.pageIndex - b.pageIndex);
+}
+
+function orderedRanges(): Range[] {
+  const all: Range[] = [];
+  for (const o of orderedOwners()) all.push(...o.ranges);
+  return all;
+}
+
+function orderedMatches(): SearchMatch[] {
+  const all: SearchMatch[] = [];
+  for (const o of orderedOwners()) all.push(...o.matches);
+  return all;
+}
+
+function paintHighlights(): void {
   const reg = highlightRegistry();
   const Ctor = HighlightCtor();
   if (!reg || !Ctor) return;
   reg.delete('dv-search');
   reg.delete('dv-search-current');
-  const all: Range[] = [];
-  for (const ranges of searchOwners.values()) all.push(...ranges);
+  const all = orderedRanges();
   if (all.length > 0) reg.set('dv-search', new Ctor(...all) as unknown);
-  if (currentHighlightRange) {
-    reg.set('dv-search-current', new Ctor(currentHighlightRange) as unknown);
-  }
+  const current = all[currentGlobalIndex];
+  if (current) reg.set('dv-search-current', new Ctor(current) as unknown);
 }
 
-function setOwnerHighlights(
-  ownerId: string,
-  ranges: Range[],
-  currentIndex: number,
-): void {
-  searchOwners.set(ownerId, ranges);
-  currentHighlightRange = ranges[currentIndex] ?? currentHighlightRange;
-  rebuildHighlights();
+function schedulePublish(): void {
+  if (publishScheduled) return;
+  publishScheduled = true;
+  queueMicrotask(() => {
+    publishScheduled = false;
+    applyMatches?.(orderedMatches());
+  });
+}
+
+function setOwner(ownerId: string, entry: OwnerEntry): void {
+  owners.set(ownerId, entry);
+  paintHighlights();
+  schedulePublish();
 }
 
 function clearOwner(ownerId: string): void {
-  searchOwners.delete(ownerId);
-  if (searchOwners.size === 0) currentHighlightRange = null;
-  rebuildHighlights();
+  if (!owners.delete(ownerId)) return;
+  paintHighlights();
+  schedulePublish();
 }
 
 // Guard against pathological queries: an over-long pattern (usually a paste
@@ -68,6 +95,7 @@ const MAX_MATCHES = 10_000;
 function findRanges(
   container: HTMLElement,
   query: SearchQuery,
+  pageIndex: number,
 ): { ranges: Range[]; matches: SearchMatch[] } {
   if (query.text.length > MAX_QUERY_LENGTH) return { ranges: [], matches: [] };
 
@@ -150,7 +178,7 @@ function findRanges(
       range.setEnd(b.node, b.offset);
       ranges.push(range);
       matches.push({
-        pageIndex: 0,
+        pageIndex,
         text: full.slice(start, end),
         x: 0,
         y: 0,
@@ -179,12 +207,12 @@ export function useDomSearch(
   containerRef: RefObject<HTMLElement | null>,
   active: boolean,
   contentKey: unknown,
+  pageIndex: number,
 ): void {
   const searchQuery = useViewerStore((s) => s.searchQuery);
   const currentMatchIndex = useViewerStore((s) => s.currentMatchIndex);
   const matchNonce = useViewerStore((s) => s.matchNonce);
   const applySearchMatches = useViewerStore((s) => s.applySearchMatches);
-  const rangesRef = useRef<Range[]>([]);
   const ownerId = useId();
 
   // Reflowable formats (passed active=true by PageRenderer) are always searched
@@ -193,32 +221,32 @@ export function useDomSearch(
   // Canvas formats (PDF) pass active=false and use the positioned layer.
   const enabled = active;
 
+  // (Re)scan this page when the query or its rendered content changes.
   useEffect(() => {
     if (!enabled) return;
+    applyMatches = applySearchMatches;
     const container = containerRef.current;
     if (!container) return;
 
     if (!searchQuery || !searchQuery.text.trim()) {
-      rangesRef.current = [];
       clearOwner(ownerId);
       return;
     }
 
-    const { ranges, matches } = findRanges(container, searchQuery);
-    rangesRef.current = ranges;
-    applySearchMatches(matches);
+    const { ranges, matches } = findRanges(container, searchQuery, pageIndex);
+    setOwner(ownerId, { pageIndex, ranges, matches });
 
     return () => clearOwner(ownerId);
-  }, [enabled, searchQuery, contentKey, applySearchMatches, containerRef, ownerId]);
+  }, [enabled, searchQuery, contentKey, applySearchMatches, containerRef, ownerId, pageIndex]);
 
   useEffect(() => {
     if (!enabled) return;
-    if (rangesRef.current.length === 0) return;
-    setOwnerHighlights(ownerId, rangesRef.current, currentMatchIndex);
-    const range = rangesRef.current[currentMatchIndex];
+    currentGlobalIndex = currentMatchIndex;
+    paintHighlights();
+    const current = orderedRanges()[currentMatchIndex];
     const el =
-      range?.startContainer.parentElement ??
-      (range?.startContainer as HTMLElement | null);
+      current?.startContainer.parentElement ??
+      (current?.startContainer as HTMLElement | null);
     el?.scrollIntoView({ block: 'center' });
   }, [enabled, currentMatchIndex, matchNonce, ownerId]);
 }
