@@ -2,7 +2,7 @@
  * Sidebar — collapsible sidebar with view selector
  * ============================================================ */
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import type { SidebarView, PageRef, Adapter, FormatId } from '../../core/types';
 
@@ -11,11 +11,32 @@ export function Sidebar() {
   const sidebarView = useViewerStore((s) => s.sidebarView);
   const setSidebarView = useViewerStore((s) => s.setSidebarView);
   const sidebarWidth = useViewerStore((s) => s.sidebarWidth);
+  const setSidebarWidth = useViewerStore((s) => s.setSidebarWidth);
   const document = useViewerStore((s) => s.document);
   const adapter = useViewerStore((s) => s.adapter);
   const currentPage = useViewerStore((s) => s.currentPage);
   const goToPage = useViewerStore((s) => s.goToPage);
   const instanceId = useViewerStore((s) => s.instanceId);
+
+  const [resizing, setResizing] = useState(false);
+  const startResize = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startWidth = sidebarWidth;
+      setResizing(true);
+      const onMove = (ev: PointerEvent) =>
+        setSidebarWidth(startWidth + (ev.clientX - startX)); // store clamps
+      const onUp = () => {
+        setResizing(false);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    },
+    [sidebarWidth, setSidebarWidth],
+  );
 
   if (!sidebarOpen || !document) return null;
 
@@ -90,6 +111,15 @@ export function Sidebar() {
           <AttachmentList attachments={document.attachments} />
         )}
       </div>
+
+      <div
+        className="dv-sidebar-resizer"
+        data-active={resizing}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+        onPointerDown={startResize}
+      />
     </div>
   );
 }
