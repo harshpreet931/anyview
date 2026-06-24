@@ -8,11 +8,21 @@
  * probing internal hosts. We drop any style carrying an external/relative
  * `url()`, `@import`, or `expression()`, while keeping inline `data:`/fragment
  * references that can't reach the network.
+ *
+ * It also forces `rel="noopener noreferrer"` on any `target="_blank"` link so a
+ * document can't reverse-tabnab the host page through `window.opener`.
  * ============================================================ */
 
 type Sanitizer = {
   sanitize: (dirty: string, config?: Record<string, unknown>) => string;
   addHook: (entry: string, cb: (node: unknown) => void) => void;
+};
+
+type MutableEl = {
+  tagName?: string;
+  getAttribute?: (name: string) => string | null;
+  setAttribute?: (name: string, value: string) => void;
+  removeAttribute?: (name: string) => void;
 };
 
 let hookRegistered = false;
@@ -34,9 +44,12 @@ export async function loadSanitizer(): Promise<Sanitizer> {
   const DOMPurify = (await import('dompurify')).default as unknown as Sanitizer;
   if (!hookRegistered) {
     DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-      const el = node as { getAttribute?: (n: string) => string | null; removeAttribute?: (n: string) => void };
+      const el = node as MutableEl;
       const style = el.getAttribute?.('style');
       if (style && hasNetworkCss(style)) el.removeAttribute?.('style');
+      if (el.tagName === 'A' && el.getAttribute?.('target') === '_blank') {
+        el.setAttribute?.('rel', 'noopener noreferrer');
+      }
     });
     hookRegistered = true;
   }
