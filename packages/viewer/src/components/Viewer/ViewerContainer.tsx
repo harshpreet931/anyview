@@ -8,6 +8,8 @@ import { useViewerStore } from '../../hooks/useDocViewer';
 import { PageRenderer } from './PageRenderer';
 import { EmptyState, LoadingState, ErrorState } from '../States';
 
+const PAGE_VERTICAL_GAP = 48;
+
 export function ViewerContainer() {
   const document = useViewerStore((s) => s.document);
   const loadState = useViewerStore((s) => s.loadState);
@@ -28,12 +30,13 @@ export function ViewerContainer() {
     count: pageCount,
     getScrollElement: () => scrollRef.current,
     estimateSize: (index) => {
-      if (!document) return 400;
+      const gap = scrollMode === 'horizontal' ? 0 : PAGE_VERTICAL_GAP;
+      if (!document) return 400 + gap;
       const page = document.pages[index];
-      if (!page) return 400;
-      const scaledHeight = page.height * zoom;
+      if (!page) return 400 + gap;
       const isSideways = rotation === 90 || rotation === 270;
-      return isSideways ? page.width * zoom : scaledHeight;
+      const main = (isSideways ? page.width : page.height) * zoom;
+      return main + gap;
     },
     overscan: 2,
     horizontal: scrollMode === 'horizontal',

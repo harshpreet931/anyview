@@ -109,8 +109,9 @@ export function makeCacheKey(
   pageIndex: number,
   zoom: number,
   rotation: number,
+  dpr: number = 1,
 ): string {
-  return `${format}:${pageIndex}:${zoom}:${rotation}`;
+  return `${format}:${pageIndex}:${zoom}:${rotation}:${dpr}`;
 }
 
 /**

@@ -11,8 +11,25 @@ import type {
   FileSource,
 } from '../types';
 import type { ViewerError } from '../errors';
+import type { NavigationSlice } from './navigationSlice';
+import type { ViewportSlice } from './viewportSlice';
+import type { SearchSlice } from './searchSlice';
+import type { AnnotationSlice } from './annotationSlice';
 import { normalizeFileSource } from '../file-source';
 import { PageCache } from '../cache/page-cache';
+
+const PER_DOCUMENT_RESET = {
+  currentPage: 0,
+  scrollOffset: 0,
+  rotation: 0 as const,
+  searchQuery: null,
+  searchResult: null,
+  searchState: 'idle' as const,
+  currentMatchIndex: 0,
+  annotations: [],
+  selectedAnnotationId: null,
+  activeAnnotationTool: null,
+};
 
 export type LoadState = 'idle' | 'loading' | 'loaded' | 'error';
 
@@ -34,7 +51,7 @@ export interface DocumentSlice {
 }
 
 export const createDocumentSlice: StateCreator<
-  DocumentSlice,
+  DocumentSlice & NavigationSlice & ViewportSlice & SearchSlice & AnnotationSlice,
   [],
   [],
   DocumentSlice
@@ -90,6 +107,7 @@ export const createDocumentSlice: StateCreator<
         adapter,
         loadState: 'loaded',
         loadError: null,
+        ...PER_DOCUMENT_RESET,
       });
     } catch (cause) {
       if (controller.signal.aborted) return;
@@ -121,6 +139,7 @@ export const createDocumentSlice: StateCreator<
       loadState: 'idle',
       loadError: null,
       _loadController: null,
+      ...PER_DOCUMENT_RESET,
     });
   },
 

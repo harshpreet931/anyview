@@ -106,6 +106,16 @@ for (const spec of FORMAT_SPECS) {
  * Detect the best-matching FormatId for a file.
  * Checks extension first, then MIME type.
  */
+// Well-known files that carry no extension.
+const EXTENSIONLESS_MAP = new Map<string, FormatId>([
+  ['dockerfile', 'code'],
+  ['makefile', 'code'],
+  ['rakefile', 'code'],
+  ['gemfile', 'code'],
+  ['license', 'text'],
+  ['readme', 'markdown'],
+]);
+
 export function detectFormat(
   filename: string,
   mimeType?: string,
@@ -114,6 +124,10 @@ export function detectFormat(
   if (ext) {
     const byExt = EXTENSION_MAP.get(ext);
     if (byExt) return byExt;
+  } else {
+    const base = (filename.split(/[\\/]/).pop() ?? '').toLowerCase();
+    const byName = EXTENSIONLESS_MAP.get(base);
+    if (byName) return byName;
   }
 
   if (mimeType) {
