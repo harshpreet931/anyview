@@ -209,7 +209,7 @@ export class PdfAdapter implements Adapter {
 
   async search(
     query: SearchQuery,
-    _signal: AbortSignal,
+    signal: AbortSignal,
   ): Promise<SearchResult> {
     if (!this.remote || this.docId == null || !this.parsedPdf) {
       return { query, matches: [], totalMatches: 0 };
@@ -218,7 +218,10 @@ export class PdfAdapter implements Adapter {
     const matches: SearchMatch[] = [];
 
     for (let pageIdx = 0; pageIdx < this.parsedPdf.pageCount; pageIdx++) {
-      const textLayer = await this.getTextLayer(pageIdx);
+      // Stop early when a newer query supersedes this one — the caller
+      // discards an aborted result, so there's no point finishing the walk.
+      if (signal.aborted) break;
+      const textLayer = await this.getTextLayer(pageIdx, signal);
       for (const item of textLayer.items) {
         if (this.matchText(item.str, query)) {
           matches.push({
