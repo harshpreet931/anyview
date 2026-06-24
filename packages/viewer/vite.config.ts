@@ -7,6 +7,13 @@ import dts from 'vite-plugin-dts';
 const assetFileNames = (assetInfo: { name?: string }) =>
   assetInfo.name?.endsWith('.css') ? 'viewer.css' : 'assets/[name][extname]';
 
+// Mark the main entry as a React Client Component so the package works in the
+// Next.js App Router (Server Components otherwise reject hooks/browser APIs).
+// 'use client' on the entry covers everything it imports, so the adapter
+// subpaths (lazy-loaded, browser-only) don't each need it.
+const clientBanner = (chunk: { isEntry?: boolean; name?: string }) =>
+  chunk.isEntry && chunk.name === 'index' ? "'use client';" : '';
+
 export default defineConfig({
   // Relative base so the bundled PDF Web Worker resolves via `import.meta.url`
   // relative to the package — NOT the consumer's site root (which 404s).
@@ -53,6 +60,7 @@ export default defineConfig({
           entryFileNames: '[name].js',
           chunkFileNames: 'chunks/[name]-[hash].js',
           assetFileNames,
+          banner: clientBanner,
         },
         {
           format: 'cjs',
@@ -60,6 +68,7 @@ export default defineConfig({
           entryFileNames: '[name].cjs',
           chunkFileNames: 'chunks/[name]-[hash].cjs',
           assetFileNames,
+          banner: clientBanner,
         },
       ],
     },
