@@ -24,6 +24,8 @@ export interface AnnotationSlice {
   selectAnnotation: (id: string | null) => void;
   setActiveTool: (tool: AnnotationType | null) => void;
   onAnnotationChange: (cb: AnnotationChangeListener) => () => void;
+  /** Clear annotations on document open/close AND notify listeners. */
+  _resetAnnotations: () => void;
 }
 
 export const createAnnotationSlice: StateCreator<
@@ -83,6 +85,16 @@ export const createAnnotationSlice: StateCreator<
       return () => {
         listeners.delete(cb);
       };
+    },
+
+    _resetAnnotations: () => {
+      const had = get().annotations.length > 0;
+      set({
+        annotations: [],
+        selectedAnnotationId: null,
+        activeAnnotationTool: null,
+      });
+      if (had) notify([]);
     },
   };
 };
