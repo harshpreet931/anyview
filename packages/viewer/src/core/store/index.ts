@@ -31,8 +31,19 @@ export type ViewerStore = DocumentSlice &
   AnnotationSlice &
   UiSlice;
 
-export const createViewerStore = () =>
-  create<ViewerStore>()(
+export interface CreateViewerStoreOptions {
+  /**
+   * localStorage key for persisted preferences (zoom, theme, sidebar…).
+   * Every store defaults to the same key, so multiple <DocViewer>s on one
+   * page would share — and overwrite — each other's prefs. Pass a distinct
+   * `persistKey` per viewer to isolate them.
+   */
+  persistKey?: string;
+}
+
+export const createViewerStore = (options?: CreateViewerStoreOptions) => {
+  const persistKey = options?.persistKey ?? 'doc-viewer-prefs';
+  return create<ViewerStore>()(
     subscribeWithSelector(
       devtools(
         persist(
@@ -45,7 +56,7 @@ export const createViewerStore = () =>
             ...createUiSlice(...a),
           }),
           {
-            name: 'doc-viewer-prefs',
+            name: persistKey,
             partialize: (state) => ({
               zoom: state.zoom,
               fitMode: state.fitMode,
@@ -59,7 +70,8 @@ export const createViewerStore = () =>
             }),
           },
         ),
-        { name: 'doc-viewer' },
+        { name: persistKey },
       ),
     ),
   );
+};

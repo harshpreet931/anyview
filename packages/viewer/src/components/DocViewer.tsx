@@ -68,10 +68,22 @@ function DocViewerInner(
   const setFullscreen = useViewerStore((s) => s._setFullscreen);
   const currentPage = useViewerStore((s) => s.currentPage);
   const pageCount = useViewerStore((s) => s.document?.pageCount ?? 0);
+  const pageCache = useViewerStore((s) => s.pageCache);
 
   const rootRef = useRef<HTMLDivElement>(null);
 
   useKeyboardShortcuts();
+
+  // Free most of the rendered-page cache while the tab is backgrounded — the
+  // portable memory-pressure cue. Pages re-render lazily when it returns.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (window.document.visibilityState === 'hidden') pageCache.trim();
+    };
+    window.document.addEventListener('visibilitychange', onVisibility);
+    return () =>
+      window.document.removeEventListener('visibilitychange', onVisibility);
+  }, [pageCache]);
 
   // Register the root as the fullscreen target and keep isFullscreen in sync
   // with the actual fullscreen state (covers Esc and browser-chrome exits).
@@ -190,7 +202,9 @@ export const DocViewer = forwardRef<DocViewerRef, DocViewerProps>(
     const storeRef = useRef<ReturnType<typeof createViewerStore>>(undefined);
 
     if (!storeRef.current) {
-      storeRef.current = createViewerStore();
+      storeRef.current = createViewerStore(
+        props.persistKey ? { persistKey: props.persistKey } : undefined,
+      );
 
       const registry: AdapterRegistry =
         props.registry ?? createRegistry();
