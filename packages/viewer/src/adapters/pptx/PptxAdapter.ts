@@ -12,6 +12,7 @@ import type {
 } from '../../core/types';
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
+import { loadSanitizer } from '../../core/sanitizer';
 
 export const pptxManifest: AdapterManifest = {
   id: 'pptx',
@@ -130,7 +131,11 @@ export class PptxAdapter implements Adapter {
     slideEl.style.padding = '40px';
     slideEl.style.transform = `scale(${ctx.scale})`;
     slideEl.style.transformOrigin = 'top left';
-    slideEl.innerHTML = slide.html;
+    const DOMPurify = await loadSanitizer();
+    slideEl.innerHTML = DOMPurify.sanitize(slide.html, {
+      ALLOWED_TAGS: ['div', 'h1', 'h2', 'h3', 'p', 'span', 'br', 'b', 'i', 'em', 'strong', 'ul', 'ol', 'li'],
+      ALLOWED_ATTR: ['style'],
+    });
 
     wrapper.appendChild(slideEl);
     target.appendChild(wrapper);
