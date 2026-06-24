@@ -2,7 +2,15 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
 
+// Keep the CSS asset name stable (the "./styles" export → dist/viewer.css) and
+// identical across both outputs so Vite doesn't warn or emit a duplicate.
+const assetFileNames = (assetInfo: { name?: string }) =>
+  assetInfo.name?.endsWith('.css') ? 'viewer.css' : 'assets/[name][extname]';
+
 export default defineConfig({
+  // Relative base so the bundled PDF Web Worker resolves via `import.meta.url`
+  // relative to the package — NOT the consumer's site root (which 404s).
+  base: './',
   plugins: [
     react(),
     dts({ include: ['src'], exclude: ['**/*.test.*', 'apps/**'] }),
@@ -44,17 +52,14 @@ export default defineConfig({
           exports: 'named',
           entryFileNames: '[name].js',
           chunkFileNames: 'chunks/[name]-[hash].js',
-          assetFileNames: (assetInfo: { name?: string }) => {
-            if (assetInfo.name?.endsWith('.css')) return 'viewer.css';
-            return 'assets/[name][extname]';
-          },
+          assetFileNames,
         },
         {
           format: 'cjs',
           exports: 'named',
           entryFileNames: '[name].cjs',
           chunkFileNames: 'chunks/[name]-[hash].cjs',
-          assetFileNames: 'assets/[name][extname]',
+          assetFileNames,
         },
       ],
     },
