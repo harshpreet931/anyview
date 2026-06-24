@@ -19,11 +19,22 @@ export function Sidebar() {
 
   if (!sidebarOpen || !document) return null;
 
+  // Only offer tabs that have content — an empty Outline/Attachments tab is a
+  // dead click. Thumbnails always apply.
   const views: { id: SidebarView; label: string }[] = [
     { id: 'thumbnails', label: 'Thumbnails' },
-    { id: 'outline', label: 'Outline' },
-    { id: 'attachments', label: 'Attachments' },
+    ...(document.outline && document.outline.length > 0
+      ? [{ id: 'outline' as SidebarView, label: 'Outline' }]
+      : []),
+    ...(document.attachments && document.attachments.length > 0
+      ? [{ id: 'attachments' as SidebarView, label: 'Attachments' }]
+      : []),
   ];
+
+  // If the persisted view is no longer available, fall back to thumbnails.
+  const activeView = views.some((v) => v.id === sidebarView)
+    ? sidebarView
+    : 'thumbnails';
 
   const tabId = (view: SidebarView) => `${instanceId}-sidebar-tab-${view}`;
   const panelId = `${instanceId}-sidebar-panel`;
@@ -42,11 +53,11 @@ export function Sidebar() {
             key={view.id}
             id={tabId(view.id)}
             role="tab"
-            aria-selected={sidebarView === view.id}
+            aria-selected={activeView === view.id}
             aria-controls={panelId}
-            tabIndex={sidebarView === view.id ? 0 : -1}
+            tabIndex={activeView === view.id ? 0 : -1}
             className="dv-sidebar-view-tab"
-            data-toggled={sidebarView === view.id}
+            data-toggled={activeView === view.id}
             onClick={() => setSidebarView(view.id)}
           >
             {view.label}
@@ -57,11 +68,11 @@ export function Sidebar() {
       <div
         id={panelId}
         role="tabpanel"
-        aria-labelledby={tabId(sidebarView)}
+        aria-labelledby={tabId(activeView)}
         tabIndex={0}
         style={{ flex: 1, overflow: 'auto' }}
       >
-        {sidebarView === 'thumbnails' && (
+        {activeView === 'thumbnails' && (
           <ThumbnailList
             pages={document.pages}
             format={document.format}
@@ -71,24 +82,12 @@ export function Sidebar() {
           />
         )}
 
-        {sidebarView === 'outline' && document.outline && (
+        {activeView === 'outline' && document.outline && (
           <OutlineList nodes={document.outline} onNavigate={goToPage} />
         )}
 
-        {sidebarView === 'outline' && !document.outline && (
-          <div className="dv-state-container">
-            <div className="dv-state-description">No outline available</div>
-          </div>
-        )}
-
-        {sidebarView === 'attachments' && document.attachments && (
+        {activeView === 'attachments' && document.attachments && (
           <AttachmentList attachments={document.attachments} />
-        )}
-
-        {sidebarView === 'attachments' && !document.attachments && (
-          <div className="dv-state-container">
-            <div className="dv-state-description">No attachments</div>
-          </div>
         )}
       </div>
     </div>
