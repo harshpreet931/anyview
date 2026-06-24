@@ -24,6 +24,7 @@ import { I18nProvider } from '../i18n/I18nProvider';
 import { Toolbar } from './Toolbar';
 import { Sidebar } from './Sidebar';
 import { ViewerContainer } from './Viewer';
+import { PasswordDialog, PropertiesDialog } from './Dialogs';
 
 function DocViewerInner(
   props: DocViewerProps & { store: ReturnType<typeof createViewerStore> },
@@ -52,7 +53,38 @@ function DocViewerInner(
   const loadError = useViewerStore((s) => s.loadError);
   const adapter = useViewerStore((s) => s.adapter);
 
+  const submitPassword = useViewerStore((s) => s.submitPassword);
+  const cancelPassword = useViewerStore((s) => s.cancelPassword);
+  const passwordPending = useViewerStore((s) => s._pendingPassword !== null);
+  const passwordIncorrect = useViewerStore(
+    (s) => s.loadError?.code === 'PASSWORD_INCORRECT',
+  );
+  const pendingFileName = useViewerStore(
+    (s) => s._pendingPassword?.reader.meta.name ?? 'document',
+  );
+  const propertiesOpen = useViewerStore((s) => s.propertiesOpen);
+  const setPropertiesOpen = useViewerStore((s) => s.setPropertiesOpen);
+  const setRootElement = useViewerStore((s) => s.setRootElement);
+  const setFullscreen = useViewerStore((s) => s._setFullscreen);
+  const currentPage = useViewerStore((s) => s.currentPage);
+  const pageCount = useViewerStore((s) => s.document?.pageCount ?? 0);
+
+  const rootRef = useRef<HTMLDivElement>(null);
+
   useKeyboardShortcuts();
+
+  // Register the root as the fullscreen target and keep isFullscreen in sync
+  // with the actual fullscreen state (covers Esc and browser-chrome exits).
+  useEffect(() => {
+    setRootElement(rootRef.current);
+    const onChange = () =>
+      setFullscreen(window.document.fullscreenElement === rootRef.current);
+    window.document.addEventListener('fullscreenchange', onChange);
+    return () => {
+      window.document.removeEventListener('fullscreenchange', onChange);
+      setRootElement(null);
+    };
+  }, [setRootElement, setFullscreen]);
 
   useEffect(() => {
     setTheme(theme);
@@ -110,7 +142,7 @@ function DocViewerInner(
 
   return (
     <I18nProvider locale={locale}>
-      <div className={rootClassName} style={rootStyle} aria-label="Document viewer">
+      <div ref={rootRef} className={rootClassName} style={rootStyle} aria-label="Document viewer">
         <div className="dv-main-container">
           {showToolbar && <Toolbar {...(features ? { features } : {})} />}
           <div
@@ -127,6 +159,27 @@ function DocViewerInner(
             </div>
           </div>
         </div>
+
+        {/* Announces page changes to assistive tech without stealing focus. */}
+        <div className="dv-sr-only" role="status" aria-live="polite">
+          {pageCount > 0 ? `Page ${currentPage + 1} of ${pageCount}` : ''}
+        </div>
+
+        {passwordPending && (
+          <PasswordDialog
+            fileName={pendingFileName}
+            incorrect={passwordIncorrect}
+            onSubmit={(pw) => submitPassword(pw)}
+            onCancel={cancelPassword}
+          />
+        )}
+
+        {propertiesOpen && document && (
+          <PropertiesDialog
+            document={document}
+            onClose={() => setPropertiesOpen(false)}
+          />
+        )}
       </div>
     </I18nProvider>
   );
@@ -164,28 +217,7 @@ export const DocViewer = forwardRef<DocViewerRef, DocViewerProps>(
       nextMatch: () => store.getState().nextMatch(),
       prevMatch: () => store.getState().prevMatch(),
       download: () => store.getState().downloadDocument(),
-      print: async () => {
-        const state = store.getState();
-        const ad = state.adapter;
-        // Print the original bytes when the adapter can export them (PDF);
-        // otherwise fall back to the browser print of the rendered DOM.
-        if (ad?.exportDocument && state.document?.format === 'pdf') {
-          try {
-            const blob = await ad.exportDocument('original');
-            const url = URL.createObjectURL(blob);
-            const win = window.open(url);
-            if (win) {
-              win.addEventListener('load', () => win.print());
-              setTimeout(() => URL.revokeObjectURL(url), 60_000);
-              return;
-            }
-            URL.revokeObjectURL(url);
-          } catch {
-            /* fall through to window.print() */
-          }
-        }
-        window.print();
-      },
+      print: () => store.getState().printDocument(),
       getDocument: () => store.getState().document,
       getAnnotations: () => store.getState().annotations,
     }), [store]);

@@ -15,6 +15,7 @@ export function Sidebar() {
   const adapter = useViewerStore((s) => s.adapter);
   const currentPage = useViewerStore((s) => s.currentPage);
   const goToPage = useViewerStore((s) => s.goToPage);
+  const instanceId = useViewerStore((s) => s.instanceId);
 
   if (!sidebarOpen || !document) return null;
 
@@ -24,6 +25,9 @@ export function Sidebar() {
     { id: 'attachments', label: 'Attachments' },
   ];
 
+  const tabId = (view: SidebarView) => `${instanceId}-sidebar-tab-${view}`;
+  const panelId = `${instanceId}-sidebar-panel`;
+
   return (
     <div
       className="dv-sidebar"
@@ -32,12 +36,15 @@ export function Sidebar() {
       aria-label="Document views"
       style={{ width: `${sidebarWidth}px` }}
     >
-      <div className="dv-sidebar-views" role="listbox" aria-label="Sidebar view">
+      <div className="dv-sidebar-views" role="tablist" aria-label="Sidebar view">
         {views.map((view) => (
           <button
             key={view.id}
-            role="option"
+            id={tabId(view.id)}
+            role="tab"
             aria-selected={sidebarView === view.id}
+            aria-controls={panelId}
+            tabIndex={sidebarView === view.id ? 0 : -1}
             className="dv-sidebar-view-tab"
             data-toggled={sidebarView === view.id}
             onClick={() => setSidebarView(view.id)}
@@ -47,7 +54,13 @@ export function Sidebar() {
         ))}
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div
+        id={panelId}
+        role="tabpanel"
+        aria-labelledby={tabId(sidebarView)}
+        tabIndex={0}
+        style={{ flex: 1, overflow: 'auto' }}
+      >
         {sidebarView === 'thumbnails' && (
           <ThumbnailList
             pages={document.pages}
