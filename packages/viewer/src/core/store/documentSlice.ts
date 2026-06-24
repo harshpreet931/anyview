@@ -88,8 +88,13 @@ export const createDocumentSlice: StateCreator<
 
   openDocument: async (source: FileSource) => {
     get()._loadController?.abort();
-    // Discard any adapter still waiting on a password from a previous open.
+    // Tear down the previously loaded document before opening another: dispose
+    // its adapter (frees the PDF worker / ImageBitmaps) and clear the page
+    // cache, whose key isn't document-scoped — otherwise a new same-format
+    // document would be served the previous one's cached pages.
+    get().adapter?.dispose?.();
     get()._pendingPassword?.adapter.dispose?.();
+    get().pageCache.clear();
     const controller = new AbortController();
 
     const registry = get().registry;
@@ -107,6 +112,7 @@ export const createDocumentSlice: StateCreator<
     set({
       loadState: 'loading',
       loadError: null,
+      adapter: null,
       _loadController: controller,
       _pendingPassword: null,
     });
