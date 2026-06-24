@@ -96,7 +96,14 @@ export class CodeAdapter implements Adapter {
     const lines = this.codeText.split('\n');
     const lineHeight = 20;
     const charWidth = 8;
-    const maxWidth = Math.max(...lines.map((l) => l.length)) * charWidth;
+    // Compute the longest line with a loop, not Math.max(...spread): spreading
+    // a 125k+ element array overflows the call-stack argument limit and crashes
+    // parse() on large minified/generated files.
+    let maxLineLength = 0;
+    for (const line of lines) {
+      if (line.length > maxLineLength) maxLineLength = line.length;
+    }
+    const maxWidth = maxLineLength * charWidth;
     const totalHeight = lines.length * lineHeight;
 
     const page: PageRef = {
