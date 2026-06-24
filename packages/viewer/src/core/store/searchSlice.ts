@@ -30,7 +30,9 @@ export interface SearchSlice {
   /**
    * Supply matches computed outside the adapter (e.g. DOM-based search for
    * reflowable formats that have no adapter `search()`), keyed to the active
-   * query. Resets to the first match and scrolls to it.
+   * query. The matches are the full set aggregated across every rendered page,
+   * so the current index is preserved (clamped) rather than reset — a fresh
+   * query already resets it via `search()`.
    */
   applySearchMatches: (matches: SearchMatch[]) => void;
   _setSearchResult: (result: SearchResult) => void;
@@ -142,10 +144,14 @@ export const createSearchSlice: StateCreator<
   applySearchMatches: (matches: SearchMatch[]) => {
     const query = get().searchQuery;
     if (!query) return;
+    const clampedIndex =
+      matches.length === 0
+        ? 0
+        : Math.min(get().currentMatchIndex, matches.length - 1);
     set({
       searchResult: { query, matches, totalMatches: matches.length },
       searchState: 'done',
-      currentMatchIndex: 0,
+      currentMatchIndex: clampedIndex,
     });
     if (matches.length > 0) {
       set((s) => ({ matchNonce: s.matchNonce + 1 }));

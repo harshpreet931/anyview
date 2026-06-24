@@ -30,7 +30,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
   const features = adapter?.manifest.features;
 
   // DOM-based search for reflowable formats (real DOM text). No-op for canvas.
-  useDomSearch(reflowRef, !isCanvasFormat, contentKey);
+  useDomSearch(reflowRef, !isCanvasFormat, contentKey, pageIndex);
 
   useEffect(() => {
     if (!adapter || !document || !targetRef.current) return;
