@@ -44,6 +44,21 @@ interface SlideContent {
   html: string;
 }
 
+/** Read the `r:id` relationship reference off a `<p:sldId>` element. */
+function relationshipId(el: Element): string | null {
+  const direct = el.getAttribute('r:id');
+  if (direct) return direct;
+  for (const attr of Array.from(el.attributes)) {
+    if (
+      attr.localName === 'id' &&
+      (attr.prefix === 'r' || (attr.namespaceURI ?? '').includes('relationships'))
+    ) {
+      return attr.value;
+    }
+  }
+  return null;
+}
+
 export class PptxAdapter implements Adapter {
   readonly manifest = pptxManifest;
   private slides: SlideContent[] = [];
@@ -59,13 +74,7 @@ export class PptxAdapter implements Adapter {
       const JSZip = (await loadParser('jszip', () => import('jszip'))).default;
       const zip = await JSZip.loadAsync(buffer);
 
-      const slideFiles = Object.keys(zip.files)
-        .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
-        .sort((a, b) => {
-          const na = parseInt(a.match(/slide(\d+)\.xml/)?.[1] ?? '0');
-          const nb = parseInt(b.match(/slide(\d+)\.xml/)?.[1] ?? '0');
-          return na - nb;
-        });
+      const slideFiles = await this.orderedSlideFiles(zip);
 
       this.slides = [];
 
@@ -158,6 +167,63 @@ export class PptxAdapter implements Adapter {
     }));
 
     return { pageIndex, items };
+  }
+
+  // PowerPoint stores display order in ppt/presentation.xml (<p:sldIdLst>),
+  // referencing slides by relationship id — NOT by their slideN.xml filename,
+  // which can be reordered independently. Resolve the real order via the rels
+  // map, falling back to numeric filename order when those parts are missing.
+  private async orderedSlideFiles(zip: {
+    files: Record<string, unknown>;
+    file(path: string): { async(type: 'string'): Promise<string> } | null;
+  }): Promise<string[]> {
+    const all = Object.keys(zip.files).filter((n) =>
+      /^ppt\/slides\/slide\d+\.xml$/.test(n),
+    );
+    const slideNum = (n: string) =>
+      parseInt(n.match(/slide(\d+)\.xml/)?.[1] ?? '0', 10);
+    const numeric = () => all.slice().sort((a, b) => slideNum(a) - slideNum(b));
+
+    const presEntry = zip.file('ppt/presentation.xml');
+    const relsEntry = zip.file('ppt/_rels/presentation.xml.rels');
+    if (!presEntry || !relsEntry) return numeric();
+
+    try {
+      const parser = new DOMParser();
+      const relsDoc = parser.parseFromString(
+        await relsEntry.async('string'),
+        'application/xml',
+      );
+      const relTarget = new Map<string, string>();
+      relsDoc.querySelectorAll('*').forEach((el) => {
+        if (el.localName !== 'Relationship') return;
+        const id = el.getAttribute('Id');
+        const target = el.getAttribute('Target');
+        if (!id || !target) return;
+        const path = target.replace(/^\//, '').replace(/^\.\.\//, '');
+        relTarget.set(id, path.startsWith('ppt/') ? path : `ppt/${path}`);
+      });
+
+      const presDoc = parser.parseFromString(
+        await presEntry.async('string'),
+        'application/xml',
+      );
+      const ordered: string[] = [];
+      presDoc.querySelectorAll('*').forEach((el) => {
+        if (el.localName !== 'sldId') return;
+        const rid = relationshipId(el);
+        const file = rid ? relTarget.get(rid) : undefined;
+        if (file && file in zip.files) ordered.push(file);
+      });
+
+      if (ordered.length === 0) return numeric();
+      // Append any slides absent from sldIdLst in numeric order so none drop.
+      const seen = new Set(ordered);
+      for (const f of numeric()) if (!seen.has(f)) ordered.push(f);
+      return ordered;
+    } catch {
+      return numeric();
+    }
   }
 
   private parseSlideXml(xml: string): SlideContent {
