@@ -15,6 +15,7 @@ import type {
 } from '../../core/types';
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
+import { loadSanitizer } from '../../core/sanitizer';
 
 export const docxManifest: AdapterManifest = {
   id: 'docx',
@@ -56,7 +57,7 @@ export class DocxAdapter implements Adapter {
     try {
       const mammoth = await loadParser('mammoth', () => import('mammoth'));
       const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
-      const DOMPurify = (await import('dompurify')).default;
+      const DOMPurify = await loadSanitizer();
       this.htmlContent = DOMPurify.sanitize(result.value, {
         ALLOWED_TAGS: [
           'p', 'br', 'strong', 'em', 'b', 'i', 'u', 's', 'a', 'ul', 'ol',

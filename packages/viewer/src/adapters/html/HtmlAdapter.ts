@@ -14,6 +14,7 @@ import type {
   TextLayerItem,
 } from '../../core/types';
 import { ViewerError } from '../../core/errors';
+import { loadSanitizer } from '../../core/sanitizer';
 
 export const htmlManifest: AdapterManifest = {
   id: 'html',
@@ -53,7 +54,7 @@ export class HtmlAdapter implements Adapter {
     const rawHtml = new TextDecoder('utf-8').decode(buffer);
 
     try {
-      const DOMPurify = (await import('dompurify')).default;
+      const DOMPurify = await loadSanitizer();
       this.htmlContent = DOMPurify.sanitize(rawHtml, {
         ALLOWED_TAGS: [
           'a', 'abbr', 'address', 'article', 'aside', 'b', 'bdi', 'bdo',
