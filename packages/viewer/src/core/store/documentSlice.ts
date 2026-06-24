@@ -19,6 +19,8 @@ import type { AnnotationSlice } from './annotationSlice';
 import { normalizeFileSource } from '../file-source';
 import { PageCache } from '../cache/page-cache';
 
+// Per-document view state cleared on open/close. Annotations are NOT here —
+// they reset via _resetAnnotations() so onAnnotationChange listeners fire.
 const PER_DOCUMENT_RESET = {
   currentPage: 0,
   scrollOffset: 0,
@@ -27,9 +29,6 @@ const PER_DOCUMENT_RESET = {
   searchResult: null,
   searchState: 'idle' as const,
   currentMatchIndex: 0,
-  annotations: [],
-  selectedAnnotationId: null,
-  activeAnnotationTool: null,
 };
 
 export type LoadState = 'idle' | 'loading' | 'loaded' | 'error';
@@ -165,6 +164,7 @@ export const createDocumentSlice: StateCreator<
       );
       if (controller.signal.aborted) return;
 
+      get()._resetAnnotations();
       set({
         document: model,
         adapter,
@@ -229,6 +229,7 @@ export const createDocumentSlice: StateCreator<
     _pendingPassword?.adapter.dispose?.();
     pageCache.clear();
 
+    get()._resetAnnotations();
     set({
       document: null,
       adapter: null,
