@@ -12,6 +12,7 @@ import type {
 } from '../../core/types';
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
+import { loadSanitizer } from '../../core/sanitizer';
 
 export const xlsxManifest: AdapterManifest = {
   id: 'xlsx',
@@ -103,7 +104,7 @@ export class XlsxAdapter implements Adapter {
       throw new ViewerError('RENDER_ERROR', `Sheet ${ctx.page.index} not found.`);
     }
 
-    const DOMPurify = (await import('dompurify')).default;
+    const DOMPurify = await loadSanitizer();
     const sanitizedHtml = DOMPurify.sanitize(html, {
       ALLOWED_TAGS: [
         'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'col',
