@@ -25,6 +25,50 @@ function getDoc(docId: number): PDFDocumentProxy {
   return doc;
 }
 
+async function destToPageIndex(
+  doc: PDFDocumentProxy,
+  dest: string | readonly unknown[] | null,
+): Promise<number | null> {
+  try {
+    const explicit =
+      typeof dest === 'string' ? await doc.getDestination(dest) : dest;
+    if (!Array.isArray(explicit) || explicit.length === 0) return null;
+    const ref = explicit[0];
+    if (ref && typeof ref === 'object') {
+      return await doc.getPageIndex(ref as { num: number; gen: number });
+    }
+    if (typeof ref === 'number') return ref;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+type RawOutlineItem = {
+  title: string;
+  dest: string | readonly unknown[] | null;
+  items?: readonly RawOutlineItem[];
+};
+
+// Recurse the full bookmark tree, resolving each dest to a page index.
+async function mapOutline(
+  doc: PDFDocumentProxy,
+  items: readonly RawOutlineItem[],
+): Promise<PdfOutlineItem[]> {
+  const out: PdfOutlineItem[] = [];
+  for (const item of items) {
+    const pageIndex = await destToPageIndex(doc, item.dest);
+    out.push({
+      title: item.title,
+      dest: { pageIndex: pageIndex ?? 0 },
+      ...(item.items && item.items.length
+        ? { items: await mapOutline(doc, item.items) }
+        : {}),
+    });
+  }
+  return out;
+}
+
 const api: PdfWorkerApi = {
   async parse(data: ArrayBuffer, password?: string): Promise<ParsedPdf> {
     const loadingTask = pdfjsLib.getDocument({
@@ -123,17 +167,10 @@ const api: PdfWorkerApi = {
   },
 
   async getOutline(docId: number): Promise<PdfOutlineItem[] | null> {
-    const outline = await getDoc(docId).getOutline();
+    const doc = getDoc(docId);
+    const outline = (await doc.getOutline()) as RawOutlineItem[] | null;
     if (!outline) return null;
-
-    return outline.map((item: { title: string; dest: string | readonly unknown[] | null; items?: readonly unknown[] }) => ({
-      title: item.title,
-      dest: item.dest ?? '',
-      ...(item.items ? { items: (item.items as unknown[]).map((child: any) => ({
-        title: child.title,
-        dest: child.dest ?? '',
-      })) } : {}),
-    }));
+    return mapOutline(doc, outline);
   },
 
   async getMetadata(docId: number): Promise<PdfMetadata | null> {

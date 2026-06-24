@@ -41,7 +41,13 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
     const page = document.pages[pageIndex];
     if (!page) return;
 
-    const cacheKey = makeCacheKey(document.format, pageIndex, zoom, rotation);
+    const cacheKey = makeCacheKey(
+      document.format,
+      pageIndex,
+      zoom,
+      rotation,
+      window.devicePixelRatio,
+    );
     const cached = pageCache.get(cacheKey);
 
     if (cached && targetRef.current instanceof HTMLCanvasElement) {

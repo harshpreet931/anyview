@@ -14,7 +14,7 @@ export interface ParsedPdf {
 
 export interface PdfOutlineItem {
   readonly title: string;
-  readonly dest: string | readonly unknown[];
+  readonly dest: { readonly pageIndex: number };
   readonly items?: readonly PdfOutlineItem[];
 }
 
