@@ -5,6 +5,28 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.1.6]
+
+### Fixed
+- **Documents bled across loads** — opening a new document over a loaded one could show the previous one's cached pages and leaked its PDF worker. The old document is now torn down on open.
+- **Spreadsheet/slide search** — multi-page reflowable search (XLSX, PPTX) reported only one page's matches and couldn't move between pages; matches are now aggregated in page order with the correct page index.
+- **Large code files** no longer crash the viewer (a stack overflow when measuring the longest line).
+- **PPTX slides** are ordered by the presentation's slide order, not their `slideN.xml` filenames.
+- **Legacy formats** — `.doc`, `.ppt`, and `.rtf` now report a clean "unsupported" state instead of failing or rendering raw control codes (`.xls` still works via SheetJS).
+- **`onAnnotationChange`** now fires when annotations are cleared on document open/close.
+- **Sidebar** — Outline/Attachments tabs appear only when the document has them, and the resize handle is now rendered so the sidebar can actually be resized.
+- **PDF search** honors cancellation, so a superseded query stops walking pages instead of running to completion.
+- **pdf.js loading task** is destroyed when a parse fails (wrong password / corrupt file), freeing worker resources.
+
+### Security
+- Strip network-reaching CSS (`url()`, `@import`, `expression()`) from sanitized `style` attributes to block zero-click exfiltration and internal-host probing (HTML/DOCX/XLSX).
+- Force `rel="noopener noreferrer"` on `target="_blank"` links inside documents.
+- Route PPTX slide HTML through the shared sanitizer.
+
+### Compatibility
+- **Next.js App Router** — the package ships a `'use client'` boundary on its entry and guards `localStorage` during SSR, so it works in Server-Component apps.
+- A `persistKey` prop (added in 0.1.5) isolates saved preferences when multiple viewers share a page.
+
 ## [0.1.5]
 
 ### Added
