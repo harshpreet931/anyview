@@ -76,7 +76,13 @@ const api: PdfWorkerApi = {
       password,
     });
 
-    const doc = await loadingTask.promise;
+    let doc;
+    try {
+      doc = await loadingTask.promise;
+    } catch (err) {
+      await loadingTask.destroy().catch(() => {});
+      throw err;
+    }
     const pageCount = doc.numPages;
     const pages = [];
 
