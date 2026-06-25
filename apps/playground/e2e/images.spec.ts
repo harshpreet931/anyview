@@ -43,7 +43,7 @@ test.describe('images — pixels actually reach the canvas', () => {
   test('uploaded PNG renders to the canvas', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.dv-root')).toBeVisible();
-    await page.locator('input[type="file"]').setInputFiles(fixture('sample.png'));
+    await page.locator('.pg-upload-btn input[type="file"]').setInputFiles(fixture('sample.png'));
     await expectCanvasNotBlank(page);
   });
 });
