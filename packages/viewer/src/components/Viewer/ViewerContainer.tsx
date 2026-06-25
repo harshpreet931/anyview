@@ -339,12 +339,16 @@ export function ViewerContainer() {
       const isSideways = rotation === 90 || rotation === 270;
       const pw = isSideways ? page.height : page.width;
       const ph = isSideways ? page.width : page.height;
-      const availW = el.clientWidth - PAGE_VERTICAL_GAP;
+      // A vertical spread lays two pages across the width, so fitting must
+      // account for both pages plus the gap between them.
+      const cols = spreadMode !== 'none' && !isHorizontal ? 2 : 1;
+      const rowWidth = cols * pw;
+      const availW = el.clientWidth - PAGE_VERTICAL_GAP - (cols - 1) * PAGE_SPREAD_GAP;
       const availH = el.clientHeight - PAGE_VERTICAL_GAP;
-      if (availW <= 0 || availH <= 0 || pw <= 0 || ph <= 0) return;
+      if (availW <= 0 || availH <= 0 || rowWidth <= 0 || ph <= 0) return;
       let z = 1;
-      if (fitMode === 'page-width') z = availW / pw;
-      else if (fitMode === 'page-fit') z = Math.min(availW / pw, availH / ph);
+      if (fitMode === 'page-width') z = availW / rowWidth;
+      else if (fitMode === 'page-fit') z = Math.min(availW / rowWidth, availH / ph);
       else if (fitMode === 'actual-size') z = 1;
       if (Number.isFinite(z) && z > 0) applyFitZoom(z);
     };
@@ -353,7 +357,7 @@ export function ViewerContainer() {
     const ro = new ResizeObserver(recompute);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [fitMode, document, rotation, applyFitZoom]);
+  }, [fitMode, document, rotation, spreadMode, isHorizontal, applyFitZoom]);
 
   const showState =
     loadState === 'idle' ||
