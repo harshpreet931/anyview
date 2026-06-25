@@ -191,6 +191,22 @@
   /* Allow pan-scroll but let us handle two-finger pinch zoom ourselves. */
   touch-action: pan-x pan-y;
   scrollbar-width: thin;
+}
+
+/* Marquee zoom: a crosshair drag that ignores text/annotation hit targets. */
+.dv-viewer-container[data-marquee] {
+  cursor: crosshair;
+  user-select: none;
+}
+.dv-viewer-container[data-marquee] .dv-text-layer,
+.dv-viewer-container[data-marquee] .dv-annotation-layer {
+  pointer-events: none;
+}
+.dv-marquee-rect {
+  pointer-events: none;
+  z-index: 6;
+  border: 1px solid var(--dv-loading-color);
+  background-color: color-mix(in srgb, var(--dv-loading-color) 18%, transparent);
   scrollbar-color: color-mix(in srgb, var(--dv-main-color) 20%, transparent) transparent;
 }
 

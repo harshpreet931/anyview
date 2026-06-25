@@ -45,6 +45,8 @@ export function Toolbar({ features }: ToolbarProps) {
   const setFitMode = useViewerStore((s) => s.setFitMode);
   const spreadMode = useViewerStore((s) => s.spreadMode);
   const setSpreadMode = useViewerStore((s) => s.setSpreadMode);
+  const cursorMode = useViewerStore((s) => s.cursorMode);
+  const setCursorMode = useViewerStore((s) => s.setCursorMode);
   const rotateClockwise = useViewerStore((s) => s.rotateClockwise);
   const rotateCounterClockwise = useViewerStore((s) => s.rotateCounterClockwise);
   const currentPage = useViewerStore((s) => s.currentPage);
@@ -259,6 +261,21 @@ export function Toolbar({ features }: ToolbarProps) {
                 <svg viewBox="0 0 16 16" fill="currentColor">
                   <path d="M7 4h2v3h3v2H9v3H7V9H4V7h3V4z" />
                   <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 2a5 5 0 1 1 0 10A5 5 0 0 1 8 3z" />
+                </svg>
+              </button>
+              <button
+                className="dv-button"
+                onClick={() =>
+                  setCursorMode(cursorMode === 'marquee' ? 'select' : 'marquee')
+                }
+                aria-pressed={cursorMode === 'marquee'}
+                data-toggled={cursorMode === 'marquee'}
+                aria-label="Marquee zoom"
+                title="Marquee zoom — drag a box to zoom in"
+              >
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+                  <rect x="2.5" y="2.5" width="11" height="11" rx="1" strokeDasharray="2.5 1.8" />
+                  <path d="M6 8h4M8 6v4" strokeLinecap="round" />
                 </svg>
               </button>
             </>
