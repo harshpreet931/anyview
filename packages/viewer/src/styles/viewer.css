@@ -182,9 +182,12 @@
 /* ---------- Viewer Container ---------- */
 
 .dv-viewer-container {
-  flex: 1;
+  /* Fill the bounded `position: relative` parent so this is a real scroll
+     region. `flex: 1` is inert here (the parent is display:block), which let
+     the container grow to its content and break scrolling + fit-to-page. */
+  position: absolute;
+  inset: 0;
   overflow: auto;
-  position: relative;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--dv-main-color) 20%, transparent) transparent;
 }
