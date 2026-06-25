@@ -21,7 +21,8 @@ export type FormatId =
   | 'code'
   | 'csv'
   | 'html'
-  | 'text';
+  | 'text'
+  | 'ipynb';
 
 /**
  * Extended MIME superset for format detection.
