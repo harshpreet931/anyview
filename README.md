@@ -6,7 +6,7 @@
 
 ### One component. Every format. Zero iframes.
 
-The universal document viewer for React — **PDF, DOCX, XLSX, PPTX, CSV, Markdown, code, HTML & images**, rendered natively in the browser. No iframes, no server round-trips, no uploads — your files never leave the page.
+The universal document viewer for React — **PDF, DOCX, XLSX, PPTX, CSV, Markdown, code, HTML, Jupyter notebooks & images**, rendered natively in the browser. No iframes, no server round-trips, no uploads — your files never leave the page.
 
 [![npm version](https://img.shields.io/npm/v/anyview?color=B8740F&labelColor=1a1813)](https://www.npmjs.com/package/anyview)
 [![license](https://img.shields.io/github/license/harshpreet931/anyview?color=B8740F&labelColor=1a1813)](./LICENSE)
@@ -30,7 +30,7 @@ The universal document viewer for React — **PDF, DOCX, XLSX, PPTX, CSV, Markdo
 
 ---
 
-> **Status:** `v0.1` — published on npm (`npm i anyview`), pre-1.0 and actively evolving. The flagship PDF experience (native render, text selection, search highlighting, annotations) is implemented; reflowable formats (DOCX, Markdown, code, …) render, are searchable, and have page thumbnails. Try it via the [playground](#run-the-playground).
+> **Status:** `v0.2` — published on npm (`npm i anyview`), pre-1.0 and actively evolving. The flagship PDF experience (native render, text selection, search highlighting, 8 annotation tools) is implemented; reflowable formats (DOCX, XLSX, PPTX, CSV, Markdown, code, HTML, Jupyter notebooks) render, are searchable, and have page thumbnails. Full zoom UX (wheel / pinch / marquee / fit modes), two-page spread, a drag-drop empty state, and a rich imperative + callback API round it out. Try it via the [playground](#run-the-playground).
 
 ## Why Anyview?
 
@@ -46,11 +46,14 @@ Every other React document viewer either **uses iframes** (slow, insecure, leaks
 | Markdown | ✅ Native (react-markdown) | ❌ | ❌ | ✅ |
 | Code (50+ langs) | ✅ Native (Shiki) | ❌ | ❌ | ❌ |
 | HTML | ✅ Sanitized (DOMPurify) | ✅ iframe | ❌ | ✅ iframe |
+| Jupyter (`.ipynb`) | ✅ Native | ❌ | ❌ | ❌ |
 | Images (8 formats) | ✅ Native | ✅ | ❌ | ✅ |
 | Private files (no upload) | ✅ | ❌ public URL only | ✅ | ❌ |
 | Text selection | ✅ | partial | ✅ | ❌ |
 | Search + highlight | ✅ all formats | ❌ | ✅ PDF | ❌ |
-| Annotations | ✅ PDF | ❌ | ❌ | ❌ |
+| Annotations | ✅ 8 tools (PDF) | ❌ | ❌ | ❌ |
+| Zoom (wheel/pinch/marquee/fit) | ✅ | ❌ | partial | ❌ |
+| Two-page spread | ✅ | ❌ | ❌ | ❌ |
 | **No iframes** | ✅ | ❌ | ✅ | ❌ |
 | **Web Workers** | ✅ Off-main-thread | ❌ | ✅ | ❌ |
 | **Tree-shakeable** | ✅ Load only what you need | ❌ | ✅ | ❌ |
@@ -75,6 +78,8 @@ npm install react-markdown remark-gfm   # Markdown
 npm install shiki                       # code highlighting
 npm install dompurify                   # HTML / DOCX sanitization
 ```
+
+> Jupyter notebooks (`.ipynb`) reuse the Markdown, code, and sanitizer parsers above — no extra dependency.
 
 ```tsx
 import { DocViewer } from 'anyview';
@@ -102,12 +107,16 @@ function App() {
 
 ## Headline features
 
-- **Native rendering, zero iframes** — PDF rasterizes off the main thread in a Web Worker (OffscreenCanvas → `ImageBitmap`); Office and text formats parse to real DOM.
+- **Native rendering, zero iframes** — PDF rasterizes off the main thread in a Web Worker (OffscreenCanvas → `ImageBitmap`); Office, text, and notebook formats parse to real DOM.
 - **Real text selection** — select and copy text directly off PDF pages (an aligned, invisible text layer over the bitmap); reflowable formats select natively.
-- **Search with highlighting** — `Cmd/Ctrl+F` finds matches across **every text format**, paints highlight overlays, distinguishes the active match, and scrolls it into view. PDF uses the text layer; DOCX/Markdown/code/HTML/CSV use the CSS Custom Highlight API over real DOM text.
-- **Annotations** — highlight (drag a box), free-hand ink (draw), and sticky notes on PDF pages. Stored as normalized geometry so they survive zoom; export/import via `serializeAnnotations` / `parseAnnotations`, and observe changes with `onAnnotationChange`.
+- **Search with highlighting** — `Cmd/Ctrl+F` finds matches across **every text format**, paints highlight overlays, distinguishes the active match, and scrolls it into view. PDF uses the text layer; DOCX/XLSX/PPTX/Markdown/code/HTML/CSV/notebooks use the CSS Custom Highlight API over real DOM text.
+- **Full zoom & layout** — Ctrl/Cmd+wheel and two-finger **pinch** zoom (anchored at the cursor), **marquee** zoom-to-selection, **fit-page / fit-width / actual-size** modes, and a **two-page / book-spread** layout.
+- **Annotations — 8 tools** — highlight, free-hand ink, sticky note, **rectangle, ellipse, line, arrow, and free-text** on PDF pages. Stored as normalized geometry so they survive zoom; create / read / update / delete and **export/import as versioned sidecar JSON** through the imperative ref, and observe changes with `onAnnotationChange`.
+- **Jupyter notebooks** — open `.ipynb` files natively: markdown cells, syntax-highlighted code, and saved outputs (text, images, HTML/SVG, error tracebacks). No kernel, no Python, no upload.
+- **Drop-in file opening** — the empty state is a working dropzone: click to browse or drop a file to open it.
+- **Events & control** — rich callbacks (`onPageChange`, `onZoom`, `onSearchResult`, `onVisiblePagesChange`, `onSelectionChange`, `onAnnotationChange`) and a controlled `page` prop.
 - **Virtualized** — only visible pages (± overscan) are in the DOM; a byte-budgeted LRU cache keeps rendered bitmaps under a 256 MB ceiling.
-- **Accessible & themeable** — ARIA roles, keyboard nav, forced-colors and reduced-motion support, four themes (`light` / `dark` / `auto` / `sepia`), full i18n via the `locale` prop.
+- **Accessible, themeable & SSR-ready** — ARIA roles, keyboard nav, forced-colors and reduced-motion support, four themes (`light` / `dark` / `auto` / `sepia`), full i18n via the `locale` prop, and Next.js App Router support (ships `'use client'`, SSR-safe).
 
 ## Supported Formats
 
@@ -121,6 +130,7 @@ function App() {
 | Markdown | react-markdown + remark-gfm | — | ✅ | ✅ | ✅ | — |
 | Code (50+) | Shiki | — | ✅ | ✅ | — | — |
 | HTML | DOMPurify | — | ✅ | ✅ | ✅ | — |
+| Jupyter (`.ipynb`) | react-markdown + Shiki | — | ✅ | ✅ | ✅ | — |
 | Images (8) | Native browser | — | — | — | — | — |
 | Plain Text | Native | — | ✅ | ✅ | — | — |
 
@@ -133,7 +143,7 @@ pnpm install
 pnpm --filter anyview-playground dev
 ```
 
-Drag any PDF / DOCX / XLSX / Markdown / image onto the page — it renders entirely client-side, nothing is uploaded.
+Drag any PDF / DOCX / XLSX / PPTX / CSV / Markdown / code / HTML / `.ipynb` / image onto the page — it renders entirely client-side, nothing is uploaded.
 
 ## Architecture
 
@@ -215,9 +225,31 @@ ref.current?.zoomIn();
 ref.current?.search({ text: 'invoice', caseSensitive: false, wholeWord: false, regex: false, diacritics: false });
 ref.current?.nextMatch();
 await ref.current?.print();
+
+// Programmatic annotations — build review / markup flows:
+ref.current?.setActiveTool('rectangle');
+ref.current?.addAnnotation(annotation);
+const sidecar = ref.current?.exportAnnotations();   // { version: 1, annotations: [...] }
+ref.current?.importAnnotations(sidecar);            // a sidecar object or its JSON string
+```
+
+### Events & controlled props
+
+```tsx
+<DocViewer
+  source={source}
+  page={page}                                  // controlled — drive the current page
+  onPageChange={(page, total) => setPage(page)}
+  onZoom={(zoom, fitMode) => {}}
+  onSearchResult={(result) => {}}
+  onVisiblePagesChange={(pages) => {}}          // e.g. lazy-load thumbnails
+  onSelectionChange={({ text, pageIndex }) => {}}
+/>
 ```
 
 ### Annotations
+
+Eight tools — **highlight, ink, sticky note, rectangle, ellipse, line, arrow, and free-text**. Geometry is normalized so annotations survive zoom. Persist them as versioned sidecar JSON, or drive them through the [imperative API](#imperative-api) (`addAnnotation` / `setAnnotations` / `exportAnnotations` / `importAnnotations`).
 
 ```tsx
 import { serializeAnnotations, parseAnnotations } from 'anyview';
@@ -292,7 +324,7 @@ import 'anyview/styles';
 Yes. Everything runs client-side, so private, authenticated, and local files work and **nothing is ever uploaded**. This is the main difference from iframe-based viewers like `@cyntler/react-doc-viewer` / `react-doc-viewer`, which render Office files through the Microsoft Office Online service and therefore **require publicly accessible URLs** and send your documents to a third party.
 
 **How do I render any document type in React with one component?**
-`<DocViewer source={…} />` auto-detects the format from the file name / MIME type and loads the matching renderer on demand — PDF, DOCX, XLSX, PPTX, CSV, Markdown, code, HTML, and images, all from one component.
+`<DocViewer source={…} />` auto-detects the format from the file name / MIME type and loads the matching renderer on demand — PDF, DOCX, XLSX, PPTX, CSV, Markdown, code, HTML, Jupyter notebooks, and images, all from one component.
 
 **Is there a free, open-source alternative to PSPDFKit / Nutrient / Apryse for viewing Office documents in React?**
 Yes — Anyview is MIT-licensed and free. It renders PDF and Office formats natively (no server, no license key) with text selection, cross-format search, and PDF annotations.
