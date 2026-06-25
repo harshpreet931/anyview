@@ -7,7 +7,7 @@ const fixture = (name: string) =>
 async function openFile(page: Page, name: string) {
   await page.goto('/');
   await expect(page.locator('.dv-root')).toBeVisible();
-  await page.locator('input[type="file"]').setInputFiles(fixture(name));
+  await page.locator('.pg-upload-btn input[type="file"]').setInputFiles(fixture(name));
 }
 
 async function reflowText(page: Page) {

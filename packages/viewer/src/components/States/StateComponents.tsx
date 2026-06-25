@@ -4,6 +4,8 @@
  * ============================================================ */
 
 import { type ReactNode } from 'react';
+import { useViewerStore } from '../../hooks/useDocViewer';
+import { useFileInput } from '../../hooks/useFileInput';
 
 function StateContainer({
   icon,
@@ -27,17 +29,46 @@ function StateContainer({
 }
 
 export function EmptyState({ description }: { description?: string }) {
+  // The empty state is a real dropzone: click to browse or drop a file to open
+  // it. It opens through the store, so it works whether or not the host passes
+  // a `source` prop (when a source is given, this state isn't shown).
+  const openDocument = useViewerStore((s) => s.openDocument);
+  const { inputRef, isDragging, openPicker, handleInputChange, dragProps } =
+    useFileInput({ onFile: openDocument });
+
   return (
-    <StateContainer
-      icon={
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="8" y="6" width="32" height="36" rx="2" />
-          <path d="M16 18h16M16 26h16M16 34h10" />
-        </svg>
-      }
-      title="No document open"
-      description={description || 'Drag and drop a file here, or click to browse'}
-    />
+    <div
+      className="dv-empty-dropzone"
+      data-dragging={isDragging || undefined}
+      role="button"
+      tabIndex={0}
+      aria-label="Open a document: click to browse or drop a file"
+      onClick={openPicker}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openPicker();
+        }
+      }}
+      {...dragProps}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        onChange={handleInputChange}
+        style={{ display: 'none' }}
+      />
+      <StateContainer
+        icon={
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="8" y="6" width="32" height="36" rx="2" />
+            <path d="M16 18h16M16 26h16M16 34h10" />
+          </svg>
+        }
+        title="No document open"
+        description={description || 'Drag and drop a file here, or click to browse'}
+      />
+    </div>
   );
 }
 

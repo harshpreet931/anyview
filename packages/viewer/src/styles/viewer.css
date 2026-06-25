@@ -589,6 +589,29 @@
   animation: dv-state-enter var(--dv-transition-slow) var(--dv-ease-out) backwards;
 }
 
+/* Interactive empty state: click to browse, drop a file to open. */
+.dv-empty-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  border-radius: 8px;
+  transition:
+    background-color var(--dv-transition-normal) var(--dv-ease),
+    box-shadow var(--dv-transition-normal) var(--dv-ease);
+}
+.dv-empty-dropzone:hover,
+.dv-empty-dropzone:focus-visible {
+  outline: none;
+  background-color: color-mix(in srgb, var(--dv-loading-color) 7%, transparent);
+}
+.dv-empty-dropzone[data-dragging] {
+  background-color: color-mix(in srgb, var(--dv-loading-color) 14%, transparent);
+  box-shadow: inset 0 0 0 2px var(--dv-loading-color);
+}
+
 .dv-state-icon {
   width: 48px;
   height: 48px;
