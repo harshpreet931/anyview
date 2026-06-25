@@ -389,4 +389,17 @@ export interface DocViewerRef {
   print: () => Promise<void>;
   getDocument: () => DocumentModel | null;
   getAnnotations: () => Annotation[];
+  addAnnotation: (annotation: Annotation) => void;
+  updateAnnotation: (
+    id: string,
+    patch: Partial<Omit<Annotation, 'id' | 'pageIndex' | 'type'>>,
+  ) => void;
+  deleteAnnotation: (id: string) => void;
+  setAnnotations: (annotations: Annotation[]) => void;
+  clearAnnotations: () => void;
+  setActiveTool: (tool: AnnotationType | null) => void;
+  exportAnnotations: () => import('./annotations').SerializedAnnotations;
+  importAnnotations: (
+    data: import('./annotations').SerializedAnnotations | string,
+  ) => void;
 }
