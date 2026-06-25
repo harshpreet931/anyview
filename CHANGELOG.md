@@ -5,6 +5,21 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.2.0]
+
+### Added
+- **Jupyter notebook (`.ipynb`) viewer** — renders markdown cells, syntax-highlighted code, and saved outputs (stdout/stderr, results, `data:` images, sanitized HTML/SVG, and error tracebacks) natively. No kernel, no Python, no upload.
+- **Zoom UX** — Ctrl/Cmd+wheel zoom anchored at the cursor (also covers trackpad pinch), two-finger **touch pinch**, **marquee zoom-to-selection** (drag a box), and **fit-page / fit-width / actual-size** modes; the zoom control shows the live percentage.
+- **Two-page / book-spread layout** — render facing pairs (Single / Two-up / Cover) for multi-page documents.
+- **Imperative annotation API** — `addAnnotation` / `updateAnnotation` / `deleteAnnotation` / `setAnnotations` / `clearAnnotations` / `setActiveTool` plus `exportAnnotations()` / `importAnnotations()` (versioned sidecar JSON) on the `DocViewer` ref.
+- **More annotation tools** — rectangle, ellipse, line, arrow (with arrowhead), and free-text, alongside highlight / ink / sticky-note.
+- **Richer callbacks** — `onPageChange`, `onZoom`, `onSearchResult`, `onVisiblePagesChange`, `onSelectionChange`, plus a controlled `page` prop.
+- **Working empty state** — click to browse or drop a file to open it (drag-and-drop / file picker), through the store.
+
+### Fixed
+- **Viewer container is a bounded scroll region** — it previously grew to its content height (an inert `flex: 1`), which clipped multi-page documents with no scrollbar and broke fit-to-page.
+- **Fit modes are spread-aware** — fit-width / fit-page now account for both pages in a two-up spread instead of overflowing the width.
+
 ## [0.1.6]
 
 ### Fixed
