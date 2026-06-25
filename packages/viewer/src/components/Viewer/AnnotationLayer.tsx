@@ -395,10 +395,35 @@ function AnnotationShape({
     if (p0) anchor = { x: p0.x * width, y: p0.y * height };
   } else if (annotation.type === 'shape') {
     const { shape, from, to } = annotation.data;
+    const x1 = from.x * width;
+    const y1 = from.y * height;
+    const x2 = to.x * width;
+    const y2 = to.y * height;
+    // A wide transparent hit target makes thin/unfilled shapes easy to select.
+    const hit =
+      shape === 'line' || shape === 'arrow' ? (
+        <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={14} />
+      ) : (
+        <rect
+          x={Math.min(x1, x2)}
+          y={Math.min(y1, y2)}
+          width={Math.abs(x2 - x1)}
+          height={Math.abs(y2 - y1)}
+          fill="transparent"
+          stroke="transparent"
+          strokeWidth={14}
+        />
+      );
     body = (
-      <g style={pointerStyle} onPointerDown={handleClick}>
-        {/* A wider transparent hit line over the geometry makes thin shapes selectable. */}
-        {renderShapeGeometry(shape, from, to, annotation.color, width, height)}
+      <g>
+        <g style={{ pointerEvents: 'none' }}>
+          {renderShapeGeometry(shape, from, to, annotation.color, width, height)}
+        </g>
+        {bodyInteractive && (
+          <g style={pointerStyle} onPointerDown={handleClick}>
+            {hit}
+          </g>
+        )}
       </g>
     );
     anchor = { x: Math.max(from.x, to.x) * width, y: Math.min(from.y, to.y) * height };
