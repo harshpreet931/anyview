@@ -1,6 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 32 32" fill="none" role="img" aria-label="Anyview">
+  <defs>
+    <linearGradient id="av-card" x1="9" y1="8" x2="26.5" y2="26.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E59413"/>
+      <stop offset="1" stop-color="#CE7D08"/>
+    </linearGradient>
+  </defs>
+  <!-- the "page behind" — the stack of formats, drawn as a hairline so it
+       reads on both light and dark backgrounds -->
   <rect x="5" y="5" width="15" height="16.5" rx="3.5" fill="none" stroke="#9b958a" stroke-width="1.6"/>
-  <rect x="9" y="8" width="17.5" height="18.5" rx="4.5" fill="#D98A0C"/>
+  <!-- the amber viewer card -->
+  <rect x="9" y="8" width="17.5" height="18.5" rx="4.5" fill="url(#av-card)"/>
+  <!-- a soft top highlight for depth -->
+  <rect x="9" y="8" width="17.5" height="9.25" rx="4.5" fill="#ffffff" opacity="0.10"/>
+  <!-- document lines -->
   <rect x="12.6" y="13.2" width="10.3" height="1.9" rx="0.95" fill="#211606" opacity="0.82"/>
   <rect x="12.6" y="16.9" width="10.3" height="1.9" rx="0.95" fill="#211606" opacity="0.82"/>
   <rect x="12.6" y="20.6" width="6.6" height="1.9" rx="0.95" fill="#211606" opacity="0.82"/>

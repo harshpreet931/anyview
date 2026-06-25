@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./assets/logo.svg" width="88" height="88" alt="Anyview" />
+<img src="./assets/banner.png" width="880" alt="Anyview — One component. Every format. Zero iframes." />
 
 # Anyview
 
@@ -18,7 +18,13 @@ The universal document viewer for React — **PDF, DOCX, XLSX, PPTX, CSV, Markdo
 
 <br />
 
-<img src="./assets/screenshot.png" width="920" alt="Anyview rendering a PDF with a thumbnail rail, search, zoom, rotate, and annotation tools" />
+<img src="./assets/demo.gif" width="900" alt="Anyview switching between PDF, DOCX, XLSX and Markdown while searching and annotating" />
+
+<br /><br />
+
+<img src="./assets/screenshot.png" width="900" alt="Anyview rendering a real PDF with a thumbnail rail, search highlight, zoom, rotate, and annotation tools" />
+
+<sub>A real document rendered in the <a href="https://harshpreet931.github.io/anyview/">live playground</a> — selectable text layer, cross-format search, thumbnails, annotations.</sub>
 
 </div>
 
