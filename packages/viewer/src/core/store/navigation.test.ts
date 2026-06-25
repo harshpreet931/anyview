@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createViewerStore } from './index';
 
-describe('navigation slice — visiblePages', () => {
+describe('navigation slice - visiblePages', () => {
   it('updates on content change and no-ops on identical content', () => {
     const s = createViewerStore();
     expect(s.getState().visiblePages).toEqual([]);

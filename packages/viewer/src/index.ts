@@ -1,5 +1,5 @@
 /* ============================================================
- * Public API Surface — Barrel Export
+ * Public API Surface - Barrel Export
  * ============================================================ */
 
 import './styles/viewer.css';

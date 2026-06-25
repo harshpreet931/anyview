@@ -1,5 +1,5 @@
 /* ============================================================
- * Tooltip — accessible tooltip wrapper
+ * Tooltip - accessible tooltip wrapper
  * ============================================================ */
 
 import { useId, type ReactNode } from 'react';

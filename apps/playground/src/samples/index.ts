@@ -170,7 +170,7 @@ const notebookContent = JSON.stringify({
       source: [
         '# Sales Analysis\n',
         '\n',
-        'A quick look at quarterly sales — rendered by **Anyview**, no kernel required.\n',
+        'A quick look at quarterly sales - rendered by **Anyview**, no kernel required.\n',
         '\n',
         '> Markdown cells, syntax-highlighted code, and saved outputs all render natively.',
       ],

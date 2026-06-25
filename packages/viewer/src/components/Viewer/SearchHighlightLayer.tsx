@@ -1,5 +1,5 @@
 /* ============================================================
- * SearchHighlightLayer — positioned highlight boxes for search
+ * SearchHighlightLayer - positioned highlight boxes for search
  * matches on a single page. The active match is styled distinctly
  * and scrolled into view whenever the selection changes.
  * ============================================================ */

@@ -19,7 +19,7 @@ import type { AnnotationSlice } from './annotationSlice';
 import { normalizeFileSource } from '../file-source';
 import { PageCache } from '../cache/page-cache';
 
-// Per-document view state cleared on open/close. Annotations are NOT here —
+// Per-document view state cleared on open/close. Annotations are NOT here -
 // they reset via _resetAnnotations() so onAnnotationChange listeners fire.
 const PER_DOCUMENT_RESET = {
   currentPage: 0,
@@ -89,7 +89,7 @@ export const createDocumentSlice: StateCreator<
     get()._loadController?.abort();
     // Tear down the previously loaded document before opening another: dispose
     // its adapter (frees the PDF worker / ImageBitmaps) and clear the page
-    // cache, whose key isn't document-scoped — otherwise a new same-format
+    // cache, whose key isn't document-scoped - otherwise a new same-format
     // document would be served the previous one's cached pages.
     get().adapter?.dispose?.();
     get()._pendingPassword?.adapter.dispose?.();

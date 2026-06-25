@@ -4,7 +4,7 @@
  * Loads DOMPurify and registers (once) a hook that strips dangerous CSS from
  * `style` attributes. DOMPurify allows the `style` attribute but does not parse
  * its value, so `style="background:url(http://attacker/x)"` in a document would
- * fire a zero-click request — exfiltrating that the document was opened and
+ * fire a zero-click request - exfiltrating that the document was opened and
  * probing internal hosts. We drop any style carrying an external/relative
  * `url()`, `@import`, or `expression()`, while keeping inline `data:`/fragment
  * references that can't reach the network.

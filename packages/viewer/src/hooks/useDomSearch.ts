@@ -1,5 +1,5 @@
 /* ============================================================
- * useDomSearch — search for reflowable formats (markdown, code,
+ * useDomSearch - search for reflowable formats (markdown, code,
  * docx, html, csv, text) whose content is real DOM text.
  *
  * Finds query occurrences in a container, reports the match count
@@ -86,7 +86,7 @@ function clearOwner(ownerId: string): void {
 }
 
 // Guard against pathological queries: an over-long pattern (usually a paste
-// accident) and unbounded match counts that would freeze the main thread —
+// accident) and unbounded match counts that would freeze the main thread -
 // a user-supplied regex can be catastrophically slow or match endlessly.
 const MAX_QUERY_LENGTH = 1000;
 const MAX_MATCHES = 10_000;
@@ -216,8 +216,8 @@ export function useDomSearch(
   const ownerId = useId();
 
   // Reflowable formats (passed active=true by PageRenderer) are always searched
-  // against their DOM text here — even when their adapter ships a search()
-  // method — because only this path produces visible highlights for them.
+  // against their DOM text here - even when their adapter ships a search()
+  // method - because only this path produces visible highlights for them.
   // Canvas formats (PDF) pass active=false and use the positioned layer.
   const enabled = active;
 

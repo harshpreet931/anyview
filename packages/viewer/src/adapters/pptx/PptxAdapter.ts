@@ -170,7 +170,7 @@ export class PptxAdapter implements Adapter {
   }
 
   // PowerPoint stores display order in ppt/presentation.xml (<p:sldIdLst>),
-  // referencing slides by relationship id — NOT by their slideN.xml filename,
+  // referencing slides by relationship id - NOT by their slideN.xml filename,
   // which can be reordered independently. Resolve the real order via the rels
   // map, falling back to numeric filename order when those parts are missing.
   private async orderedSlideFiles(zip: {

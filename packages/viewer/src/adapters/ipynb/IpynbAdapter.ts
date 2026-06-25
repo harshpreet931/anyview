@@ -1,7 +1,7 @@
 /* ============================================================
  * Jupyter Notebook (.ipynb) Adapter
  * Renders markdown cells (react-markdown), code cells (Shiki), and
- * saved outputs (text, HTML, images, tracebacks) — no kernel, no Python,
+ * saved outputs (text, HTML, images, tracebacks) - no kernel, no Python,
  * no server. A notebook is just JSON; every dependency is already shipped.
  * ============================================================ */
 

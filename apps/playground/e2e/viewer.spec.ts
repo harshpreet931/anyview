@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 /* ============================================================
- * Anyview — in-depth end-to-end tests against the real
+ * Anyview - in-depth end-to-end tests against the real
  * playground (Vite dev server + the library source).
  * ============================================================ */
 
@@ -55,7 +55,7 @@ async function openSearch(page: Page, query: string) {
   await input.fill(query);
 }
 
-test.describe('rendering — every sample format', () => {
+test.describe('rendering - every sample format', () => {
   for (const name of ['Markdown', 'Text', 'CSV', 'HTML', 'TypeScript', 'JSON', 'Jupyter']) {
     test(`renders ${name} (reflowable)`, async ({ page }) => {
       await gotoApp(page);
@@ -110,7 +110,7 @@ test.describe('rendering — every sample format', () => {
   });
 });
 
-test.describe('PDF — text selection', () => {
+test.describe('PDF - text selection', () => {
   test('text layer exposes real, selectable text', async ({ page }) => {
     await gotoApp(page);
     await loadSample(page, 'PDF');
@@ -135,7 +135,7 @@ test.describe('PDF — text selection', () => {
   });
 });
 
-test.describe('PDF — search highlight + navigation', () => {
+test.describe('PDF - search highlight + navigation', () => {
   test('finds, highlights, and navigates matches', async ({ page }) => {
     await gotoApp(page);
     await loadSample(page, 'PDF');
@@ -164,7 +164,7 @@ test.describe('PDF — search highlight + navigation', () => {
   });
 });
 
-test.describe('PDF — annotations', () => {
+test.describe('PDF - annotations', () => {
   async function pageBox(page: Page) {
     const box = await page.locator('.dv-page').first().boundingBox();
     if (!box) throw new Error('no page box');
@@ -216,7 +216,7 @@ test.describe('PDF — annotations', () => {
   });
 });
 
-test.describe('PDF — viewport controls', () => {
+test.describe('PDF - viewport controls', () => {
   test('zoom in enlarges the page', async ({ page }) => {
     await gotoApp(page);
     await loadSample(page, 'PDF');
@@ -267,7 +267,7 @@ test.describe('PDF — viewport controls', () => {
   });
 });
 
-test.describe('reflowable — DOM search', () => {
+test.describe('reflowable - DOM search', () => {
   test('Markdown search highlights via the Custom Highlight API', async ({ page }) => {
     await gotoApp(page);
     await loadSample(page, 'Markdown');
@@ -286,7 +286,7 @@ test.describe('reflowable — DOM search', () => {
   });
 });
 
-test.describe('chrome — theme & sidebar', () => {
+test.describe('chrome - theme & sidebar', () => {
   test('theme switch applies the theme class', async ({ page }) => {
     await gotoApp(page);
     await loadSample(page, 'Markdown');

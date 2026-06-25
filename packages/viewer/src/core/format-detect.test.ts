@@ -33,7 +33,7 @@ describe('detectFormat', () => {
     expect(detectFormat('legacy.doc')).toBeNull();
     expect(detectFormat('deck.ppt')).toBeNull();
     expect(detectFormat('memo.rtf')).toBeNull();
-    // .xls stays supported — SheetJS reads the binary format.
+    // .xls stays supported - SheetJS reads the binary format.
     expect(detectFormat('book.xls')).toBe('xlsx');
   });
 

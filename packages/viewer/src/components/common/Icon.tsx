@@ -1,5 +1,5 @@
 /* ============================================================
- * Icon — lightweight SVG icon component
+ * Icon - lightweight SVG icon component
  * ============================================================ */
 
 import { type ReactNode, memo } from 'react';

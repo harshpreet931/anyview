@@ -13,7 +13,7 @@ const FORMAT_SPECS: readonly FormatSpec[] = [
   },
   {
     id: 'docx',
-    // Only OOXML .docx — mammoth cannot read the legacy binary .doc, so
+    // Only OOXML .docx - mammoth cannot read the legacy binary .doc, so
     // claiming it would route the file to a guaranteed parse failure instead
     // of a clean "unsupported format" message.
     extensions: ['docx'],
@@ -31,7 +31,7 @@ const FORMAT_SPECS: readonly FormatSpec[] = [
   },
   {
     id: 'pptx',
-    // Only OOXML .pptx — the JSZip+XML parser can't read the legacy binary .ppt.
+    // Only OOXML .pptx - the JSZip+XML parser can't read the legacy binary .ppt.
     extensions: ['pptx'],
     mimeTypes: [
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',

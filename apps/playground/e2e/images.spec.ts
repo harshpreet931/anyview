@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 const fixture = (name: string) =>
   fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url));
 
-// Assert the page canvas actually contains a rendered image — i.e. it has
+// Assert the page canvas actually contains a rendered image - i.e. it has
 // multiple distinct, non-transparent pixel values (a blank canvas has ≤1).
 async function expectCanvasNotBlank(page: Page) {
   const canvas = page.locator('.dv-page canvas').first();
@@ -32,7 +32,7 @@ async function expectCanvasNotBlank(page: Page) {
     .toBeGreaterThan(2);
 }
 
-test.describe('images — pixels actually reach the canvas', () => {
+test.describe('images - pixels actually reach the canvas', () => {
   test('SVG sample renders to the canvas', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.dv-root')).toBeVisible();

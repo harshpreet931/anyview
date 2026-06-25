@@ -1,5 +1,5 @@
 /* ============================================================
- * Jupyter Notebook Adapter Entry — manifest + loader
+ * Jupyter Notebook Adapter Entry - manifest + loader
  * ============================================================ */
 
 export { ipynbManifest, IpynbAdapter } from './IpynbAdapter';

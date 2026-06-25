@@ -1,5 +1,5 @@
 /* ============================================================
- * Spinner — loading spinner
+ * Spinner - loading spinner
  * ============================================================ */
 
 interface SpinnerProps {

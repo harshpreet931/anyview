@@ -1,5 +1,5 @@
 /* ============================================================
- * Image Adapter Entry — manifest + loader
+ * Image Adapter Entry - manifest + loader
  * ============================================================ */
 
 export { imageManifest, ImageAdapter } from './ImageAdapter';

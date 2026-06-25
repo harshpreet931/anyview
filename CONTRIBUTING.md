@@ -73,7 +73,7 @@ export const myFormatManifest: AdapterManifest = {
   protocolVersion: 1,
 };
 
-// Adapters load as classes — the module's DEFAULT export is the constructor,
+// Adapters load as classes: the module's DEFAULT export is the constructor,
 // which the registry instantiates fresh per document.
 export class MyFormatAdapter implements Adapter {
   readonly manifest = myFormatManifest;
@@ -105,8 +105,8 @@ registry.register(myFormatManifest, () => import('./your-format/MyFormatAdapter'
 
 ## Code Style
 
-- **TypeScript strict mode** — `exactOptionalPropertyTypes: true`, `verbatimModuleSyntax: true`
-- **No `any` types** — use `unknown` and narrow with type guards
+- **TypeScript strict mode**: `exactOptionalPropertyTypes: true`, `verbatimModuleSyntax: true`
+- **No `any` types**: use `unknown` and narrow with type guards
 - **Conditional spread** for optional props: `{...(value ? { key: value } : {})}` (due to `exactOptionalPropertyTypes`)
 - **No comments** unless explaining a non-obvious design decision
 - **Zustand v5** with `subscribeWithSelector` middleware (required for selector-based subscriptions)
@@ -143,4 +143,4 @@ pnpm changeset version  # apply changesets to package.json
 
 ## License
 
-MIT — see [LICENSE](./LICENSE)
+MIT. See [LICENSE](./LICENSE).

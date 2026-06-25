@@ -1,5 +1,5 @@
 /* ============================================================
- * TextLayer — invisible, selectable text positioned over a
+ * TextLayer - invisible, selectable text positioned over a
  * rasterized page (PDF). Enables real text selection, copy,
  * and accessible reading order on top of the canvas bitmap.
  * ============================================================ */

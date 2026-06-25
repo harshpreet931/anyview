@@ -1,5 +1,5 @@
 /* ============================================================
- * Text Adapter Entry — manifest + loader
+ * Text Adapter Entry - manifest + loader
  * ============================================================ */
 
 export { textManifest, TextAdapter } from './TextAdapter';

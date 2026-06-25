@@ -19,7 +19,7 @@ async function loadReflowable(page: Page, chipIndex: number) {
     .toBeGreaterThan(0);
 }
 
-test.describe('dark mode — a document page stays readable paper', () => {
+test.describe('dark mode - a document page stays readable paper', () => {
   // Markdown (0), CSV (2), TypeScript (4)
   for (const [name, idx] of [['Markdown', 0], ['CSV', 2], ['TypeScript', 4]] as const) {
     test(`${name} renders dark ink on a light page`, async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('dark mode — a document page stays readable paper', () => {
         };
       });
 
-      // The page is light "paper" and the ink is dark — even though the UI is dark.
+      // The page is light "paper" and the ink is dark - even though the UI is dark.
       expect(luminance(pageLum)).toBeGreaterThan(200);
       expect(luminance(textLum)).toBeLessThan(130);
     });

@@ -31,7 +31,7 @@ export interface SearchSlice {
    * Supply matches computed outside the adapter (e.g. DOM-based search for
    * reflowable formats that have no adapter `search()`), keyed to the active
    * query. The matches are the full set aggregated across every rendered page,
-   * so the current index is preserved (clamped) rather than reset — a fresh
+   * so the current index is preserved (clamped) rather than reset - a fresh
    * query already resets it via `search()`.
    */
   applySearchMatches: (matches: SearchMatch[]) => void;

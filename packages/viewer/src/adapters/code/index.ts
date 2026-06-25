@@ -1,5 +1,5 @@
 /* ============================================================
- * Code Adapter Entry — manifest + loader
+ * Code Adapter Entry - manifest + loader
  * ============================================================ */
 
 export { codeManifest, CodeAdapter } from './CodeAdapter';

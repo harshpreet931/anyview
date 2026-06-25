@@ -1,5 +1,5 @@
 /* ============================================================
- * Toolbar — main toolbar with zoom, navigation, and actions
+ * Toolbar - main toolbar with zoom, navigation, and actions
  * ============================================================ */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -296,7 +296,7 @@ export function Toolbar({ features }: ToolbarProps) {
                 aria-pressed={cursorMode === 'marquee'}
                 data-toggled={cursorMode === 'marquee'}
                 aria-label="Marquee zoom"
-                title="Marquee zoom — drag a box to zoom in"
+                title="Marquee zoom - drag a box to zoom in"
               >
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
                   <rect x="2.5" y="2.5" width="11" height="11" rx="1" strokeDasharray="2.5 1.8" />

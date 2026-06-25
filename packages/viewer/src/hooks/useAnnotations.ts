@@ -1,5 +1,5 @@
 /* ============================================================
- * useAnnotations — annotation state and controls
+ * useAnnotations - annotation state and controls
  * ============================================================ */
 
 import { useViewerStore } from './useDocViewer';

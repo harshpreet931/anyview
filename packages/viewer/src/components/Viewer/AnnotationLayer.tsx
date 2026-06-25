@@ -1,7 +1,7 @@
 /* ============================================================
- * AnnotationLayer — SVG overlay that renders and edits the
+ * AnnotationLayer - SVG overlay that renders and edits the
  * annotations for one page. Tools: highlight (drag a box), ink
- * (freehand), sticky-note (click), shapes — rectangle / ellipse /
+ * (freehand), sticky-note (click), shapes - rectangle / ellipse /
  * line / arrow (drag), and free-text (click).
  *
  * All geometry is stored normalized (0–1) so annotations stay

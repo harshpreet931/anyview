@@ -1,5 +1,5 @@
 /* ============================================================
- * PDF Adapter — main thread implementation
+ * PDF Adapter - main thread implementation
  * Uses Comlink to communicate with the worker.
  * ============================================================ */
 
@@ -218,7 +218,7 @@ export class PdfAdapter implements Adapter {
     const matches: SearchMatch[] = [];
 
     for (let pageIdx = 0; pageIdx < this.parsedPdf.pageCount; pageIdx++) {
-      // Stop early when a newer query supersedes this one — the caller
+      // Stop early when a newer query supersedes this one - the caller
       // discards an aborted result, so there's no point finishing the walk.
       if (signal.aborted) break;
       const textLayer = await this.getTextLayer(pageIdx, signal);

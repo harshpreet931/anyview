@@ -5,7 +5,7 @@
       <stop offset="1" stop-color="#CE7D08"/>
     </linearGradient>
   </defs>
-  <!-- the "page behind" — the stack of formats, drawn as a hairline so it
+  <!-- the "page behind" - the stack of formats, drawn as a hairline so it
        reads on both light and dark backgrounds -->
   <rect x="5" y="5" width="15" height="16.5" rx="3.5" fill="none" stroke="#9b958a" stroke-width="1.6"/>
   <!-- the amber viewer card -->

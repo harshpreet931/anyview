@@ -1,5 +1,5 @@
 /* ============================================================
- * ViewerContainer — scrollable container with virtualization
+ * ViewerContainer - scrollable container with virtualization
  * ============================================================ */
 
 import { useRef, useEffect, useMemo, useState } from 'react';

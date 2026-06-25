@@ -93,7 +93,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
             })
             .catch(() => {});
         } else {
-          // Reflowable content just landed in the DOM — let search re-scan it.
+          // Reflowable content just landed in the DOM - let search re-scan it.
           setContentKey((k) => k + 1);
         }
       })

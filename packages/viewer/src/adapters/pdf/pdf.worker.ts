@@ -1,5 +1,5 @@
 /* ============================================================
- * PDF Worker — runs in Web Worker via Comlink
+ * PDF Worker - runs in Web Worker via Comlink
  * Handles PDF.js parsing and page rendering off main thread.
  * ============================================================ */
 

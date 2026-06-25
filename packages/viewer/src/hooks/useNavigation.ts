@@ -1,5 +1,5 @@
 /* ============================================================
- * useNavigation — page navigation controls
+ * useNavigation - page navigation controls
  * ============================================================ */
 
 import { useViewerStore } from './useDocViewer';

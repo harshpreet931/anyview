@@ -1,14 +1,14 @@
 /* ============================================================
  * Core Type System
  * All shared types & interfaces for the document viewer.
- * This file is framework-agnostic — no React imports.
+ * This file is framework-agnostic - no React imports.
  * ============================================================ */
 
 /* ---------- §3.1 Format Identity ---------- */
 
 /**
  * String literal union of all supported format identifiers.
- * Adapters are keyed by this. The union is exhaustive —
+ * Adapters are keyed by this. The union is exhaustive -
  * the switch in format-detect.ts must cover every variant.
  */
 export type FormatId =
@@ -71,7 +71,7 @@ export interface FileSourceReader {
 
 /**
  * The parsed representation of a document, produced by an adapter.
- * This is format-agnostic — the viewer core operates on this shape
+ * This is format-agnostic - the viewer core operates on this shape
  * regardless of whether it's a PDF, DOCX, or image.
  */
 export interface DocumentModel {
@@ -403,7 +403,7 @@ export interface DocViewerProps {
   onDocumentLoad?: (model: DocumentModel) => void;
   onError?: (error: import('./errors').ViewerError) => void;
   onAnnotationChange?: (annotations: Annotation[]) => void;
-  /** Controlled current page — driving this prop navigates the viewer. */
+  /** Controlled current page - driving this prop navigates the viewer. */
   page?: number;
   onPageChange?: (page: number, pageCount: number) => void;
   onZoom?: (zoom: number, fitMode: FitMode) => void;
