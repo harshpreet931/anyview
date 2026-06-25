@@ -51,6 +51,11 @@ const FORMAT_SPECS: readonly FormatSpec[] = [
     ],
   },
   {
+    id: 'ipynb',
+    extensions: ['ipynb'],
+    mimeTypes: ['application/x-ipynb+json'],
+  },
+  {
     id: 'markdown',
     extensions: ['md', 'markdown', 'mdx'],
     mimeTypes: ['text/markdown', 'text/x-markdown'],

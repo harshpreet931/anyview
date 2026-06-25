@@ -9,6 +9,7 @@ import { xlsxManifest } from './xlsx/XlsxAdapter';
 import { pptxManifest } from './pptx/PptxAdapter';
 import { csvManifest } from './csv/CsvAdapter';
 import { htmlManifest } from './html/HtmlAdapter';
+import { ipynbManifest } from './ipynb/IpynbAdapter';
 
 export function registerBuiltInAdapters(registry: AdapterRegistry): void {
   registry.register(pdfManifest, () => import('./pdf'));
@@ -21,4 +22,5 @@ export function registerBuiltInAdapters(registry: AdapterRegistry): void {
   registry.register(pptxManifest, () => import('./pptx'));
   registry.register(csvManifest, () => import('./csv'));
   registry.register(htmlManifest, () => import('./html'));
+  registry.register(ipynbManifest, () => import('./ipynb'));
 }

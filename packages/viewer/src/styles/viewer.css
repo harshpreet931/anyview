@@ -325,6 +325,53 @@
   color: var(--dv-page-ink);
 }
 
+/* ---------- Jupyter notebook (.ipynb) ---------- */
+.dv-ipynb-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 14px 0;
+}
+.dv-ipynb-input {
+  border-inline-start: 3px solid color-mix(in srgb, var(--dv-loading-color) 60%, transparent);
+  border-radius: 4px;
+  overflow: auto;
+}
+.dv-ipynb-input pre,
+.dv-ipynb-code {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  overflow: auto;
+}
+.dv-ipynb-stream,
+.dv-ipynb-result,
+.dv-ipynb-error,
+.dv-ipynb-raw {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: color-mix(in srgb, var(--dv-main-color) 5%, transparent);
+  font-family: var(--dv-font-mono, ui-monospace, monospace);
+  font-size: 0.9em;
+}
+.dv-ipynb-stderr,
+.dv-ipynb-error {
+  background: color-mix(in srgb, #e5484d 12%, transparent);
+}
+.dv-ipynb-img {
+  max-width: 100%;
+  height: auto;
+}
+.dv-ipynb-html {
+  overflow: auto;
+}
+.dv-ipynb-md:not(:first-child) {
+  margin-top: 16px;
+}
+
 @keyframes dv-page-enter {
   from { opacity: 0; transform: translateY(6px) scale(0.995); }
   to { opacity: 1; transform: translateY(0) scale(1); }

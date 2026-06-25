@@ -9,6 +9,7 @@ describe('detectFormat', () => {
     expect(detectFormat('sheet.xlsx')).toBe('xlsx');
     expect(detectFormat('photo.PNG')).toBe('image');
     expect(detectFormat('main.tsx')).toBe('code');
+    expect(detectFormat('analysis.ipynb')).toBe('ipynb');
   });
 
   it('falls back to MIME type when the extension is unknown', () => {

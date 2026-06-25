@@ -67,6 +67,11 @@
       "import": "./dist/adapters/html/index.js",
       "require": "./dist/adapters/html/index.cjs"
     },
+    "./ipynb": {
+      "types": "./dist/adapters/ipynb/index.d.ts",
+      "import": "./dist/adapters/ipynb/index.js",
+      "require": "./dist/adapters/ipynb/index.cjs"
+    },
     "./text": {
       "types": "./dist/adapters/text/index.d.ts",
       "import": "./dist/adapters/text/index.js",

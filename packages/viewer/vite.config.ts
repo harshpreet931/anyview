@@ -38,6 +38,7 @@ export default defineConfig({
         'adapters/code/index': 'src/adapters/code/index.ts',
         'adapters/csv/index': 'src/adapters/csv/index.ts',
         'adapters/html/index': 'src/adapters/html/index.ts',
+        'adapters/ipynb/index': 'src/adapters/ipynb/index.ts',
         'adapters/text/index': 'src/adapters/text/index.ts',
         'core/index': 'src/core/index.ts',
       },
