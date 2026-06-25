@@ -2,13 +2,14 @@
  * ViewerContainer — scrollable container with virtualization
  * ============================================================ */
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { PageRenderer } from './PageRenderer';
 import { EmptyState, LoadingState, ErrorState } from '../States';
 
 const PAGE_VERTICAL_GAP = 48;
+const PAGE_SPREAD_GAP = 16;
 
 export function ViewerContainer() {
   const document = useViewerStore((s) => s.document);
@@ -17,6 +18,7 @@ export function ViewerContainer() {
   const zoom = useViewerStore((s) => s.zoom);
   const rotation = useViewerStore((s) => s.rotation);
   const scrollMode = useViewerStore((s) => s.scrollMode);
+  const spreadMode = useViewerStore((s) => s.spreadMode);
   const currentPage = useViewerStore((s) => s.currentPage);
   const setCurrentPage = useViewerStore((s) => s.setCurrentPage);
   const setZoom = useViewerStore((s) => s.setZoom);
@@ -32,32 +34,65 @@ export function ViewerContainer() {
   const isHorizontal = scrollMode === 'horizontal';
   const pageCount = document?.pages.length ?? 0;
 
+  // Group page indices into rows. Each row is one page (single-page layout) or
+  // a facing pair (spread). Spreads only apply to vertical scrolling; 'odd'
+  // keeps the first page on its own (cover), 'even' pairs from the start.
+  const rows = useMemo<number[][]>(() => {
+    if (pageCount === 0) return [];
+    if (isHorizontal || spreadMode === 'none') {
+      return Array.from({ length: pageCount }, (_, i) => [i]);
+    }
+    const out: number[][] = [];
+    let i = 0;
+    if (spreadMode === 'odd') {
+      out.push([0]);
+      i = 1;
+    }
+    for (; i < pageCount; i += 2) {
+      out.push(i + 1 < pageCount ? [i, i + 1] : [i]);
+    }
+    return out;
+  }, [pageCount, isHorizontal, spreadMode]);
+
+  // pageIndex -> row index, for mapping navigation to the virtualized rows.
+  const pageToRow = useMemo<number[]>(() => {
+    const map: number[] = [];
+    rows.forEach((row, r) => row.forEach((p) => { map[p] = r; }));
+    return map;
+  }, [rows]);
+
   const virtualizer = useVirtualizer({
-    count: pageCount,
+    count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => {
-      const gap = scrollMode === 'horizontal' ? 0 : PAGE_VERTICAL_GAP;
-      if (!document) return 400 + gap;
-      const page = document.pages[index];
-      if (!page) return 400 + gap;
+    estimateSize: (rowIndex) => {
+      const gap = isHorizontal ? 0 : PAGE_VERTICAL_GAP;
+      const row = document ? rows[rowIndex] : undefined;
+      if (!row) return 400 + gap;
       const isSideways = rotation === 90 || rotation === 270;
-      const main = (isSideways ? page.width : page.height) * zoom;
-      return main + gap;
+      let main = 0;
+      for (const p of row) {
+        const page = document!.pages[p];
+        if (!page) continue;
+        const m = (isSideways ? page.width : page.height) * zoom;
+        if (m > main) main = m; // a row is as tall as its tallest page
+      }
+      return (main || 400) + gap;
     },
     overscan: 2,
-    horizontal: scrollMode === 'horizontal',
+    horizontal: isHorizontal,
   });
 
   useEffect(() => {
     if (currentPage < 0 || currentPage >= pageCount) return;
+    const targetRow = pageToRow[currentPage] ?? 0;
     const virtualItems = virtualizer.getVirtualItems();
     const firstVisible = virtualItems.length > 0 ? virtualItems[0].index : -1;
     const lastVisible = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1].index : -1;
-    if (firstVisible < 0 || (currentPage < firstVisible || currentPage > lastVisible)) {
+    if (firstVisible < 0 || targetRow < firstVisible || targetRow > lastVisible) {
       isProgrammaticScroll.current = true;
-      virtualizer.scrollToIndex(currentPage, { align: 'start' });
+      virtualizer.scrollToIndex(targetRow, { align: 'start' });
     }
-  }, [currentPage, pageCount, virtualizer]);
+  }, [currentPage, pageCount, virtualizer, pageToRow]);
 
   useEffect(() => {
     const scrollEl = scrollRef.current;
@@ -78,12 +113,13 @@ export function ViewerContainer() {
       requestAnimationFrame(() => {
         const offset = isHorizontal ? scrollEl.scrollLeft : scrollEl.scrollTop;
         const items = virtualizer.getVirtualItems();
-        let current = items.length > 0 ? items[0].index : 0;
+        let topRow = items.length > 0 ? items[0].index : 0;
         for (const it of items) {
-          if (it.start <= offset + 1) current = it.index;
+          if (it.start <= offset + 1) topRow = it.index;
           else break;
         }
-        setCurrentPage(current);
+        // Report the first page of the row at the top of the viewport.
+        setCurrentPage(rows[topRow]?.[0] ?? 0);
         ticking = false;
       });
     };
@@ -93,7 +129,7 @@ export function ViewerContainer() {
       scrollEl.removeEventListener('scroll', onScroll);
       if (settleTimer) clearTimeout(settleTimer);
     };
-  }, [virtualizer, pageCount, setCurrentPage, isHorizontal]);
+  }, [virtualizer, pageCount, setCurrentPage, isHorizontal, rows]);
 
   // Ctrl/Cmd + wheel zoom, anchored at the cursor. On macOS Chrome a trackpad
   // pinch is delivered as a wheel event with ctrlKey set, so this covers pinch
@@ -189,23 +225,41 @@ export function ViewerContainer() {
             position: 'relative',
           }}
         >
-          {virtualizer.getVirtualItems().map((virtualItem) => (
-            <div
-              key={virtualItem.key}
-              data-index={virtualItem.index}
-              ref={virtualizer.measureElement}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                ...(isHorizontal
-                  ? { height: '100%', transform: `translateX(${virtualItem.start}px)` }
-                  : { width: '100%', transform: `translateY(${virtualItem.start}px)` }),
-              }}
-            >
-              <PageRenderer pageIndex={virtualItem.index} />
-            </div>
-          ))}
+          {virtualizer.getVirtualItems().map((virtualItem) => {
+            const row = rows[virtualItem.index] ?? [];
+            return (
+              <div
+                key={virtualItem.key}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  ...(isHorizontal
+                    ? { height: '100%', transform: `translateX(${virtualItem.start}px)` }
+                    : { width: '100%', transform: `translateY(${virtualItem.start}px)` }),
+                }}
+              >
+                {row.length > 1 ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'flex-start',
+                      gap: `${PAGE_SPREAD_GAP}px`,
+                    }}
+                  >
+                    {row.map((p) => (
+                      <PageRenderer key={p} pageIndex={p} />
+                    ))}
+                  </div>
+                ) : (
+                  <PageRenderer pageIndex={row[0]!} />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
