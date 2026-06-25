@@ -21,6 +21,7 @@ export function ViewerContainer() {
   const spreadMode = useViewerStore((s) => s.spreadMode);
   const currentPage = useViewerStore((s) => s.currentPage);
   const setCurrentPage = useViewerStore((s) => s.setCurrentPage);
+  const setVisiblePages = useViewerStore((s) => s.setVisiblePages);
   const setZoom = useViewerStore((s) => s.setZoom);
   const fitMode = useViewerStore((s) => s.fitMode);
   const applyFitZoom = useViewerStore((s) => s._applyFitZoom);
@@ -165,6 +166,15 @@ export function ViewerContainer() {
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, [setZoom]);
+
+  // Publish the page indices currently rendered (the virtualizer re-renders on
+  // scroll, so this stays current). setVisiblePages no-ops when unchanged.
+  useEffect(() => {
+    const pages = virtualizer
+      .getVirtualItems()
+      .flatMap((it) => rows[it.index] ?? []);
+    setVisiblePages(pages);
+  });
 
   // Fit modes: derive a zoom from the container size + first page dims and keep
   // it in sync as the container resizes. Based on the first page so scrolling

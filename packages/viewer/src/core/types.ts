@@ -358,11 +358,23 @@ export interface RecentFile {
 
 /* ---------- §12 Component Props ---------- */
 
+export interface DocViewerSelection {
+  readonly text: string;
+  readonly pageIndex?: number;
+}
+
 export interface DocViewerProps {
   source?: FileSource;
   onDocumentLoad?: (model: DocumentModel) => void;
   onError?: (error: import('./errors').ViewerError) => void;
   onAnnotationChange?: (annotations: Annotation[]) => void;
+  /** Controlled current page — driving this prop navigates the viewer. */
+  page?: number;
+  onPageChange?: (page: number, pageCount: number) => void;
+  onZoom?: (zoom: number, fitMode: FitMode) => void;
+  onSearchResult?: (result: SearchResult | null) => void;
+  onVisiblePagesChange?: (pages: number[]) => void;
+  onSelectionChange?: (selection: DocViewerSelection) => void;
   theme?: Theme;
   initialZoom?: number;
   showToolbar?: boolean;

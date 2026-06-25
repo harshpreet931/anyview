@@ -10,6 +10,8 @@ export interface NavigationSlice {
   currentPage: number;
   scrollOffset: number;
   isScrolling: boolean;
+  /** Page indices currently rendered in the viewport (incl. overscan). */
+  visiblePages: number[];
 
   goToPage: (index: number) => void;
   nextPage: () => void;
@@ -19,6 +21,7 @@ export interface NavigationSlice {
   setCurrentPage: (index: number) => void;
   setScrollOffset: (offset: number) => void;
   setScrolling: (scrolling: boolean) => void;
+  setVisiblePages: (pages: number[]) => void;
 }
 
 export const createNavigationSlice: StateCreator<
@@ -30,6 +33,7 @@ export const createNavigationSlice: StateCreator<
   currentPage: 0,
   scrollOffset: 0,
   isScrolling: false,
+  visiblePages: [],
 
   goToPage: (index: number) => {
     const doc = get().document;
@@ -74,4 +78,12 @@ export const createNavigationSlice: StateCreator<
     set({ scrollOffset: offset, isScrolling: true }),
 
   setScrolling: (scrolling: boolean) => set({ isScrolling: scrolling }),
+
+  setVisiblePages: (pages: number[]) => {
+    const prev = get().visiblePages;
+    if (prev.length === pages.length && prev.every((p, i) => p === pages[i])) {
+      return; // no change — avoid churn
+    }
+    set({ visiblePages: pages });
+  },
 });
