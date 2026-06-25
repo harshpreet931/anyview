@@ -2,7 +2,7 @@
  * ViewerContainer — scrollable container with virtualization
  * ============================================================ */
 
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { PageRenderer } from './PageRenderer';
@@ -25,8 +25,12 @@ export function ViewerContainer() {
   const setZoom = useViewerStore((s) => s.setZoom);
   const fitMode = useViewerStore((s) => s.fitMode);
   const applyFitZoom = useViewerStore((s) => s._applyFitZoom);
+  const cursorMode = useViewerStore((s) => s.cursorMode);
+  const setCursorMode = useViewerStore((s) => s.setCursorMode);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Rubber-band rect (content coords) while dragging a marquee zoom.
+  const [marquee, setMarquee] = useState<{ left: number; top: number; w: number; h: number } | null>(null);
   const isProgrammaticScroll = useRef(false);
   // Mirror the latest zoom so the imperative wheel listener reads it fresh.
   const zoomRef = useRef(zoom);
@@ -235,6 +239,84 @@ export function ViewerContainer() {
     };
   }, [setZoom]);
 
+  // Marquee zoom: while in 'marquee' cursor mode, drag a box to zoom into it.
+  useEffect(() => {
+    if (cursorMode !== 'marquee') {
+      setMarquee(null);
+      return;
+    }
+    const el = scrollRef.current;
+    if (!el) return;
+    let start: { x: number; y: number } | null = null;
+    const toContent = (e: PointerEvent) => {
+      const rect = el.getBoundingClientRect();
+      return { x: el.scrollLeft + (e.clientX - rect.left), y: el.scrollTop + (e.clientY - rect.top) };
+    };
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      start = toContent(e);
+      setMarquee({ left: start.x, top: start.y, w: 0, h: 0 });
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        /* pointer already released / unsupported */
+      }
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!start) return;
+      const p = toContent(e);
+      setMarquee({
+        left: Math.min(start.x, p.x),
+        top: Math.min(start.y, p.y),
+        w: Math.abs(p.x - start.x),
+        h: Math.abs(p.y - start.y),
+      });
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!start) return;
+      const p = toContent(e);
+      const left = Math.min(start.x, p.x);
+      const top = Math.min(start.y, p.y);
+      const w = Math.abs(p.x - start.x);
+      const h = Math.abs(p.y - start.y);
+      start = null;
+      setMarquee(null);
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {
+        /* already released */
+      }
+      setCursorMode('select'); // one-shot: return to normal after zooming
+      if (w < 12 || h < 12) return; // ignore taps / tiny boxes
+
+      const cw = el.clientWidth;
+      const ch = el.clientHeight;
+      const cur = zoomRef.current;
+      const next = Math.max(0.1, Math.min(cur * Math.min(cw / w, ch / h), 5));
+      const ratio = next / cur;
+      const cx = left + w / 2;
+      const cy = top + h / 2;
+      isProgrammaticScroll.current = true;
+      zoomRef.current = next;
+      setZoom(next);
+      requestAnimationFrame(() => {
+        el.scrollLeft = cx * ratio - cw / 2;
+        el.scrollTop = cy * ratio - ch / 2;
+      });
+    };
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+    };
+  }, [cursorMode, setZoom, setCursorMode]);
+
   // Publish the page indices currently rendered (the virtualizer re-renders on
   // scroll, so this stays current). setVisiblePages no-ops when unchanged.
   useEffect(() => {
@@ -286,6 +368,7 @@ export function ViewerContainer() {
       tabIndex={0}
       role="region"
       aria-label="Document content"
+      data-marquee={cursorMode === 'marquee' || undefined}
     >
       {showState ? (
         <>
@@ -338,6 +421,19 @@ export function ViewerContainer() {
               </div>
             );
           })}
+
+          {marquee && (
+            <div
+              className="dv-marquee-rect"
+              style={{
+                position: 'absolute',
+                left: `${marquee.left}px`,
+                top: `${marquee.top}px`,
+                width: `${marquee.w}px`,
+                height: `${marquee.h}px`,
+              }}
+            />
+          )}
         </div>
       )}
     </div>

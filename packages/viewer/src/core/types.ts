@@ -347,7 +347,7 @@ export type SidebarView = 'thumbnails' | 'outline' | 'attachments' | 'layers';
 export type FitMode = 'actual-size' | 'page-fit' | 'page-width' | 'custom';
 export type ScrollMode = 'page' | 'vertical' | 'horizontal' | 'wrapped';
 export type SpreadMode = 'none' | 'odd' | 'even';
-export type CursorMode = 'select' | 'hand';
+export type CursorMode = 'select' | 'hand' | 'marquee';
 
 export interface RecentFile {
   readonly id: string;
