@@ -5,7 +5,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings, formatString } from '../../i18n/I18nProvider';
-import type { AdapterFeatures, AnnotationType, SearchQuery } from '../../core/types';
+import type { AdapterFeatures, AnnotationType, SearchQuery, SpreadMode } from '../../core/types';
 
 interface ToolbarProps {
   features?: AdapterFeatures;
@@ -43,6 +43,8 @@ export function Toolbar({ features }: ToolbarProps) {
   const setZoom = useViewerStore((s) => s.setZoom);
   const fitMode = useViewerStore((s) => s.fitMode);
   const setFitMode = useViewerStore((s) => s.setFitMode);
+  const spreadMode = useViewerStore((s) => s.spreadMode);
+  const setSpreadMode = useViewerStore((s) => s.setSpreadMode);
   const rotateClockwise = useViewerStore((s) => s.rotateClockwise);
   const rotateCounterClockwise = useViewerStore((s) => s.rotateCounterClockwise);
   const currentPage = useViewerStore((s) => s.currentPage);
@@ -285,6 +287,20 @@ export function Toolbar({ features }: ToolbarProps) {
                 </svg>
               </button>
             </>
+          )}
+
+          {pageCount > 1 && (
+            <select
+              className="dv-zoom-select"
+              value={spreadMode}
+              onChange={(e) => setSpreadMode(e.target.value as SpreadMode)}
+              aria-label="Page layout"
+              title="Page layout"
+            >
+              <option value="none">Single page</option>
+              <option value="even">Two pages</option>
+              <option value="odd">Two pages (cover)</option>
+            </select>
           )}
         </div>
 
