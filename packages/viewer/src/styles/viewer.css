@@ -188,6 +188,8 @@
   position: absolute;
   inset: 0;
   overflow: auto;
+  /* Allow pan-scroll but let us handle two-finger pinch zoom ourselves. */
+  touch-action: pan-x pan-y;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--dv-main-color) 20%, transparent) transparent;
 }

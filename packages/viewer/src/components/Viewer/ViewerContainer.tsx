@@ -167,6 +167,74 @@ export function ViewerContainer() {
     return () => el.removeEventListener('wheel', onWheel);
   }, [setZoom]);
 
+  // Two-finger touch pinch zoom, anchored at the pinch midpoint. (Trackpad
+  // pinch is already handled as ctrl+wheel above; this is for touchscreens.)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const pts = new Map<number, { x: number; y: number }>();
+    let startDist = 0;
+    let startZoom = 1;
+    let startMid = { x: 0, y: 0 };
+    let startScroll = { left: 0, top: 0 };
+    let pinching = false;
+
+    const twoPoints = () => Array.from(pts.values());
+    const distance = () => {
+      const [a, b] = twoPoints();
+      return Math.hypot(a!.x - b!.x, a!.y - b!.y);
+    };
+    const midpoint = () => {
+      const [a, b] = twoPoints();
+      const rect = el.getBoundingClientRect();
+      return { x: (a!.x + b!.x) / 2 - rect.left, y: (a!.y + b!.y) / 2 - rect.top };
+    };
+
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) {
+        pinching = true;
+        startDist = distance() || 1;
+        startZoom = zoomRef.current;
+        startMid = midpoint();
+        startScroll = { left: el.scrollLeft, top: el.scrollTop };
+      }
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (!pinching || pts.size < 2) return;
+      e.preventDefault();
+      const next = Math.max(0.1, Math.min((startZoom * distance()) / startDist, 5));
+      const ratio = next / startZoom;
+      isProgrammaticScroll.current = true;
+      zoomRef.current = next;
+      setZoom(next);
+      const contentX = startScroll.left + startMid.x;
+      const contentY = startScroll.top + startMid.y;
+      requestAnimationFrame(() => {
+        el.scrollLeft = contentX * ratio - startMid.x;
+        el.scrollTop = contentY * ratio - startMid.y;
+      });
+    };
+    const onUp = (e: PointerEvent) => {
+      pts.delete(e.pointerId);
+      if (pts.size < 2) pinching = false;
+    };
+
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointermove', onMove, { passive: false });
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+    };
+  }, [setZoom]);
+
   // Publish the page indices currently rendered (the virtualizer re-renders on
   // scroll, so this stays current). setVisiblePages no-ops when unchanged.
   useEffect(() => {
