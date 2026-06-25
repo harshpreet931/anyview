@@ -19,9 +19,13 @@ export function ViewerContainer() {
   const scrollMode = useViewerStore((s) => s.scrollMode);
   const currentPage = useViewerStore((s) => s.currentPage);
   const setCurrentPage = useViewerStore((s) => s.setCurrentPage);
+  const setZoom = useViewerStore((s) => s.setZoom);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScroll = useRef(false);
+  // Mirror the latest zoom so the imperative wheel listener reads it fresh.
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
 
   const isHorizontal = scrollMode === 'horizontal';
   const pageCount = document?.pages.length ?? 0;
@@ -88,6 +92,41 @@ export function ViewerContainer() {
       if (settleTimer) clearTimeout(settleTimer);
     };
   }, [virtualizer, pageCount, setCurrentPage, isHorizontal]);
+
+  // Ctrl/Cmd + wheel zoom, anchored at the cursor. On macOS Chrome a trackpad
+  // pinch is delivered as a wheel event with ctrlKey set, so this covers pinch
+  // too. Listener is non-passive so we can preventDefault the browser page zoom.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const old = zoomRef.current;
+      // MIN/MAX mirror viewportSlice's clamp so the focal-point math matches.
+      const next = Math.max(0.1, Math.min(old * Math.exp(-e.deltaY * 0.0015), 5));
+      if (Math.abs(next - old) < 1e-4) return;
+
+      const rect = el.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      const contentX = el.scrollLeft + cx;
+      const contentY = el.scrollTop + cy;
+      const ratio = next / old;
+
+      isProgrammaticScroll.current = true;
+      zoomRef.current = next; // update now so a same-frame burst accumulates
+      setZoom(next);
+      // After the page boxes re-measure at the new zoom, keep the same content
+      // point under the cursor.
+      requestAnimationFrame(() => {
+        el.scrollLeft = contentX * ratio - cx;
+        el.scrollTop = contentY * ratio - cy;
+      });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [setZoom]);
 
   const showState =
     loadState === 'idle' ||
