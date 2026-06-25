@@ -20,6 +20,8 @@ export function ViewerContainer() {
   const currentPage = useViewerStore((s) => s.currentPage);
   const setCurrentPage = useViewerStore((s) => s.setCurrentPage);
   const setZoom = useViewerStore((s) => s.setZoom);
+  const fitMode = useViewerStore((s) => s.fitMode);
+  const applyFitZoom = useViewerStore((s) => s._applyFitZoom);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScroll = useRef(false);
@@ -127,6 +129,35 @@ export function ViewerContainer() {
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, [setZoom]);
+
+  // Fit modes: derive a zoom from the container size + first page dims and keep
+  // it in sync as the container resizes. Based on the first page so scrolling
+  // between differently-sized pages doesn't jump the zoom.
+  useEffect(() => {
+    if (fitMode === 'custom') return;
+    const el = scrollRef.current;
+    const page = document?.pages[0];
+    if (!el || !page) return;
+
+    const recompute = () => {
+      const isSideways = rotation === 90 || rotation === 270;
+      const pw = isSideways ? page.height : page.width;
+      const ph = isSideways ? page.width : page.height;
+      const availW = el.clientWidth - PAGE_VERTICAL_GAP;
+      const availH = el.clientHeight - PAGE_VERTICAL_GAP;
+      if (availW <= 0 || availH <= 0 || pw <= 0 || ph <= 0) return;
+      let z = 1;
+      if (fitMode === 'page-width') z = availW / pw;
+      else if (fitMode === 'page-fit') z = Math.min(availW / pw, availH / ph);
+      else if (fitMode === 'actual-size') z = 1;
+      if (Number.isFinite(z) && z > 0) applyFitZoom(z);
+    };
+
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fitMode, document, rotation, applyFitZoom]);
 
   const showState =
     loadState === 'idle' ||

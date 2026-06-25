@@ -41,6 +41,8 @@ export function Toolbar({ features }: ToolbarProps) {
   const zoomIn = useViewerStore((s) => s.zoomIn);
   const zoomOut = useViewerStore((s) => s.zoomOut);
   const setZoom = useViewerStore((s) => s.setZoom);
+  const fitMode = useViewerStore((s) => s.fitMode);
+  const setFitMode = useViewerStore((s) => s.setFitMode);
   const rotateClockwise = useViewerStore((s) => s.rotateClockwise);
   const rotateCounterClockwise = useViewerStore((s) => s.rotateCounterClockwise);
   const currentPage = useViewerStore((s) => s.currentPage);
@@ -104,6 +106,34 @@ export function Toolbar({ features }: ToolbarProps) {
   const handleCloseSearch = useCallback(() => {
     setSearchOpen(false);
   }, [setSearchOpen]);
+
+  // Value shown in the zoom control. Fit modes win; otherwise a matching preset,
+  // else a live "NN%" entry so custom zoom (wheel, Ctrl±) reads correctly.
+  const ZOOM_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 5];
+  const zoomPct = Math.round(zoom * 100);
+  const matchedPreset = ZOOM_PRESETS.find((p) => Math.abs(p - zoom) < 0.005);
+  const zoomValue =
+    fitMode === 'page-fit'
+      ? 'fit-page'
+      : fitMode === 'page-width'
+        ? 'fit-width'
+        : fitMode === 'actual-size'
+          ? 'actual'
+          : matchedPreset !== undefined
+            ? String(matchedPreset)
+            : 'live';
+
+  const handleZoomSelect = useCallback(
+    (value: string) => {
+      if (value === 'fit-page') setFitMode('page-fit');
+      else if (value === 'fit-width') setFitMode('page-width');
+      else if (value === 'actual') setFitMode('actual-size');
+      else if (value === 'live') {
+        /* display-only */
+      } else setZoom(parseFloat(value));
+    },
+    [setFitMode, setZoom],
+  );
 
   const matchCount = searchResult?.matches.length ?? 0;
 
@@ -199,18 +229,24 @@ export function Toolbar({ features }: ToolbarProps) {
               </button>
               <select
                 className="dv-zoom-select"
-                value={zoom}
-                onChange={(e) => setZoom(parseFloat(e.target.value))}
+                value={zoomValue}
+                onChange={(e) => handleZoomSelect(e.target.value)}
                 aria-label="Zoom level"
               >
-                <option value={0.5}>50%</option>
-                <option value={0.75}>75%</option>
-                <option value={1.0}>100%</option>
-                <option value={1.25}>125%</option>
-                <option value={1.5}>150%</option>
-                <option value={2.0}>200%</option>
-                <option value={3.0}>300%</option>
-                <option value={5.0}>500%</option>
+                {zoomValue === 'live' && <option value="live">{zoomPct}%</option>}
+                <optgroup label="Fit">
+                  <option value="fit-page">Fit page</option>
+                  <option value="fit-width">Fit width</option>
+                  <option value="actual">Actual size</option>
+                </optgroup>
+                <option value="0.5">50%</option>
+                <option value="0.75">75%</option>
+                <option value="1">100%</option>
+                <option value="1.25">125%</option>
+                <option value="1.5">150%</option>
+                <option value="2">200%</option>
+                <option value="3">300%</option>
+                <option value="5">500%</option>
               </select>
               <button
                 className="dv-button"

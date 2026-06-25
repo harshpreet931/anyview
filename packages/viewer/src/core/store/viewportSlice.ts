@@ -24,6 +24,8 @@ export interface ViewportSlice {
   zoomIn: () => void;
   zoomOut: () => void;
   setFitMode: (mode: FitMode) => void;
+  /** Apply a computed fit zoom WITHOUT switching fitMode back to 'custom'. */
+  _applyFitZoom: (zoom: number) => void;
   setRotation: (rotation: 0 | 90 | 180 | 270) => void;
   rotateClockwise: () => void;
   rotateCounterClockwise: () => void;
@@ -75,6 +77,9 @@ export const createViewportSlice: StateCreator<
   },
 
   setFitMode: (mode: FitMode) => set({ fitMode: mode }),
+
+  _applyFitZoom: (zoom: number) =>
+    set({ zoom: Math.max(MIN_ZOOM, Math.min(zoom, MAX_ZOOM)) }),
 
   setRotation: (rotation: 0 | 90 | 180 | 270) => set({ rotation }),
 
