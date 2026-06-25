@@ -6,13 +6,13 @@
 import type { StateCreator } from 'zustand';
 import type {
   Annotation,
-  AnnotationType,
+  AnnotationTool,
   AnnotationChangeListener,
 } from '../types';
 
 export interface AnnotationSlice {
   annotations: Annotation[];
-  activeAnnotationTool: AnnotationType | null;
+  activeAnnotationTool: AnnotationTool | null;
   selectedAnnotationId: string | null;
 
   addAnnotation: (annotation: Annotation) => void;
@@ -24,7 +24,7 @@ export interface AnnotationSlice {
   setAnnotations: (annotations: Annotation[]) => void;
   clearAnnotations: () => void;
   selectAnnotation: (id: string | null) => void;
-  setActiveTool: (tool: AnnotationType | null) => void;
+  setActiveTool: (tool: AnnotationTool | null) => void;
   onAnnotationChange: (cb: AnnotationChangeListener) => () => void;
   /** Clear annotations on document open/close AND notify listeners. */
   _resetAnnotations: () => void;
@@ -91,7 +91,7 @@ export const createAnnotationSlice: StateCreator<
     selectAnnotation: (id: string | null) =>
       set({ selectedAnnotationId: id }),
 
-    setActiveTool: (tool: AnnotationType | null) =>
+    setActiveTool: (tool: AnnotationTool | null) =>
       set({ activeAnnotationTool: tool }),
 
     onAnnotationChange: (cb: AnnotationChangeListener) => {

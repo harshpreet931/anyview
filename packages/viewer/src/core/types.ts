@@ -268,10 +268,45 @@ export interface StickyNoteAnnotation extends BaseAnnotation<'sticky-note'> {
   };
 }
 
+export type ShapeKind = 'rectangle' | 'ellipse' | 'line' | 'arrow';
+
+export interface ShapeAnnotation extends BaseAnnotation<'shape'> {
+  readonly data: {
+    readonly shape: ShapeKind;
+    /** Drag start/end, normalized 0–1. Direction is preserved for line/arrow. */
+    readonly from: { x: number; y: number };
+    readonly to: { x: number; y: number };
+    readonly strokeWidth: number;
+  };
+}
+
+export interface FreeTextAnnotation extends BaseAnnotation<'free-text'> {
+  readonly data: {
+    readonly x: number;
+    readonly y: number;
+    readonly text: string;
+    /** Font size as a fraction of page height. */
+    readonly fontSize: number;
+  };
+}
+
 export type Annotation =
   | HighlightAnnotation
   | InkAnnotation
-  | StickyNoteAnnotation;
+  | StickyNoteAnnotation
+  | ShapeAnnotation
+  | FreeTextAnnotation;
+
+/** A selectable annotation creation tool (distinct from the stored type). */
+export type AnnotationTool =
+  | 'highlight'
+  | 'ink'
+  | 'sticky-note'
+  | 'rectangle'
+  | 'ellipse'
+  | 'line'
+  | 'arrow'
+  | 'free-text';
 
 export type AnnotationChangeListener = (annotations: Annotation[]) => void;
 
@@ -410,7 +445,7 @@ export interface DocViewerRef {
   deleteAnnotation: (id: string) => void;
   setAnnotations: (annotations: Annotation[]) => void;
   clearAnnotations: () => void;
-  setActiveTool: (tool: AnnotationType | null) => void;
+  setActiveTool: (tool: AnnotationTool | null) => void;
   exportAnnotations: () => import('./annotations').SerializedAnnotations;
   importAnnotations: (
     data: import('./annotations').SerializedAnnotations | string,
