@@ -284,7 +284,7 @@
   background: color-mix(in srgb, var(--dv-loading-color) 35%, transparent);
 }
 
-/* ---------- Search Highlights — positioned (canvas formats) ---------- */
+/* ---------- Search Highlights - positioned (canvas formats) ---------- */
 
 .dv-search-layer {
   position: absolute;
@@ -306,7 +306,7 @@
   outline: 1.5px solid rgb(255 140 0 / 0.95);
 }
 
-/* ---------- Search Highlights — DOM ranges (reflowable formats) ---------- */
+/* ---------- Search Highlights - DOM ranges (reflowable formats) ---------- */
 
 ::highlight(dv-search) {
   background-color: rgb(255 212 0 / 0.45);

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createViewerStore } from './index';
 
-describe('viewport slice — zoom & fit', () => {
+describe('viewport slice - zoom & fit', () => {
   it('setZoom clamps to [0.1, 5] and switches fitMode to custom', () => {
     const s = createViewerStore();
     s.getState().setFitMode('page-fit');

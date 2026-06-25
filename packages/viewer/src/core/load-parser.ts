@@ -1,9 +1,9 @@
 /* ============================================================
- * loadParser — dynamic import of a third-party parser library.
+ * loadParser - dynamic import of a third-party parser library.
  *
  * Adapters code-split their heavy parsers (xlsx, mammoth, jszip, …)
  * behind dynamic imports. When the dependency is missing from the
- * consumer's app — or a chunk fails to load — the raw bundler error
+ * consumer's app - or a chunk fails to load - the raw bundler error
  * is cryptic. This wraps the import so the failure becomes an
  * actionable ViewerError that names the package to install.
  * ============================================================ */

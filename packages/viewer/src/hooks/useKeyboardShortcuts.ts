@@ -1,5 +1,5 @@
 /* ============================================================
- * useKeyboardShortcuts — global keyboard shortcut handler
+ * useKeyboardShortcuts - global keyboard shortcut handler
  * ============================================================ */
 
 import { useEffect } from 'react';

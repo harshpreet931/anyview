@@ -1,5 +1,5 @@
 /* ============================================================
- * useZoom — zoom and fit mode controls
+ * useZoom - zoom and fit mode controls
  * ============================================================ */
 
 import { useViewerStore } from './useDocViewer';

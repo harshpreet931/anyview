@@ -1,5 +1,5 @@
 /* ============================================================
- * useSearch — search state and controls
+ * useSearch - search state and controls
  * ============================================================ */
 
 import { useViewerStore } from './useDocViewer';

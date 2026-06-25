@@ -17,7 +17,7 @@
   --dv-icon-size: 18px;
   --dv-loading-bar-height: 3px;
 
-  /* Colors — using light-dark() */
+  /* Colors - using light-dark() */
   --dv-main-color: light-dark(rgb(28 28 30), rgb(235 235 240));
   --dv-body-bg-color: light-dark(rgb(242 242 245), rgb(30 30 34));
   --dv-toolbar-bg-color: light-dark(rgb(255 255 255), rgb(40 40 44));
@@ -34,14 +34,14 @@
   --dv-loading-color: light-dark(rgb(10 132 255), rgb(0 128 255));
   --dv-overlay-color: light-dark(rgb(0 0 0 / 0.35), rgb(0 0 0 / 0.5));
 
-  /* Document "paper" — a rendered page is paper regardless of UI theme,
+  /* Document "paper" - a rendered page is paper regardless of UI theme,
      so its surface and ink are fixed (like a white PDF page in dark mode).
      Reflowable adapters (DOCX, Markdown, code, CSV, …) render onto this. */
   --dv-page-bg: #ffffff;
   --dv-page-ink: #1f2328;
   --dv-page-ink-soft: #57606a;
 
-  /* Shadows — layered for depth */
+  /* Shadows - layered for depth */
   --dv-shadow-xs: 0 1px 2px rgb(0 0 0 / 0.04);
   --dv-shadow-sm: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
   --dv-shadow-md: 0 4px 12px rgb(0 0 0 / 0.08), 0 2px 4px rgb(0 0 0 / 0.04);
@@ -56,7 +56,7 @@
   --dv-spacing-xl: 24px;
   --dv-spacing-2xl: 32px;
 
-  /* Radius — concentric scale */
+  /* Radius - concentric scale */
   --dv-radius-xs: 2px;
   --dv-radius-sm: 4px;
   --dv-radius-md: 6px;

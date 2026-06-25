@@ -1,5 +1,5 @@
 /* ============================================================
- * PasswordDialog — password prompt for encrypted documents
+ * PasswordDialog - password prompt for encrypted documents
  * ============================================================ */
 
 import { useState, useCallback, useRef } from 'react';
@@ -9,7 +9,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface PasswordDialogProps {
   fileName: string;
-  /** True when a prior attempt was rejected — shows a "wrong password" hint. */
+  /** True when a prior attempt was rejected - shows a "wrong password" hint. */
   incorrect?: boolean;
   onSubmit: (password: string) => void;
   onCancel: () => void;

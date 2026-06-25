@@ -1,5 +1,5 @@
 /* ============================================================
- * Button — styled button with variants
+ * Button - styled button with variants
  * ============================================================ */
 
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';

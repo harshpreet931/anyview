@@ -13,7 +13,7 @@ async function openPdf(page: Page) {
 const pageWidth = (page: Page) =>
   page.locator('.dv-page').first().evaluate((el) => el.getBoundingClientRect().width);
 
-test.describe('zoom — fit modes', () => {
+test.describe('zoom - fit modes', () => {
   test('fit-width sizes the page to the available width', async ({ page }) => {
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'fit-width');
@@ -39,7 +39,7 @@ test.describe('zoom — fit modes', () => {
   });
 });
 
-test.describe('zoom — gestures', () => {
+test.describe('zoom - gestures', () => {
   test('Ctrl+wheel zooms the page in', async ({ page }) => {
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'actual');
@@ -73,7 +73,7 @@ test.describe('zoom — gestures', () => {
   });
 });
 
-test.describe('layout — two-page spread', () => {
+test.describe('layout - two-page spread', () => {
   test('two-up renders pages side by side', async ({ page }) => {
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'actual');
@@ -87,7 +87,7 @@ test.describe('layout — two-page spread', () => {
   });
 });
 
-test.describe('empty state — open files', () => {
+test.describe('empty state - open files', () => {
   test('dropping a file opens it', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.dv-empty-dropzone')).toBeVisible();
@@ -107,7 +107,7 @@ test.describe('empty state — open files', () => {
   });
 });
 
-test.describe('format — Jupyter notebook', () => {
+test.describe('format - Jupyter notebook', () => {
   test('renders markdown, code, and outputs', async ({ page }) => {
     await page.goto('/');
     await page.locator('.pg-upload-btn input[type="file"]').setInputFiles(fixture('sample.ipynb'));
@@ -119,7 +119,7 @@ test.describe('format — Jupyter notebook', () => {
   });
 });
 
-test.describe('annotations — shapes & free-text', () => {
+test.describe('annotations - shapes & free-text', () => {
   test('draws rectangle, line, and free-text', async ({ page }) => {
     page.on('dialog', (d) => d.accept('Note text'));
     await openPdf(page);

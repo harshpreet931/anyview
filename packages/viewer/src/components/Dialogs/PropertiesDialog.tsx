@@ -1,5 +1,5 @@
 /* ============================================================
- * PropertiesDialog — document metadata viewer
+ * PropertiesDialog - document metadata viewer
  * ============================================================ */
 
 import { useRef } from 'react';

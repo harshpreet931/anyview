@@ -1,5 +1,5 @@
 /* ============================================================
- * useDocument — subscribe to document state
+ * useDocument - subscribe to document state
  * ============================================================ */
 
 import { useViewerStore } from './useDocViewer';

@@ -1,5 +1,5 @@
 /* ============================================================
- * DocViewer — main top-level component
+ * DocViewer - main top-level component
  * ============================================================ */
 
 import {
@@ -82,7 +82,7 @@ function DocViewerInner(
 
   useKeyboardShortcuts();
 
-  // Free most of the rendered-page cache while the tab is backgrounded — the
+  // Free most of the rendered-page cache while the tab is backgrounded - the
   // portable memory-pressure cue. Pages re-render lazily when it returns.
   useEffect(() => {
     const onVisibility = () => {

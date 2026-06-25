@@ -105,7 +105,7 @@ export const createViewportSlice: StateCreator<
 
   toggleFullscreen: () => {
     if (typeof document === 'undefined') return;
-    // isFullscreen is not flipped optimistically here — the fullscreenchange
+    // isFullscreen is not flipped optimistically here - the fullscreenchange
     // listener in DocViewer drives it, so Esc and browser chrome stay in sync.
     if (document.fullscreenElement) {
       document.exitFullscreen?.().catch(() => {});

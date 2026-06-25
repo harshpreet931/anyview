@@ -1,5 +1,5 @@
 /* ============================================================
- * useFileInput — file picker + drag-drop helper
+ * useFileInput - file picker + drag-drop helper
  * ============================================================ */
 
 import { useCallback, useRef, useState } from 'react';

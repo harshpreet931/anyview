@@ -16,7 +16,7 @@ const clientBanner = (chunk: { isEntry?: boolean; name?: string }) =>
 
 export default defineConfig({
   // Relative base so the bundled PDF Web Worker resolves via `import.meta.url`
-  // relative to the package — NOT the consumer's site root (which 404s).
+  // relative to the package - NOT the consumer's site root (which 404s).
   base: './',
   plugins: [
     react(),

@@ -1,5 +1,5 @@
 /* ============================================================
- * useVirtualizer — wraps @tanstack/react-virtual with store state
+ * useVirtualizer - wraps @tanstack/react-virtual with store state
  * ============================================================ */
 
 import { type RefObject } from 'react';

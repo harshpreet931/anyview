@@ -1,5 +1,5 @@
 /* ============================================================
- * Sidebar — collapsible sidebar with view selector
+ * Sidebar - collapsible sidebar with view selector
  * ============================================================ */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -40,7 +40,7 @@ export function Sidebar() {
 
   if (!sidebarOpen || !document) return null;
 
-  // Only offer tabs that have content — an empty Outline/Attachments tab is a
+  // Only offer tabs that have content - an empty Outline/Attachments tab is a
   // dead click. Thumbnails always apply.
   const views: { id: SidebarView; label: string }[] = [
     { id: 'thumbnails', label: 'Thumbnails' },
@@ -173,7 +173,7 @@ function Thumbnail({
 }) {
   // Canvas formats (PDF, image) paint into a <canvas>; reflowable formats
   // render their real DOM at full size into a <div> that we shrink with a CSS
-  // transform — both produce a true preview of the page.
+  // transform - both produce a true preview of the page.
   const canvasFormat = format === 'pdf' || format === 'image';
   const buttonRef = useRef<HTMLButtonElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);

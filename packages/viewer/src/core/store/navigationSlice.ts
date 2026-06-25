@@ -82,7 +82,7 @@ export const createNavigationSlice: StateCreator<
   setVisiblePages: (pages: number[]) => {
     const prev = get().visiblePages;
     if (prev.length === pages.length && prev.every((p, i) => p === pages[i])) {
-      return; // no change — avoid churn
+      return; // no change - avoid churn
     }
     set({ visiblePages: pages });
   },

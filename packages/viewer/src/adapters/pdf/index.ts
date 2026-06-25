@@ -1,5 +1,5 @@
 /* ============================================================
- * PDF Adapter Entry — manifest + loader
+ * PDF Adapter Entry - manifest + loader
  * ============================================================ */
 
 export { pdfManifest, PdfAdapter } from './PdfAdapter';

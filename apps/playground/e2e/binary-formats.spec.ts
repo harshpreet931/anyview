@@ -19,7 +19,7 @@ async function reflowText(page: Page) {
   return target;
 }
 
-test.describe('binary formats — native (no iframe) rendering', () => {
+test.describe('binary formats - native (no iframe) rendering', () => {
   test('DOCX renders real text via mammoth', async ({ page }) => {
     await openFile(page, 'sample.docx');
     const target = await reflowText(page);

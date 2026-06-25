@@ -1,5 +1,5 @@
 /* ============================================================
- * useDocViewer — main hook for accessing the viewer store
+ * useDocViewer - main hook for accessing the viewer store
  * ============================================================ */
 
 import { useStore } from 'zustand';

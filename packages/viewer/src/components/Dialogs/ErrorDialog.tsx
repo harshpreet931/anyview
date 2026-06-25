@@ -1,5 +1,5 @@
 /* ============================================================
- * ErrorDialog — error display with retry
+ * ErrorDialog - error display with retry
  * ============================================================ */
 
 import { useRef } from 'react';

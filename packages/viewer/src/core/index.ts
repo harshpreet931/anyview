@@ -1,5 +1,5 @@
 /* ============================================================
- * Core barrel export — framework-agnostic
+ * Core barrel export - framework-agnostic
  * ============================================================ */
 
 export * from './types';

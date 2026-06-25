@@ -1,6 +1,6 @@
 /* ============================================================
  * Image Adapter
- * Native browser image rendering — no worker needed.
+ * Native browser image rendering - no worker needed.
  * ============================================================ */
 
 import type {
