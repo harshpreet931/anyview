@@ -16,6 +16,7 @@ import type {
   AdapterRegistry,
 } from '../core/types';
 import { createRegistry } from '../core/registry';
+import { parseAnnotations } from '../core/annotations';
 import { registerBuiltInAdapters } from '../adapters';
 import { createViewerStore } from '../core/store';
 import { ViewerStoreProvider, useViewerStore } from '../hooks/useDocViewer';
@@ -234,6 +235,21 @@ export const DocViewer = forwardRef<DocViewerRef, DocViewerProps>(
       print: () => store.getState().printDocument(),
       getDocument: () => store.getState().document,
       getAnnotations: () => store.getState().annotations,
+      addAnnotation: (annotation) => store.getState().addAnnotation(annotation),
+      updateAnnotation: (id, patch) => store.getState().updateAnnotation(id, patch),
+      deleteAnnotation: (id) => store.getState().deleteAnnotation(id),
+      setAnnotations: (annotations) => store.getState().setAnnotations(annotations),
+      clearAnnotations: () => store.getState().clearAnnotations(),
+      setActiveTool: (tool) => store.getState().setActiveTool(tool),
+      exportAnnotations: () => ({
+        version: 1,
+        annotations: store.getState().annotations,
+      }),
+      importAnnotations: (data) => {
+        const annotations =
+          typeof data === 'string' ? parseAnnotations(data) : data.annotations;
+        store.getState().setAnnotations(annotations);
+      },
     }), [store]);
 
     return (

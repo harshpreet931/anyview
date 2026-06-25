@@ -21,6 +21,8 @@ export interface AnnotationSlice {
     patch: Partial<Omit<Annotation, 'id' | 'pageIndex' | 'type'>>,
   ) => void;
   deleteAnnotation: (id: string) => void;
+  setAnnotations: (annotations: Annotation[]) => void;
+  clearAnnotations: () => void;
   selectAnnotation: (id: string | null) => void;
   setActiveTool: (tool: AnnotationType | null) => void;
   onAnnotationChange: (cb: AnnotationChangeListener) => () => void;
@@ -72,6 +74,18 @@ export const createAnnotationSlice: StateCreator<
           get().selectedAnnotationId === id ? null : get().selectedAnnotationId,
       });
       notify(next);
+    },
+
+    setAnnotations: (annotations: Annotation[]) => {
+      const next = [...annotations];
+      set({ annotations: next, selectedAnnotationId: null });
+      notify(next);
+    },
+
+    clearAnnotations: () => {
+      const had = get().annotations.length > 0;
+      set({ annotations: [], selectedAnnotationId: null });
+      if (had) notify([]);
     },
 
     selectAnnotation: (id: string | null) =>
