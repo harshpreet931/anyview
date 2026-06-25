@@ -35,12 +35,19 @@ function DocViewerInner(
     onDocumentLoad,
     onError,
     onAnnotationChange,
+    page,
+    onPageChange,
+    onZoom,
+    onSearchResult,
+    onVisiblePagesChange,
+    onSelectionChange,
     theme = 'auto',
     initialZoom,
     locale = 'en',
     showToolbar = true,
     showSidebar = true,
     className,
+    store,
   } = props;
 
   const openDocument = useViewerStore((s) => s.openDocument);
@@ -112,6 +119,66 @@ function DocViewerInner(
     if (!onAnnotationChange) return;
     return onAnnotationChangeSub(onAnnotationChange);
   }, [onAnnotationChange, onAnnotationChangeSub]);
+
+  // Bridge store state to consumer callbacks via selector subscriptions.
+  useEffect(() => {
+    if (!onPageChange) return;
+    return store.subscribe(
+      (s) => s.currentPage,
+      (p) => onPageChange(p, store.getState().document?.pageCount ?? 0),
+    );
+  }, [onPageChange, store]);
+
+  useEffect(() => {
+    if (!onZoom) return;
+    return store.subscribe(
+      (s) => s.zoom,
+      (z) => onZoom(z, store.getState().fitMode),
+    );
+  }, [onZoom, store]);
+
+  useEffect(() => {
+    if (!onSearchResult) return;
+    return store.subscribe(
+      (s) => s.searchResult,
+      (r) => onSearchResult(r),
+    );
+  }, [onSearchResult, store]);
+
+  useEffect(() => {
+    if (!onVisiblePagesChange) return;
+    return store.subscribe(
+      (s) => s.visiblePages,
+      (pages) => onVisiblePagesChange(pages),
+      { equalityFn: (a, b) => a.length === b.length && a.every((p, i) => p === b[i]) },
+    );
+  }, [onVisiblePagesChange, store]);
+
+  // Controlled page: driving the `page` prop navigates the viewer.
+  useEffect(() => {
+    if (page != null) store.getState().goToPage(page);
+  }, [page, store]);
+
+  // Report text selections made inside the viewer.
+  useEffect(() => {
+    if (!onSelectionChange) return;
+    const handler = () => {
+      const root = rootRef.current;
+      const sel = window.getSelection();
+      if (!root || !sel || sel.rangeCount === 0) return;
+      const anchor = sel.anchorNode;
+      if (!anchor || !root.contains(anchor)) return;
+      const host = anchor.nodeType === 1 ? (anchor as Element) : anchor.parentElement;
+      const pageEl = host?.closest?.('[data-page-index]');
+      const idx = pageEl ? Number(pageEl.getAttribute('data-page-index')) : NaN;
+      onSelectionChange({
+        text: sel.toString(),
+        ...(Number.isNaN(idx) ? {} : { pageIndex: idx }),
+      });
+    };
+    window.document.addEventListener('selectionchange', handler);
+    return () => window.document.removeEventListener('selectionchange', handler);
+  }, [onSelectionChange]);
 
   useEffect(() => {
     if (initialZoom !== undefined) {
