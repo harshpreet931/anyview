@@ -163,6 +163,68 @@ const jsonContent = `{
   ]
 }`;
 
+const notebookContent = JSON.stringify({
+  cells: [
+    {
+      cell_type: 'markdown',
+      source: [
+        '# Sales Analysis\n',
+        '\n',
+        'A quick look at quarterly sales — rendered by **Anyview**, no kernel required.\n',
+        '\n',
+        '> Markdown cells, syntax-highlighted code, and saved outputs all render natively.',
+      ],
+    },
+    {
+      cell_type: 'code',
+      source: [
+        'import pandas as pd\n',
+        '\n',
+        'df = pd.DataFrame({\n',
+        "    'quarter': ['Q1', 'Q2', 'Q3', 'Q4'],\n",
+        "    'revenue': [120, 145, 138, 172],\n",
+        '})\n',
+        'df',
+      ],
+      outputs: [
+        {
+          output_type: 'execute_result',
+          data: {
+            'text/plain': [
+              '  quarter  revenue\n0      Q1      120\n1      Q2      145\n2      Q3      138\n3      Q4      172',
+            ],
+          },
+        },
+      ],
+    },
+    {
+      cell_type: 'code',
+      source: [
+        "print(f'Total revenue: {df.revenue.sum()}')\n",
+        "print(f'Best quarter: {df.loc[df.revenue.idxmax(), \"quarter\"]}')",
+      ],
+      outputs: [
+        { output_type: 'stream', name: 'stdout', text: ['Total revenue: 575\n', 'Best quarter: Q4\n'] },
+      ],
+    },
+    {
+      cell_type: 'markdown',
+      source: [
+        '## Notes\n',
+        '\n',
+        '- Outputs are read straight from the `.ipynb` JSON\n',
+        '- No Python, no Jupyter server, no upload',
+      ],
+    },
+  ],
+  metadata: {
+    language_info: { name: 'python' },
+    kernelspec: { language: 'python', name: 'python3' },
+  },
+  nbformat: 4,
+  nbformat_minor: 5,
+});
+
 export const SAMPLE_FILES: SampleFile[] = [
   {
     label: 'Markdown',
@@ -211,6 +273,12 @@ export const SAMPLE_FILES: SampleFile[] = [
     fileName: 'pdf-sample.pdf',
     mimeType: 'application/pdf',
     content: pdfContent,
+  },
+  {
+    label: 'Jupyter',
+    fileName: 'notebook-sample.ipynb',
+    mimeType: 'application/x-ipynb+json',
+    content: notebookContent,
   },
 ];
 

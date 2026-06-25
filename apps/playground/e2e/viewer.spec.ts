@@ -15,6 +15,7 @@ const SAMPLE_INDEX: Record<string, number> = {
   JSON: 5,
   SVG: 6,
   PDF: 7,
+  Jupyter: 8,
 };
 
 async function gotoApp(page: Page) {
@@ -55,7 +56,7 @@ async function openSearch(page: Page, query: string) {
 }
 
 test.describe('rendering — every sample format', () => {
-  for (const name of ['Markdown', 'Text', 'CSV', 'HTML', 'TypeScript', 'JSON']) {
+  for (const name of ['Markdown', 'Text', 'CSV', 'HTML', 'TypeScript', 'JSON', 'Jupyter']) {
     test(`renders ${name} (reflowable)`, async ({ page }) => {
       await gotoApp(page);
       await loadSample(page, name);
