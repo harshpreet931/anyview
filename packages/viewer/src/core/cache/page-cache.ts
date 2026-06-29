@@ -124,12 +124,14 @@ export function makeCacheKey(
 }
 
 /**
- * Estimate the byte size of an ImageBitmap or canvas.
+ * Estimate the byte size of an ImageBitmap or canvas. `width`/`height` are CSS
+ * pixels; the backing store is `dpr`x larger on each axis, so the pixel count
+ * scales with dpr squared (4 bytes/pixel, RGBA).
  */
 export function estimateBitmapByteSize(
   width: number,
   height: number,
   dpr: number = 1,
 ): number {
-  return Math.round(width * height * dpr * 4);
+  return Math.round(width * height * dpr * dpr * 4);
 }
