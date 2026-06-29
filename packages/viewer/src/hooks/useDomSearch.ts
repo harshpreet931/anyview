@@ -31,24 +31,38 @@ interface OwnerEntry {
   matches: SearchMatch[];
 }
 
-const owners = new Map<string, OwnerEntry>();
-let currentGlobalIndex = 0;
-let applyMatches: ((matches: SearchMatch[]) => void) | null = null;
-let publishScheduled = false;
-
-function orderedOwners(): OwnerEntry[] {
-  return Array.from(owners.values()).sort((a, b) => a.pageIndex - b.pageIndex);
+interface InstanceState {
+  owners: Map<string, OwnerEntry>;
+  currentIndex: number;
+  apply: ((matches: SearchMatch[]) => void) | null;
 }
 
-function orderedRanges(): Range[] {
+const instances = new Map<string, InstanceState>();
+const dirty = new Set<string>();
+let publishScheduled = false;
+
+function getInstance(id: string): InstanceState {
+  let s = instances.get(id);
+  if (!s) {
+    s = { owners: new Map(), currentIndex: 0, apply: null };
+    instances.set(id, s);
+  }
+  return s;
+}
+
+function orderedOwners(state: InstanceState): OwnerEntry[] {
+  return Array.from(state.owners.values()).sort((a, b) => a.pageIndex - b.pageIndex);
+}
+
+function orderedRanges(state: InstanceState): Range[] {
   const all: Range[] = [];
-  for (const o of orderedOwners()) all.push(...o.ranges);
+  for (const o of orderedOwners(state)) all.push(...o.ranges);
   return all;
 }
 
-function orderedMatches(): SearchMatch[] {
+function orderedMatches(state: InstanceState): SearchMatch[] {
   const all: SearchMatch[] = [];
-  for (const o of orderedOwners()) all.push(...o.matches);
+  for (const o of orderedOwners(state)) all.push(...o.matches);
   return all;
 }
 
@@ -58,31 +72,52 @@ function paintHighlights(): void {
   if (!reg || !Ctor) return;
   reg.delete('dv-search');
   reg.delete('dv-search-current');
-  const all = orderedRanges();
+  const all: Range[] = [];
+  const current: Range[] = [];
+  for (const state of instances.values()) {
+    const ranges = orderedRanges(state);
+    all.push(...ranges);
+    const cur = ranges[state.currentIndex];
+    if (cur) current.push(cur);
+  }
   if (all.length > 0) reg.set('dv-search', new Ctor(...all) as unknown);
-  const current = all[currentGlobalIndex];
-  if (current) reg.set('dv-search-current', new Ctor(current) as unknown);
+  if (current.length > 0) reg.set('dv-search-current', new Ctor(...current) as unknown);
 }
 
-function schedulePublish(): void {
+function schedulePublish(id: string): void {
+  dirty.add(id);
   if (publishScheduled) return;
   publishScheduled = true;
   queueMicrotask(() => {
     publishScheduled = false;
-    applyMatches?.(orderedMatches());
+    const ids = Array.from(dirty);
+    dirty.clear();
+    for (const did of ids) {
+      const s = instances.get(did);
+      s?.apply?.(orderedMatches(s));
+    }
   });
 }
 
-function setOwner(ownerId: string, entry: OwnerEntry): void {
-  owners.set(ownerId, entry);
+function setOwner(id: string, ownerId: string, entry: OwnerEntry): void {
+  const s = getInstance(id);
+  s.owners.set(ownerId, entry);
   paintHighlights();
-  schedulePublish();
+  schedulePublish(id);
 }
 
-function clearOwner(ownerId: string): void {
-  if (!owners.delete(ownerId)) return;
+function clearOwner(id: string, ownerId: string): void {
+  const s = instances.get(id);
+  if (!s || !s.owners.delete(ownerId)) return;
+  if (s.owners.size === 0) {
+    const apply = s.apply;
+    instances.delete(id);
+    paintHighlights();
+    apply?.([]);
+    return;
+  }
   paintHighlights();
-  schedulePublish();
+  schedulePublish(id);
 }
 
 // Guard against pathological queries: an over-long pattern (usually a paste
@@ -213,6 +248,7 @@ export function useDomSearch(
   const currentMatchIndex = useViewerStore((s) => s.currentMatchIndex);
   const matchNonce = useViewerStore((s) => s.matchNonce);
   const applySearchMatches = useViewerStore((s) => s.applySearchMatches);
+  const instanceId = useViewerStore((s) => s.instanceId);
   const ownerId = useId();
 
   // Reflowable formats (passed active=true by PageRenderer) are always searched
@@ -224,29 +260,30 @@ export function useDomSearch(
   // (Re)scan this page when the query or its rendered content changes.
   useEffect(() => {
     if (!enabled) return;
-    applyMatches = applySearchMatches;
+    getInstance(instanceId).apply = applySearchMatches;
     const container = containerRef.current;
     if (!container) return;
 
     if (!searchQuery || !searchQuery.text.trim()) {
-      clearOwner(ownerId);
+      clearOwner(instanceId, ownerId);
       return;
     }
 
     const { ranges, matches } = findRanges(container, searchQuery, pageIndex);
-    setOwner(ownerId, { pageIndex, ranges, matches });
+    setOwner(instanceId, ownerId, { pageIndex, ranges, matches });
 
-    return () => clearOwner(ownerId);
-  }, [enabled, searchQuery, contentKey, applySearchMatches, containerRef, ownerId, pageIndex]);
+    return () => clearOwner(instanceId, ownerId);
+  }, [enabled, searchQuery, contentKey, applySearchMatches, containerRef, ownerId, pageIndex, instanceId]);
 
   useEffect(() => {
     if (!enabled) return;
-    currentGlobalIndex = currentMatchIndex;
+    const state = getInstance(instanceId);
+    state.currentIndex = currentMatchIndex;
     paintHighlights();
-    const current = orderedRanges()[currentMatchIndex];
+    const current = orderedRanges(state)[currentMatchIndex];
     const el =
       current?.startContainer.parentElement ??
       (current?.startContainer as HTMLElement | null);
     el?.scrollIntoView({ block: 'center' });
-  }, [enabled, currentMatchIndex, matchNonce, ownerId]);
+  }, [enabled, currentMatchIndex, matchNonce, ownerId, instanceId]);
 }
