@@ -6,6 +6,7 @@
 import { type ReactNode } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useFileInput } from '../../hooks/useFileInput';
+import { useStrings, formatString } from '../../i18n/I18nProvider';
 
 function StateContainer({
   icon,
@@ -33,6 +34,7 @@ export function EmptyState({ description }: { description?: string }) {
   // it. It opens through the store, so it works whether or not the host passes
   // a `source` prop (when a source is given, this state isn't shown).
   const openDocument = useViewerStore((s) => s.openDocument);
+  const strings = useStrings();
   const { inputRef, isDragging, openPicker, handleInputChange, dragProps } =
     useFileInput({ onFile: openDocument });
 
@@ -42,7 +44,7 @@ export function EmptyState({ description }: { description?: string }) {
       data-dragging={isDragging || undefined}
       role="button"
       tabIndex={0}
-      aria-label="Open a document: click to browse or drop a file"
+      aria-label={strings.states.openPrompt}
       onClick={openPicker}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -65,18 +67,19 @@ export function EmptyState({ description }: { description?: string }) {
             <path d="M16 18h16M16 26h16M16 34h10" />
           </svg>
         }
-        title="No document open"
-        description={description || 'Drag and drop a file here, or click to browse'}
+        title={strings.states.empty}
+        description={description || strings.states.emptyDescription}
       />
     </div>
   );
 }
 
 export function LoadingState({ label }: { label?: string }) {
+  const strings = useStrings();
   return (
     <StateContainer
       icon={<div className="dv-spinner" />}
-      title={label || 'Loading document...'}
+      title={label || strings.states.loading}
     />
   );
 }
@@ -88,6 +91,7 @@ export function ErrorState({
   message?: string;
   onRetry?: () => void;
 }) {
+  const strings = useStrings();
   return (
     <StateContainer
       icon={
@@ -96,12 +100,12 @@ export function ErrorState({
           <path d="M24 14v14M24 34v2" strokeLinecap="round" />
         </svg>
       }
-      title="Failed to load document"
+      title={strings.states.error}
       {...(message ? { description: message } : {})}
     >
       {onRetry && (
         <button className="dv-button" onClick={onRetry} style={{ marginTop: 'var(--dv-spacing-lg)' }}>
-          Retry
+          {strings.states.retry}
         </button>
       )}
     </StateContainer>
@@ -109,6 +113,7 @@ export function ErrorState({
 }
 
 export function UnsupportedState({ format }: { format?: string }) {
+  const strings = useStrings();
   return (
     <StateContainer
       icon={
@@ -116,8 +121,12 @@ export function UnsupportedState({ format }: { format?: string }) {
           <path d="M12 12l24 24M36 12L12 36" strokeLinecap="round" />
         </svg>
       }
-      title="Unsupported format"
-      description={format ? `Format "${format}" is not supported` : 'This file format is not supported'}
+      title={strings.states.unsupported}
+      description={
+        format
+          ? formatString(strings.states.unsupportedFormat, format)
+          : strings.states.unsupportedDescription
+      }
     />
   );
 }

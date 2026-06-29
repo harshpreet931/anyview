@@ -24,6 +24,8 @@ export interface ViewerStrings {
     lastPage: string;
     pageInput: string;
     pageOf: string;
+    /** Live-region announcement, e.g. "Page {0} of {1}". */
+    pageStatus: string;
   };
   search: {
     placeholder: string;
@@ -42,21 +44,37 @@ export interface ViewerStrings {
     outline: string;
     attachments: string;
     layers: string;
+    region: string;
+    viewSwitcher: string;
+    resize: string;
   };
   states: {
     empty: string;
     emptyDescription: string;
+    openPrompt: string;
     loading: string;
     error: string;
+    retry: string;
     unsupported: string;
     unsupportedDescription: string;
+    /** Templated with the offending format, e.g. 'Format "{0}" is not supported'. */
+    unsupportedFormat: string;
   };
   dialog: {
     close: string;
+    cancel: string;
     passwordPrompt: string;
     passwordInput: string;
     passwordSubmit: string;
+    passwordTitle: string;
+    /** Templated with the file name. */
+    passwordDescription: string;
+    passwordEmpty: string;
+    passwordIncorrect: string;
     properties: string;
+    fileName: string;
+    format: string;
+    mimeType: string;
     title: string;
     author: string;
     subject: string;

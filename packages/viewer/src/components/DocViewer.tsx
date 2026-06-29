@@ -21,11 +21,25 @@ import { registerBuiltInAdapters } from '../adapters';
 import { createViewerStore } from '../core/store';
 import { ViewerStoreProvider, useViewerStore } from '../hooks/useDocViewer';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import { I18nProvider } from '../i18n/I18nProvider';
+import { I18nProvider, useStrings, formatString } from '../i18n/I18nProvider';
 import { Toolbar } from './Toolbar';
 import { Sidebar } from './Sidebar';
 import { ViewerContainer } from './Viewer';
 import { PasswordDialog, PropertiesDialog } from './Dialogs';
+
+// Lives inside the I18nProvider so it can localize the announcement.
+function PageAnnouncer() {
+  const strings = useStrings();
+  const currentPage = useViewerStore((s) => s.currentPage);
+  const pageCount = useViewerStore((s) => s.document?.pageCount ?? 0);
+  return (
+    <div className="dv-sr-only" role="status" aria-live="polite">
+      {pageCount > 0
+        ? formatString(strings.navigation.pageStatus, currentPage + 1, pageCount)
+        : ''}
+    </div>
+  );
+}
 
 function DocViewerInner(
   props: DocViewerProps & { store: ReturnType<typeof createViewerStore> },
@@ -74,8 +88,6 @@ function DocViewerInner(
   const setPropertiesOpen = useViewerStore((s) => s.setPropertiesOpen);
   const setRootElement = useViewerStore((s) => s.setRootElement);
   const setFullscreen = useViewerStore((s) => s._setFullscreen);
-  const currentPage = useViewerStore((s) => s.currentPage);
-  const pageCount = useViewerStore((s) => s.document?.pageCount ?? 0);
   const pageCache = useViewerStore((s) => s.pageCache);
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -243,9 +255,7 @@ function DocViewerInner(
         </div>
 
         {/* Announces page changes to assistive tech without stealing focus. */}
-        <div className="dv-sr-only" role="status" aria-live="polite">
-          {pageCount > 0 ? `Page ${currentPage + 1} of ${pageCount}` : ''}
-        </div>
+        <PageAnnouncer />
 
         {passwordPending && (
           <PasswordDialog

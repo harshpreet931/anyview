@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
+import { useStrings } from '../../i18n/I18nProvider';
 import type { SidebarView, PageRef, Adapter, FormatId } from '../../core/types';
 
 // Mirror the store's sidebar-width clamp, for the resizer's aria-value range.
@@ -21,6 +22,7 @@ export function Sidebar() {
   const currentPage = useViewerStore((s) => s.currentPage);
   const goToPage = useViewerStore((s) => s.goToPage);
   const setScrollOffset = useViewerStore((s) => s.setScrollOffset);
+  const strings = useStrings();
   const instanceId = useViewerStore((s) => s.instanceId);
 
   const navigateToOutline = useCallback(
@@ -82,12 +84,12 @@ export function Sidebar() {
   // Only offer tabs that have content - an empty Outline/Attachments tab is a
   // dead click. Thumbnails always apply.
   const views: { id: SidebarView; label: string }[] = [
-    { id: 'thumbnails', label: 'Thumbnails' },
+    { id: 'thumbnails', label: strings.sidebar.thumbnails },
     ...(document.outline && document.outline.length > 0
-      ? [{ id: 'outline' as SidebarView, label: 'Outline' }]
+      ? [{ id: 'outline' as SidebarView, label: strings.sidebar.outline }]
       : []),
     ...(document.attachments && document.attachments.length > 0
-      ? [{ id: 'attachments' as SidebarView, label: 'Attachments' }]
+      ? [{ id: 'attachments' as SidebarView, label: strings.sidebar.attachments }]
       : []),
   ];
 
@@ -104,10 +106,10 @@ export function Sidebar() {
       className="dv-sidebar"
       data-open={sidebarOpen}
       role="complementary"
-      aria-label="Document views"
+      aria-label={strings.sidebar.region}
       style={{ width: `${sidebarWidth}px` }}
     >
-      <div className="dv-sidebar-views" role="tablist" aria-label="Sidebar view">
+      <div className="dv-sidebar-views" role="tablist" aria-label={strings.sidebar.viewSwitcher}>
         {views.map((view) => (
           <button
             key={view.id}
@@ -157,7 +159,7 @@ export function Sidebar() {
         role="separator"
         tabIndex={0}
         aria-orientation="vertical"
-        aria-label="Resize sidebar"
+        aria-label={strings.sidebar.resize}
         aria-valuenow={sidebarWidth}
         aria-valuemin={SIDEBAR_MIN_WIDTH}
         aria-valuemax={SIDEBAR_MAX_WIDTH}

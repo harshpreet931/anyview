@@ -7,6 +7,7 @@ import type { DocumentModel } from '../../core/types';
 import { Button } from '../common/Button';
 import { Icon } from '../common/Icon';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useStrings } from '../../i18n/I18nProvider';
 
 interface PropertiesDialogProps {
   document: DocumentModel;
@@ -15,26 +16,28 @@ interface PropertiesDialogProps {
 
 export function PropertiesDialog({ document: doc, onClose }: PropertiesDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const strings = useStrings();
   useFocusTrap(dialogRef, true, onClose);
+  const d = strings.dialog;
   const rows: Array<[string, string | undefined]> = [
-    ['File name', doc.meta.name],
-    ['Format', doc.format.toUpperCase()],
-    ['File size', formatSize(doc.meta.size)],
-    ['MIME type', doc.meta.mimeType],
-    ['Pages', String(doc.pageCount)],
-    ['Title', doc.metadata?.title],
-    ['Author', doc.metadata?.author],
-    ['Subject', doc.metadata?.subject],
-    ['Creator', doc.metadata?.creator],
-    ['Producer', doc.metadata?.producer],
+    [d.fileName, doc.meta.name],
+    [d.format, doc.format.toUpperCase()],
+    [d.fileSize, formatSize(doc.meta.size)],
+    [d.mimeType, doc.meta.mimeType],
+    [d.pages, String(doc.pageCount)],
+    [d.title, doc.metadata?.title],
+    [d.author, doc.metadata?.author],
+    [d.subject, doc.metadata?.subject],
+    [d.creator, doc.metadata?.creator],
+    [d.producer, doc.metadata?.producer],
     [
-      'Created',
+      d.creationDate,
       doc.metadata?.creationDate
         ? new Date(doc.metadata.creationDate).toLocaleString()
         : undefined,
     ],
     [
-      'Modified',
+      d.modificationDate,
       doc.metadata?.modificationDate
         ? new Date(doc.metadata.modificationDate).toLocaleString()
         : undefined,
@@ -42,11 +45,11 @@ export function PropertiesDialog({ document: doc, onClose }: PropertiesDialogPro
   ];
 
   return (
-    <div className="dv-dialog-overlay" role="dialog" aria-modal="true" aria-label="Document properties">
+    <div className="dv-dialog-overlay" role="dialog" aria-modal="true" aria-label={d.properties}>
       <div className="dv-dialog" ref={dialogRef} tabIndex={-1}>
         <div className="dv-dialog-header">
-          <h2 className="dv-dialog-title">Document Properties</h2>
-          <Button variant="icon" onClick={onClose} aria-label="Close">
+          <h2 className="dv-dialog-title">{d.properties}</h2>
+          <Button variant="icon" onClick={onClose} aria-label={d.close}>
             <Icon name="close" />
           </Button>
         </div>
@@ -66,7 +69,7 @@ export function PropertiesDialog({ document: doc, onClose }: PropertiesDialogPro
         </div>
         <div className="dv-dialog-actions">
           <Button variant="primary" onClick={onClose}>
-            Close
+            {d.close}
           </Button>
         </div>
       </div>
