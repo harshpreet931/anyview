@@ -16,6 +16,7 @@ import type {
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
 import { loadSanitizer } from '../../core/sanitizer';
+import { assertTransformSize } from '../../core/limits';
 
 export const docxManifest: AdapterManifest = {
   id: 'docx',
@@ -53,6 +54,7 @@ export class DocxAdapter implements Adapter {
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
     if (signal.aborted) throw new Error('Parse cancelled');
+    assertTransformSize(buffer.byteLength);
 
     try {
       const mammoth = await loadParser('mammoth', () => import('mammoth'));

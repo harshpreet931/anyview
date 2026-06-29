@@ -15,6 +15,7 @@ import type {
 } from '../../core/types';
 import { ViewerError } from '../../core/errors';
 import { loadSanitizer } from '../../core/sanitizer';
+import { assertTransformSize } from '../../core/limits';
 
 export const htmlManifest: AdapterManifest = {
   id: 'html',
@@ -50,6 +51,7 @@ export class HtmlAdapter implements Adapter {
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
     if (signal.aborted) throw new Error('Parse cancelled');
+    assertTransformSize(buffer.byteLength);
 
     const rawHtml = new TextDecoder('utf-8').decode(buffer);
 

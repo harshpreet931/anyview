@@ -16,6 +16,7 @@ import type {
   TextLayerItem,
 } from '../../core/types';
 import { makeSafeUrlTransform } from '../../core/markdown-url';
+import { assertTransformSize } from '../../core/limits';
 
 export const markdownManifest: AdapterManifest = {
   id: 'markdown',
@@ -51,6 +52,7 @@ export class MarkdownAdapter implements Adapter {
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
     if (signal.aborted) throw new Error('Parse cancelled');
+    assertTransformSize(buffer.byteLength);
 
     this.markdownText = new TextDecoder('utf-8').decode(buffer);
 
