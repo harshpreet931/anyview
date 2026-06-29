@@ -5,7 +5,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings, formatString } from '../../i18n/I18nProvider';
-import type { AdapterFeatures, AnnotationTool, SearchQuery, SpreadMode } from '../../core/types';
+import type { AdapterFeatures, AnnotationTool, SpreadMode } from '../../core/types';
 
 interface ToolbarProps {
   features?: AdapterFeatures;
@@ -101,6 +101,7 @@ export function Toolbar({ features }: ToolbarProps) {
 
   const [searchText, setSearchText] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (searchOpen) {
@@ -108,23 +109,33 @@ export function Toolbar({ features }: ToolbarProps) {
     } else {
       // Closing (toolbar button, Escape, or shortcut) clears the query so a
       // reopen starts fresh and stale highlights are dropped.
+      if (searchTimer.current) clearTimeout(searchTimer.current);
       setSearchText('');
       clearSearch();
     }
   }, [searchOpen, clearSearch]);
 
+  // Cancel a pending search when the toolbar unmounts.
+  useEffect(() => () => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+  }, []);
+
   const handleSearch = useCallback(
     (text: string) => {
       setSearchText(text);
+      // Keep the input responsive but debounce the actual search, which walks
+      // the whole document (or all PDF pages) on every keystroke.
+      if (searchTimer.current) clearTimeout(searchTimer.current);
       if (text.trim()) {
-        const query: SearchQuery = {
-          text,
-          caseSensitive: false,
-          wholeWord: false,
-          regex: false,
-          diacritics: false,
-        };
-        search(query);
+        searchTimer.current = setTimeout(() => {
+          search({
+            text,
+            caseSensitive: false,
+            wholeWord: false,
+            regex: false,
+            diacritics: false,
+          });
+        }, 180);
       } else {
         clearSearch();
       }
