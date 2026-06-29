@@ -74,17 +74,16 @@ export class PdfAdapter implements Adapter {
   ): Promise<DocumentModel> {
     const remote = this.ensureWorker();
 
-    // On a password retry the original buffer was already transferred (and
-    // detached) by the first attempt, so reuse the retained copy. Some
-    // sources (in-memory buffers) also can't be re-read.
-    let buffer: ArrayBuffer;
-    if (this.originalBuffer) {
-      buffer = this.originalBuffer.slice(0);
-    } else {
-      buffer = await source.arrayBuffer();
+    // Keep our own copy of the bytes (for password retries and download), and
+    // always hand the worker a fresh copy to transfer. A buffer source returns
+    // the consumer's own ArrayBuffer, so transferring it directly would detach
+    // their buffer out from under them.
+    if (!this.originalBuffer) {
+      const src = await source.arrayBuffer();
       if (signal.aborted) throw new Error('Parse cancelled');
-      this.originalBuffer = buffer.slice(0);
+      this.originalBuffer = src.slice(0);
     }
+    const buffer = this.originalBuffer.slice(0);
 
     try {
       const result = await remote.parse(
