@@ -351,6 +351,22 @@ test.describe('PDF - viewport controls', () => {
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('.dv-page-input')).toHaveValue('2');
   });
+
+  test('arrow keys on a toolbar control do not navigate pages', async ({ page }) => {
+    await gotoApp(page);
+    await loadSample(page, 'PDF');
+    await waitForCanvasRendered(page);
+
+    // Focus a toolbar button (outside the scrollable content region).
+    await page.locator('button[aria-label="Zoom in"]').focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.dv-page-input')).toHaveValue('1');
+
+    // Focusing the content region still navigates.
+    await page.locator('.dv-viewer-container').focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.dv-page-input')).toHaveValue('2');
+  });
 });
 
 test.describe('reflowable - DOM search', () => {

@@ -1,5 +1,6 @@
 /* ============================================================
- * useKeyboardShortcuts - global keyboard shortcut handler
+ * useKeyboardShortcuts - shortcuts scoped to this viewer's root,
+ * so multiple viewers (and the host page) keep their own keys.
  * ============================================================ */
 
 import { useEffect } from 'react';
@@ -16,18 +17,18 @@ export function useKeyboardShortcuts(
   const zoomOut = useViewerStore((s) => s.zoomOut);
   const toggleSidebar = useViewerStore((s) => s.toggleSidebar);
   const setSearchOpen = useViewerStore((s) => s.setSearchOpen);
+  const rootElement = useViewerStore((s) => s._rootElement);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !rootElement) return;
 
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (!target?.closest('.dv-root')) {
-        return;
-      }
+      if (!target) return;
 
       // Ctrl/Cmd+F opens the in-document search, overriding the browser's
-      // native find. Works regardless of focus so it also reaches the input.
+      // native find. The listener is on this viewer's root, so it only fires
+      // when focus is already inside this viewer.
       if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         setSearchOpen(true);
@@ -60,6 +61,11 @@ export function useKeyboardShortcuts(
         return;
       }
 
+      // Navigation keys only act (and only swallow the default) when focus is in
+      // the scrollable content region, so arrows/Home/End on a focused control
+      // (button, select, the toolbar) keep their normal behavior.
+      if (!target.closest('.dv-viewer-container')) return;
+
       switch (e.key) {
         case 'ArrowRight':
         case 'PageDown':
@@ -86,7 +92,7 @@ export function useKeyboardShortcuts(
       }
     };
 
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [enabled, nextPage, prevPage, firstPage, lastPage, zoomIn, zoomOut, toggleSidebar, setSearchOpen]);
+    rootElement.addEventListener('keydown', handler);
+    return () => rootElement.removeEventListener('keydown', handler);
+  }, [enabled, rootElement, nextPage, prevPage, firstPage, lastPage, zoomIn, zoomOut, toggleSidebar, setSearchOpen]);
 }
