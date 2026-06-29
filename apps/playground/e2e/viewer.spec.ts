@@ -408,6 +408,20 @@ test.describe('chrome - theme & sidebar', () => {
     await toggle.click();
     await expect(toggle).not.toHaveAttribute('aria-expanded', before ?? '');
   });
+
+  test('sidebar resizer is keyboard operable', async ({ page }) => {
+    await gotoApp(page);
+    await loadSample(page, 'PDF');
+    await waitForCanvasRendered(page);
+
+    const resizer = page.locator('.dv-sidebar-resizer');
+    const before = Number(await resizer.getAttribute('aria-valuenow'));
+    await resizer.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect
+      .poll(async () => Number(await resizer.getAttribute('aria-valuenow')))
+      .toBeGreaterThan(before);
+  });
 });
 
 test.describe('outline navigation', () => {
