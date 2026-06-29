@@ -50,4 +50,44 @@ describe('IpynbAdapter', () => {
       adapter.parse(reader('{"nope":true}'), new AbortController().signal),
     ).rejects.toThrow();
   });
+
+  it('does not let a malicious image output break out of the src attribute', async () => {
+    const malicious = JSON.stringify({
+      cells: [
+        {
+          cell_type: 'code',
+          source: [''],
+          outputs: [
+            {
+              output_type: 'execute_result',
+              data: { 'image/png': 'x"onerror="alert(document.domain)' },
+            },
+          ],
+        },
+      ],
+      metadata: { language_info: { name: 'python' } },
+      nbformat: 4,
+    });
+    const adapter = new IpynbAdapter();
+    await adapter.parse(reader(malicious), new AbortController().signal);
+
+    const target = document.createElement('div');
+    await adapter.renderPage({
+      page: { index: 0, width: 900, height: 600, rotation: 0 },
+      target,
+      scale: 1,
+      rotation: 0,
+      devicePixelRatio: 1,
+      signal: new AbortController().signal,
+    });
+
+    // The quote was stripped, so no event-handler attribute could be injected
+    // and the value stays inside the data: URI.
+    expect(target.querySelector('[onerror]')).toBeNull();
+    const img = target.querySelector('img.dv-ipynb-img');
+    expect(img).not.toBeNull();
+    const src = img!.getAttribute('src') ?? '';
+    expect(src).not.toContain('"');
+    expect(src.startsWith('data:image/png;base64,')).toBe(true);
+  });
 });
