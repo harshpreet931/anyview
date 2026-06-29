@@ -256,6 +256,82 @@ test.describe('PDF - viewport controls', () => {
     expect(skew).toBeLessThan(0.02);
   });
 
+  test('continuous wheel zoom scales live and rasterizes once (no storm)', async ({
+    page,
+  }) => {
+    // Count main-thread bitmap rasterizations (one per cached page render).
+    await page.addInitScript(() => {
+      const orig = window.createImageBitmap.bind(window);
+      (window as unknown as { __bmp: number }).__bmp = 0;
+      window.createImageBitmap = ((...args: unknown[]) => {
+        (window as unknown as { __bmp: number }).__bmp++;
+        return (orig as (...a: unknown[]) => Promise<ImageBitmap>)(...args);
+      }) as typeof window.createImageBitmap;
+    });
+    await gotoApp(page);
+    await loadSample(page, 'PDF');
+    await waitForCanvasRendered(page);
+
+    // Reset the counter after the initial render settles.
+    await page.waitForTimeout(300);
+    await page.evaluate(() => ((window as unknown as { __bmp: number }).__bmp = 0));
+
+    const pageBox = page.locator('.dv-page').first();
+    const before = (await pageBox.boundingBox())!;
+
+    // Fire a burst of ctrl+wheel zoom-in events, each in its own task (this is
+    // what defeats React batching and caused the rasterize storm).
+    const dispatch = () =>
+      page.evaluate(() => {
+        const el = document.querySelector('.dv-viewer-container')!;
+        const r = el.getBoundingClientRect();
+        el.dispatchEvent(
+          new WheelEvent('wheel', {
+            deltaY: -40,
+            ctrlKey: true,
+            clientX: r.left + r.width / 2,
+            clientY: r.top + r.height / 2,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      });
+    for (let i = 0; i < 5; i++) {
+      await dispatch();
+      await page.waitForTimeout(12); // within the 90ms settle window
+    }
+
+    // Mid-gesture: the content is scaled with a CSS transform and nothing has
+    // been rasterized yet.
+    const mid = await page.evaluate(() => {
+      const content = document.querySelector('.dv-viewer-container > div') as HTMLElement;
+      return {
+        transform: getComputedStyle(content).transform,
+        bmp: (window as unknown as { __bmp: number }).__bmp,
+      };
+    });
+    expect(mid.transform).not.toBe('none');
+    expect(mid.bmp).toBe(0);
+
+    // After the gesture settles: transform is dropped, the page is committed at
+    // the new zoom, and only a handful of (visible) pages rasterized - not one
+    // per wheel event.
+    await page.waitForTimeout(350);
+    const after = await page.evaluate(() => {
+      const content = document.querySelector('.dv-viewer-container > div') as HTMLElement;
+      return {
+        transform: getComputedStyle(content).transform,
+        bmp: (window as unknown as { __bmp: number }).__bmp,
+      };
+    });
+    expect(after.transform).toBe('none');
+    expect(after.bmp).toBeGreaterThan(0);
+    expect(after.bmp).toBeLessThanOrEqual(4);
+
+    const afterBox = (await pageBox.boundingBox())!;
+    expect(afterBox.width).toBeGreaterThan(before.width);
+  });
+
   test('page navigation moves to page 2', async ({ page }) => {
     await gotoApp(page);
     await loadSample(page, 'PDF');

@@ -2,7 +2,14 @@
  * ViewerContainer - scrollable container with virtualization
  * ============================================================ */
 
-import { useRef, useEffect, useMemo, useState } from 'react';
+import {
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { PageRenderer } from './PageRenderer';
@@ -10,6 +17,11 @@ import { EmptyState, LoadingState, ErrorState } from '../States';
 
 const PAGE_VERTICAL_GAP = 48;
 const PAGE_SPREAD_GAP = 16;
+
+// Mirror viewportSlice's clamp so the gesture focal-point math matches setZoom.
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 5;
+const clampZoom = (z: number) => Math.max(MIN_ZOOM, Math.min(z, MAX_ZOOM));
 
 export function ViewerContainer() {
   const document = useViewerStore((s) => s.document);
@@ -29,12 +41,88 @@ export function ViewerContainer() {
   const setCursorMode = useViewerStore((s) => s.setCursorMode);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  // The virtualized, sized content layer. A zoom gesture scales this with a
+  // cheap CSS transform for instant feedback, deferring the (expensive)
+  // re-rasterize until the gesture settles.
+  const contentRef = useRef<HTMLDivElement>(null);
   // Rubber-band rect (content coords) while dragging a marquee zoom.
   const [marquee, setMarquee] = useState<{ left: number; top: number; w: number; h: number } | null>(null);
   const isProgrammaticScroll = useRef(false);
   // Mirror the latest zoom so the imperative wheel listener reads it fresh.
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
+
+  // An in-progress wheel/pinch zoom. `factor` is the live multiplier applied on
+  // top of `base` (the committed zoom when the gesture began); `origin` is the
+  // focal point in content coordinates and `cursor` its offset in the viewport.
+  const gesture = useRef<{
+    base: number;
+    factor: number;
+    originX: number;
+    originY: number;
+    cursorX: number;
+    cursorY: number;
+  } | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Carries the focal anchor from commit to the layout effect that re-applies
+  // it once the page boxes have re-measured at the committed zoom.
+  const pendingAnchor = useRef<{ ratio: number; x: number; y: number; cx: number; cy: number } | null>(null);
+
+  // Paint the live gesture scale (no React render, no rasterization).
+  const applyLiveScale = useCallback(() => {
+    const content = contentRef.current;
+    const g = gesture.current;
+    if (!content || !g) return;
+    content.style.transformOrigin = `${g.originX}px ${g.originY}px`;
+    content.style.transform = `scale(${g.factor})`;
+  }, []);
+
+  // End the gesture: commit the real zoom (one rasterize) and hand the focal
+  // anchor to the layout effect so the swap from transform to real layout is
+  // seamless.
+  const commitGesture = useCallback(() => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    const g = gesture.current;
+    gesture.current = null;
+    const content = contentRef.current;
+    if (!g) return;
+    const next = clampZoom(g.base * g.factor);
+    if (Math.abs(next - g.base) < 1e-4) {
+      // No real change - just drop the (near-identity) transform.
+      if (content) {
+        content.style.transform = '';
+        content.style.transformOrigin = '';
+      }
+      return;
+    }
+    pendingAnchor.current = {
+      ratio: next / g.base,
+      x: g.originX,
+      y: g.originY,
+      cx: g.cursorX,
+      cy: g.cursorY,
+    };
+    isProgrammaticScroll.current = true;
+    setZoom(next);
+  }, [setZoom]);
+
+  // Once the committed zoom has re-laid out the pages, drop the transform and
+  // restore the focal point - both in the same paint, so there's no flash.
+  useLayoutEffect(() => {
+    const anchor = pendingAnchor.current;
+    if (!anchor) return;
+    pendingAnchor.current = null;
+    const content = contentRef.current;
+    if (content) {
+      content.style.transform = '';
+      content.style.transformOrigin = '';
+    }
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollLeft = anchor.x * anchor.ratio - anchor.cx;
+      el.scrollTop = anchor.y * anchor.ratio - anchor.cy;
+    }
+  }, [zoom]);
 
   const isHorizontal = scrollMode === 'horizontal';
   const pageCount = document?.pages.length ?? 0;
@@ -145,31 +233,34 @@ export function ViewerContainer() {
     const onWheel = (e: WheelEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
-      const old = zoomRef.current;
-      // MIN/MAX mirror viewportSlice's clamp so the focal-point math matches.
-      const next = Math.max(0.1, Math.min(old * Math.exp(-e.deltaY * 0.0015), 5));
-      if (Math.abs(next - old) < 1e-4) return;
+      if (!contentRef.current) return;
 
       const rect = el.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
-      const contentX = el.scrollLeft + cx;
-      const contentY = el.scrollTop + cy;
-      const ratio = next / old;
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+      // Begin a gesture on the first event, anchored at the cursor. A burst of
+      // events within the settle window accumulates into this one gesture.
+      if (!gesture.current) {
+        gesture.current = {
+          base: zoomRef.current,
+          factor: 1,
+          originX: el.scrollLeft + cursorX,
+          originY: el.scrollTop + cursorY,
+          cursorX,
+          cursorY,
+        };
+      }
+      const g = gesture.current;
+      const target = clampZoom(g.base * g.factor * Math.exp(-e.deltaY * 0.0015));
+      g.factor = target / g.base;
+      applyLiveScale();
 
-      isProgrammaticScroll.current = true;
-      zoomRef.current = next; // update now so a same-frame burst accumulates
-      setZoom(next);
-      // After the page boxes re-measure at the new zoom, keep the same content
-      // point under the cursor.
-      requestAnimationFrame(() => {
-        el.scrollLeft = contentX * ratio - cx;
-        el.scrollTop = contentY * ratio - cy;
-      });
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+      settleTimer.current = setTimeout(commitGesture, 90);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [setZoom]);
+  }, [applyLiveScale, commitGesture]);
 
   // Two-finger touch pinch zoom, anchored at the pinch midpoint. (Trackpad
   // pinch is already handled as ctrl+wheel above; this is for touchscreens.)
@@ -178,9 +269,6 @@ export function ViewerContainer() {
     if (!el) return;
     const pts = new Map<number, { x: number; y: number }>();
     let startDist = 0;
-    let startZoom = 1;
-    let startMid = { x: 0, y: 0 };
-    let startScroll = { left: 0, top: 0 };
     let pinching = false;
 
     const twoPoints = () => Array.from(pts.values());
@@ -200,31 +288,35 @@ export function ViewerContainer() {
       if (pts.size === 2) {
         pinching = true;
         startDist = distance() || 1;
-        startZoom = zoomRef.current;
-        startMid = midpoint();
-        startScroll = { left: el.scrollLeft, top: el.scrollTop };
+        const mid = midpoint();
+        // Drive the pinch through the shared gesture: scale live, rasterize once
+        // on lift.
+        gesture.current = {
+          base: zoomRef.current,
+          factor: 1,
+          originX: el.scrollLeft + mid.x,
+          originY: el.scrollTop + mid.y,
+          cursorX: mid.x,
+          cursorY: mid.y,
+        };
       }
     };
     const onMove = (e: PointerEvent) => {
       if (!pts.has(e.pointerId)) return;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (!pinching || pts.size < 2) return;
+      if (!pinching || pts.size < 2 || !gesture.current) return;
       e.preventDefault();
-      const next = Math.max(0.1, Math.min((startZoom * distance()) / startDist, 5));
-      const ratio = next / startZoom;
-      isProgrammaticScroll.current = true;
-      zoomRef.current = next;
-      setZoom(next);
-      const contentX = startScroll.left + startMid.x;
-      const contentY = startScroll.top + startMid.y;
-      requestAnimationFrame(() => {
-        el.scrollLeft = contentX * ratio - startMid.x;
-        el.scrollTop = contentY * ratio - startMid.y;
-      });
+      const g = gesture.current;
+      const target = clampZoom((g.base * distance()) / startDist);
+      g.factor = target / g.base;
+      applyLiveScale();
     };
     const onUp = (e: PointerEvent) => {
       pts.delete(e.pointerId);
-      if (pts.size < 2) pinching = false;
+      if (pts.size < 2 && pinching) {
+        pinching = false;
+        commitGesture();
+      }
     };
 
     el.addEventListener('pointerdown', onDown);
@@ -237,7 +329,7 @@ export function ViewerContainer() {
       el.removeEventListener('pointerup', onUp);
       el.removeEventListener('pointercancel', onUp);
     };
-  }, [setZoom]);
+  }, [applyLiveScale, commitGesture]);
 
   // Marquee zoom: while in 'marquee' cursor mode, drag a box to zoom into it.
   useEffect(() => {
@@ -384,6 +476,7 @@ export function ViewerContainer() {
         </>
       ) : (
         <div
+          ref={contentRef}
           style={{
             height: isHorizontal ? '100%' : `${virtualizer.getTotalSize()}px`,
             width: isHorizontal ? `${virtualizer.getTotalSize()}px` : '100%',
