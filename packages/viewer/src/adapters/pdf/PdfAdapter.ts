@@ -150,16 +150,24 @@ export class PdfAdapter implements Adapter {
 
       const target = ctx.target as HTMLCanvasElement;
 
-      if (target instanceof HTMLCanvasElement) {
-        const renderWidth = ctx.page.width * ctx.scale * ctx.devicePixelRatio;
-        const renderHeight = ctx.page.height * ctx.scale * ctx.devicePixelRatio;
+      const cssWidth = ctx.page.width * ctx.scale;
+      const cssHeight = ctx.page.height * ctx.scale;
+      const isSideways = ctx.rotation === 90 || ctx.rotation === 270;
+      // A 90/270 rotation transposes the page, so the displayed box is the
+      // page rotated. Keep the CSS box and the reported size in sync with the
+      // (already rotated) bitmap, otherwise the page is stretched out of ratio.
+      const outWidth = isSideways ? cssHeight : cssWidth;
+      const outHeight = isSideways ? cssWidth : cssHeight;
 
-        const isSideways = ctx.rotation === 90 || ctx.rotation === 270;
+      if (target instanceof HTMLCanvasElement) {
+        const renderWidth = cssWidth * ctx.devicePixelRatio;
+        const renderHeight = cssHeight * ctx.devicePixelRatio;
+
         target.width = isSideways ? renderHeight : renderWidth;
         target.height = isSideways ? renderWidth : renderHeight;
 
-        target.style.width = `${ctx.page.width * ctx.scale}px`;
-        target.style.height = `${ctx.page.height * ctx.scale}px`;
+        target.style.width = `${outWidth}px`;
+        target.style.height = `${outHeight}px`;
 
         const c = target.getContext('bitmaprenderer');
         if (c) {
@@ -172,8 +180,8 @@ export class PdfAdapter implements Adapter {
       }
 
       return {
-        width: ctx.page.width * ctx.scale,
-        height: ctx.page.height * ctx.scale,
+        width: outWidth,
+        height: outHeight,
       };
     } catch (cause) {
       throw new ViewerError('RENDER_ERROR', 'Failed to render PDF page.', {
