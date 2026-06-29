@@ -19,6 +19,7 @@ import type {
 } from '../../core/types';
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadSanitizer } from '../../core/sanitizer';
+import { makeSafeUrlTransform } from '../../core/markdown-url';
 
 export const ipynbManifest: AdapterManifest = {
   id: 'ipynb',
@@ -143,9 +144,10 @@ export class IpynbAdapter implements Adapter {
   private async buildHtml(cells: NbCell[]): Promise<string> {
     const React = await import('react');
     const { renderToStaticMarkup } = await import('react-dom/server');
-    const ReactMarkdown = (await import('react-markdown')).default;
+    const { default: ReactMarkdown, defaultUrlTransform } = await import('react-markdown');
     const remarkGfm = (await import('remark-gfm')).default;
     const DOMPurify = await loadSanitizer();
+    const urlTransform = makeSafeUrlTransform(defaultUrlTransform);
 
     let codeToHtml: ((src: string) => string) | null = null;
     try {
@@ -165,7 +167,11 @@ export class IpynbAdapter implements Adapter {
 
     const renderMd = (src: string) =>
       renderToStaticMarkup(
-        React.createElement(ReactMarkdown, { remarkPlugins: [remarkGfm] }, src),
+        React.createElement(
+          ReactMarkdown,
+          { remarkPlugins: [remarkGfm], urlTransform },
+          src,
+        ),
       );
     const renderCode = (src: string) => {
       if (codeToHtml) {
