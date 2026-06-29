@@ -15,6 +15,7 @@ import type {
   TextLayer,
   TextLayerItem,
 } from '../../core/types';
+import { makeSafeUrlTransform } from '../../core/markdown-url';
 
 export const markdownManifest: AdapterManifest = {
   id: 'markdown',
@@ -56,12 +57,15 @@ export class MarkdownAdapter implements Adapter {
     // Dynamically import react-markdown + remark-gfm
     const React = await import('react');
     const { renderToStaticMarkup } = await import('react-dom/server');
-    const ReactMarkdown = (await import('react-markdown')).default;
+    const { default: ReactMarkdown, defaultUrlTransform } = await import('react-markdown');
     const remarkGfm = (await import('remark-gfm')).default;
 
     const element = React.createElement(
       ReactMarkdown,
-      { remarkPlugins: [remarkGfm] },
+      {
+        remarkPlugins: [remarkGfm],
+        urlTransform: makeSafeUrlTransform(defaultUrlTransform),
+      },
       this.markdownText,
     );
 
