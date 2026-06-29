@@ -154,10 +154,12 @@ function DocViewerInner(
     );
   }, [onVisiblePagesChange, store]);
 
-  // Controlled page: driving the `page` prop navigates the viewer.
+  // Controlled page: driving the `page` prop navigates the viewer. Also re-apply
+  // once a document finishes loading, so a `page` set before load isn't dropped
+  // (goToPage is a no-op while there are no pages yet).
   useEffect(() => {
-    if (page != null) store.getState().goToPage(page);
-  }, [page, store]);
+    if (page != null && loadState === 'loaded') store.getState().goToPage(page);
+  }, [page, store, loadState]);
 
   // Report text selections made inside the viewer.
   useEffect(() => {
