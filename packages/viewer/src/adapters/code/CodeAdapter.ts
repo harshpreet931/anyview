@@ -14,6 +14,7 @@ import type {
   TextLayer,
   TextLayerItem,
 } from '../../core/types';
+import { assertTransformSize } from '../../core/limits';
 
 export const codeManifest: AdapterManifest = {
   id: 'code',
@@ -74,6 +75,7 @@ export class CodeAdapter implements Adapter {
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
     if (signal.aborted) throw new Error('Parse cancelled');
+    assertTransformSize(buffer.byteLength);
 
     this.codeText = new TextDecoder('utf-8').decode(buffer);
     this.language = detectLanguage(source.meta.name);

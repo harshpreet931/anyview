@@ -20,6 +20,7 @@ import type {
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadSanitizer } from '../../core/sanitizer';
 import { makeSafeUrlTransform } from '../../core/markdown-url';
+import { assertTransformSize } from '../../core/limits';
 
 export const ipynbManifest: AdapterManifest = {
   id: 'ipynb',
@@ -94,6 +95,7 @@ export class IpynbAdapter implements Adapter {
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
     if (signal.aborted) throw new Error('Parse cancelled');
+    assertTransformSize(buffer.byteLength);
 
     let nb: { cells?: NbCell[]; metadata?: Record<string, unknown> };
     try {
