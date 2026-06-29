@@ -244,6 +244,16 @@ test.describe('PDF - viewport controls', () => {
     await expect
       .poll(async () => (await dims()).w)
       .not.toBe(before.w);
+
+    // The canvas must keep its aspect ratio after rotation: the CSS box ratio
+    // has to match the (already rotated) backing-store ratio, or the page is
+    // stretched out of shape.
+    const skew = await page.locator('.dv-page canvas').first().evaluate((el) => {
+      const c = el as HTMLCanvasElement;
+      const r = c.getBoundingClientRect();
+      return Math.abs(r.width / r.height - c.width / c.height);
+    });
+    expect(skew).toBeLessThan(0.02);
   });
 
   test('page navigation moves to page 2', async ({ page }) => {
