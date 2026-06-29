@@ -6,6 +6,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import type { SidebarView, PageRef, Adapter, FormatId } from '../../core/types';
 
+// Mirror the store's sidebar-width clamp, for the resizer's aria-value range.
+const SIDEBAR_MIN_WIDTH = 140;
+const SIDEBAR_MAX_WIDTH = 400;
+
 export function Sidebar() {
   const sidebarOpen = useViewerStore((s) => s.sidebarOpen);
   const sidebarView = useViewerStore((s) => s.sidebarView);
@@ -43,6 +47,32 @@ export function Sidebar() {
       };
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', onUp);
+    },
+    [sidebarWidth, setSidebarWidth],
+  );
+
+  // Keyboard resize for the separator (the store clamps to the same bounds).
+  const onResizeKey = useCallback(
+    (e: React.KeyboardEvent) => {
+      const STEP = 16;
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          setSidebarWidth(sidebarWidth - STEP);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          setSidebarWidth(sidebarWidth + STEP);
+          break;
+        case 'Home':
+          e.preventDefault();
+          setSidebarWidth(SIDEBAR_MIN_WIDTH);
+          break;
+        case 'End':
+          e.preventDefault();
+          setSidebarWidth(SIDEBAR_MAX_WIDTH);
+          break;
+      }
     },
     [sidebarWidth, setSidebarWidth],
   );
@@ -125,9 +155,14 @@ export function Sidebar() {
         className="dv-sidebar-resizer"
         data-active={resizing}
         role="separator"
+        tabIndex={0}
         aria-orientation="vertical"
         aria-label="Resize sidebar"
+        aria-valuenow={sidebarWidth}
+        aria-valuemin={SIDEBAR_MIN_WIDTH}
+        aria-valuemax={SIDEBAR_MAX_WIDTH}
         onPointerDown={startResize}
+        onKeyDown={onResizeKey}
       />
     </div>
   );
