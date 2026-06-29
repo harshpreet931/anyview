@@ -70,6 +70,13 @@ function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
+// Keep only valid base64 characters. A notebook output's image data is
+// interpolated into a `src="data:...,<here>"` attribute, so a value containing
+// a quote would otherwise break out and inject markup (zero-click XSS).
+function safeBase64(s: string): string {
+  return s.replace(/[^A-Za-z0-9+/=]/g, '');
+}
+
 // ANSI SGR escape codes (ESC[...m) in tracebacks; built via RegExp so no
 // literal ESC control char sits in source.
 const ANSI = new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g");
@@ -208,11 +215,11 @@ export class IpynbAdapter implements Adapter {
       const data = out.data ?? {};
       const png = data['image/png'];
       if (typeof png === 'string') {
-        return `<img class="dv-ipynb-img" alt="output" src="data:image/png;base64,${png.replace(/\s/g, '')}" />`;
+        return `<img class="dv-ipynb-img" alt="output" src="data:image/png;base64,${safeBase64(png)}" />`;
       }
       const jpg = data['image/jpeg'];
       if (typeof jpg === 'string') {
-        return `<img class="dv-ipynb-img" alt="output" src="data:image/jpeg;base64,${jpg.replace(/\s/g, '')}" />`;
+        return `<img class="dv-ipynb-img" alt="output" src="data:image/jpeg;base64,${safeBase64(jpg)}" />`;
       }
       const svg = data['image/svg+xml'];
       if (svg !== undefined) {
