@@ -33,6 +33,9 @@ export function ViewerContainer() {
   const spreadMode = useViewerStore((s) => s.spreadMode);
   const currentPage = useViewerStore((s) => s.currentPage);
   const setCurrentPage = useViewerStore((s) => s.setCurrentPage);
+  const scrollOffset = useViewerStore((s) => s.scrollOffset);
+  const isScrolling = useViewerStore((s) => s.isScrolling);
+  const setScrolling = useViewerStore((s) => s.setScrolling);
   const setVisiblePages = useViewerStore((s) => s.setVisiblePages);
   const setZoom = useViewerStore((s) => s.setZoom);
   const fitMode = useViewerStore((s) => s.fitMode);
@@ -186,6 +189,25 @@ export function ViewerContainer() {
       virtualizer.scrollToIndex(targetRow, { align: 'start' });
     }
   }, [currentPage, pageCount, virtualizer, pageToRow]);
+
+  // Honour an outline destination's scrollOffset (e.g. a heading inside a
+  // reflowable document): scroll to the target page's top, then down by the
+  // offset (scaled with the current zoom).
+  useEffect(() => {
+    if (!isScrolling) return;
+    const el = scrollRef.current;
+    if (!el) {
+      setScrolling(false);
+      return;
+    }
+    const targetRow = pageToRow[currentPage] ?? 0;
+    isProgrammaticScroll.current = true;
+    virtualizer.scrollToIndex(targetRow, { align: 'start' });
+    requestAnimationFrame(() => {
+      el.scrollTop += scrollOffset * zoom;
+      setScrolling(false);
+    });
+  }, [isScrolling, scrollOffset, zoom, currentPage, virtualizer, pageToRow, setScrolling]);
 
   useEffect(() => {
     const scrollEl = scrollRef.current;

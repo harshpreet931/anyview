@@ -409,3 +409,26 @@ test.describe('chrome - theme & sidebar', () => {
     await expect(toggle).not.toHaveAttribute('aria-expanded', before ?? '');
   });
 });
+
+test.describe('outline navigation', () => {
+  test('clicking a heading scrolls to its offset (reflowable)', async ({ page }) => {
+    await gotoApp(page);
+    await loadSample(page, 'Markdown');
+    await waitForReflowContent(page);
+
+    // Zoom in so the document overflows the viewport and can actually scroll.
+    const zoomIn = page.locator('button[aria-label="Zoom in"]');
+    for (let i = 0; i < 10; i++) await zoomIn.click();
+
+    const container = page.locator('.dv-viewer-container');
+    await expect.poll(() => container.evaluate((el) => el.scrollTop)).toBe(0);
+
+    // Jump to the last heading via the outline.
+    await page.getByRole('tab', { name: 'Outline' }).click();
+    await page.locator('.dv-outline-item').last().click();
+
+    await expect
+      .poll(() => container.evaluate((el) => el.scrollTop), { timeout: 10_000 })
+      .toBeGreaterThan(20);
+  });
+});

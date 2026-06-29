@@ -16,7 +16,16 @@ export function Sidebar() {
   const adapter = useViewerStore((s) => s.adapter);
   const currentPage = useViewerStore((s) => s.currentPage);
   const goToPage = useViewerStore((s) => s.goToPage);
+  const setScrollOffset = useViewerStore((s) => s.setScrollOffset);
   const instanceId = useViewerStore((s) => s.instanceId);
+
+  const navigateToOutline = useCallback(
+    (pageIndex: number, scrollOffset?: number) => {
+      goToPage(pageIndex);
+      if (scrollOffset != null) setScrollOffset(scrollOffset);
+    },
+    [goToPage, setScrollOffset],
+  );
 
   const [resizing, setResizing] = useState(false);
   const startResize = useCallback(
@@ -104,7 +113,7 @@ export function Sidebar() {
         )}
 
         {activeView === 'outline' && document.outline && (
-          <OutlineList nodes={document.outline} onNavigate={goToPage} />
+          <OutlineList nodes={document.outline} onNavigate={navigateToOutline} />
         )}
 
         {activeView === 'attachments' && document.attachments && (
@@ -277,7 +286,7 @@ function OutlineList({
   depth = 0,
 }: {
   nodes: ReadonlyArray<import('../../core/types').OutlineNode>;
-  onNavigate: (pageIndex: number) => void;
+  onNavigate: (pageIndex: number, scrollOffset?: number) => void;
   depth?: number;
 }) {
   return (
@@ -292,7 +301,8 @@ function OutlineList({
             className="dv-outline-item"
             onClick={() => {
               if (typeof node.dest === 'object' && node.dest !== null && 'pageIndex' in node.dest) {
-                onNavigate((node.dest as { pageIndex: number }).pageIndex);
+                const dest = node.dest as { pageIndex: number; scrollOffset?: number };
+                onNavigate(dest.pageIndex, dest.scrollOffset);
               }
             }}
           >
