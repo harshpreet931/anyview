@@ -56,6 +56,7 @@ export class XlsxAdapter implements Adapter {
     try {
       const XLSX = await loadParser('xlsx', () => import('xlsx'));
       const workbook = XLSX.read(buffer, { type: 'array' });
+      const DOMPurify = await loadSanitizer();
 
       this.sheetNames = workbook.SheetNames;
       this.sheetHtmls = [];
@@ -64,7 +65,8 @@ export class XlsxAdapter implements Adapter {
       for (const name of this.sheetNames) {
         const sheet = workbook.Sheets[name];
         const html = XLSX.utils.sheet_to_html(sheet, { id: `sheet-${name}` });
-        this.sheetHtmls.push(html);
+        // Sanitize and style the sheet once here, not on every render.
+        this.sheetHtmls.push(buildSheetHtml(html, DOMPurify));
 
         const csv = XLSX.utils.sheet_to_csv(sheet);
         this.sheetTexts.push(csv);
@@ -104,32 +106,11 @@ export class XlsxAdapter implements Adapter {
       throw new ViewerError('RENDER_ERROR', `Sheet ${ctx.page.index} not found.`);
     }
 
-    const DOMPurify = await loadSanitizer();
-    const sanitizedHtml = DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: [
-        'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'col',
-        'colgroup', 'a', 'span', 'div', 'br', 'b', 'i', 'em', 'strong',
-      ],
-      ALLOWED_ATTR: ['href', 'colspan', 'rowspan', 'style', 'class', 'id'],
-      ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|#)/i,
-    });
-
     const container = document.createElement('div');
     container.style.padding = '16px';
     container.style.overflow = 'auto';
     container.style.fontSize = `${14 * ctx.scale}px`;
-    container.innerHTML = sanitizedHtml;
-
-    const table = container.querySelector('table');
-    if (table) {
-      (table as HTMLElement).style.borderCollapse = 'collapse';
-      (table as HTMLElement).style.width = '100%';
-      table.querySelectorAll('td, th').forEach((cell) => {
-        (cell as HTMLElement).style.border = '1px solid #ddd';
-        (cell as HTMLElement).style.padding = '4px 8px';
-        (cell as HTMLElement).style.whiteSpace = 'nowrap';
-      });
-    }
+    container.innerHTML = html;
 
     target.appendChild(container);
 
@@ -162,4 +143,34 @@ export class XlsxAdapter implements Adapter {
     this.sheetNames = [];
     this.sheetTexts = [];
   }
+}
+
+// Sanitize a sheet's HTML and bake in the table/cell styling once, so renderPage
+// only has to inject the finished markup (and scale the font with the zoom).
+function buildSheetHtml(
+  rawHtml: string,
+  DOMPurify: { sanitize: (s: string, c?: Record<string, unknown>) => string },
+): string {
+  const sanitized = DOMPurify.sanitize(rawHtml, {
+    ALLOWED_TAGS: [
+      'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'col',
+      'colgroup', 'a', 'span', 'div', 'br', 'b', 'i', 'em', 'strong',
+    ],
+    ALLOWED_ATTR: ['href', 'colspan', 'rowspan', 'style', 'class', 'id'],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|#)/i,
+  });
+
+  const doc = new DOMParser().parseFromString(sanitized, 'text/html');
+  const table = doc.querySelector('table');
+  if (table) {
+    table.style.borderCollapse = 'collapse';
+    table.style.width = '100%';
+    table.querySelectorAll('td, th').forEach((cell) => {
+      const c = cell as HTMLElement;
+      c.style.border = '1px solid #ddd';
+      c.style.padding = '4px 8px';
+      c.style.whiteSpace = 'nowrap';
+    });
+  }
+  return doc.body.innerHTML;
 }
