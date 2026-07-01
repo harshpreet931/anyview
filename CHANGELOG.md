@@ -5,6 +5,8 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.2.2]
+
 ### Fixed
 - **Real-world PDFs no longer render as empty boxes.** Government/CID-font PDFs (e.g. Indian ITR, electoral rolls, Indic scripts) and PDFs with non-embedded standard fonts showed every glyph as a `.notdef` box because pdf.js was never given its CMap, standard-font, WASM, and ICC data. These are now bundled and served, and the worker is configured to fetch them.
 - **Rotating a PDF no longer blanks or fails to rotate.** Two bugs: cached pages repainted through a `2d` context on a canvas already bound to `bitmaprenderer` (which returns `null`), blanking the page on any cache re-hit (e.g. rotating a full cycle); and pdf.js 6's default DOM canvas factory needs `document`, which doesn't exist in the worker, so rotated/complex renders silently failed. The worker now paints via `2d` throughout and uses an `OffscreenCanvas` factory.
