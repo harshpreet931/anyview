@@ -74,10 +74,6 @@ export class PdfAdapter implements Adapter {
   ): Promise<DocumentModel> {
     const remote = this.ensureWorker();
 
-    // Keep our own copy of the bytes (for password retries and download), and
-    // always hand the worker a fresh copy to transfer. A buffer source returns
-    // the consumer's own ArrayBuffer, so transferring it directly would detach
-    // their buffer out from under them.
     if (!this.originalBuffer) {
       const src = await source.arrayBuffer();
       if (signal.aborted) throw new Error('Parse cancelled');
@@ -114,9 +110,6 @@ export class PdfAdapter implements Adapter {
     } catch (cause) {
       const name = (cause as { name?: string })?.name ?? '';
       const message = (cause as { message?: string })?.message ?? '';
-      // pdf.js raises a PasswordException; its message is "No password given"
-      // (needs one) or "Incorrect Password" (wrong one). Match case-insensitively
-      // since the message casing varies, and across Comlink only name/message survive.
       const isPasswordIssue =
         name === 'PasswordException' || /password/i.test(message);
       if (isPasswordIssue) {
@@ -152,9 +145,6 @@ export class PdfAdapter implements Adapter {
       const cssWidth = ctx.page.width * ctx.scale;
       const cssHeight = ctx.page.height * ctx.scale;
       const isSideways = ctx.rotation === 90 || ctx.rotation === 270;
-      // A 90/270 rotation transposes the page, so the displayed box is the
-      // page rotated. Keep the CSS box and the reported size in sync with the
-      // (already rotated) bitmap, otherwise the page is stretched out of ratio.
       const outWidth = isSideways ? cssHeight : cssWidth;
       const outHeight = isSideways ? cssWidth : cssHeight;
 
@@ -168,14 +158,11 @@ export class PdfAdapter implements Adapter {
         target.style.width = `${outWidth}px`;
         target.style.height = `${outHeight}px`;
 
-        const c = target.getContext('bitmaprenderer');
-        if (c) {
-          c.transferFromImageBitmap(bitmap);
-        } else {
-          const c2d = target.getContext('2d')!;
+        const c2d = target.getContext('2d');
+        if (c2d) {
           c2d.drawImage(bitmap, 0, 0, target.width, target.height);
-          bitmap.close();
         }
+        bitmap.close();
       }
 
       return {
