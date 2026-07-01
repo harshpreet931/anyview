@@ -1,18 +1,54 @@
+/// <reference types="vite/client" />
 /* ============================================================
  * PDF Worker - runs in Web Worker via Comlink
  * Handles PDF.js parsing and page rendering off main thread.
  * ============================================================ */
 
 import * as Comlink from 'comlink';
-// IMPORTANT: use STATIC imports here. A top-level `await import(...)` would
-// suspend this module's evaluation before `Comlink.expose()` registers its
-// message listener, causing the very first RPC (parse) to be lost and hang.
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfJsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { ParsedPdf, PdfOutlineItem, PdfMetadata, PdfWorkerApi } from './types';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = PdfJsWorkerUrl;
+
+class OffscreenCanvasFactory {
+  create(width: number, height: number) {
+    if (width <= 0 || height <= 0) throw new Error('Invalid canvas size');
+    const canvas = new OffscreenCanvas(width, height);
+    return { canvas, context: canvas.getContext('2d') };
+  }
+  reset(
+    cc: { canvas: OffscreenCanvas | null },
+    width: number,
+    height: number,
+  ) {
+    if (!cc.canvas) throw new Error('Canvas is not specified');
+    if (width <= 0 || height <= 0) throw new Error('Invalid canvas size');
+    cc.canvas.width = width;
+    cc.canvas.height = height;
+  }
+  destroy(cc: { canvas: OffscreenCanvas | null; context: unknown }) {
+    if (!cc.canvas) throw new Error('Canvas is not specified');
+    cc.canvas.width = 0;
+    cc.canvas.height = 0;
+    cc.canvas = null;
+    cc.context = null;
+  }
+}
+
+const ASSET_BASE = `${import.meta.env.BASE_URL}pdfjs/`;
+const PDF_ASSETS = {
+  cMapUrl: `${ASSET_BASE}cmaps/`,
+  cMapPacked: true,
+  standardFontDataUrl: `${ASSET_BASE}standard_fonts/`,
+  wasmUrl: `${ASSET_BASE}wasm/`,
+  iccUrl: `${ASSET_BASE}iccs/`,
+  disableFontFace: true,
+  useSystemFonts: false,
+  useWorkerFetch: true,
+  CanvasFactory: OffscreenCanvasFactory,
+} as const;
 
 // The parsed documents live here, inside the worker. They are not
 // serializable across Comlink, so the main thread references them by id.
@@ -74,6 +110,7 @@ const api: PdfWorkerApi = {
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(data),
       password,
+      ...PDF_ASSETS,
     });
 
     let doc;
@@ -120,6 +157,7 @@ const api: PdfWorkerApi = {
     const ctx = canvas.getContext('2d')!;
 
     await page.render({
+      canvas: null,
       canvasContext: ctx as unknown as CanvasRenderingContext2D,
       viewport,
     }).promise;
@@ -209,7 +247,7 @@ const api: PdfWorkerApi = {
     const doc = docs.get(docId);
     if (doc) {
       docs.delete(docId);
-      await doc.destroy();
+      await doc.loadingTask.destroy();
     }
   },
 };

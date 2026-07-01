@@ -239,15 +239,26 @@ test.describe('PDF - viewport controls', () => {
       const b = (await page.locator('.dv-page').first().boundingBox())!;
       return { w: b.width, h: b.height };
     };
+    const canvasRatio = () =>
+      page.locator('.dv-page canvas').first().evaluate((el) => {
+        const c = el as HTMLCanvasElement;
+        return c.width / c.height;
+      });
     const before = await dims();
+    const beforeRatio = await canvasRatio();
     await page.locator('button[aria-label="Rotate clockwise"]').click();
     await expect
       .poll(async () => (await dims()).w)
       .not.toBe(before.w);
 
-    // The canvas must keep its aspect ratio after rotation: the CSS box ratio
-    // has to match the (already rotated) backing-store ratio, or the page is
-    // stretched out of shape.
+    // The bitmap must actually rotate: a portrait page's backing store becomes
+    // landscape (ratio inverts). Guards against the render silently failing and
+    // leaving the un-rotated page (which a distortion-only check would miss).
+    await expect
+      .poll(canvasRatio)
+      .toBeCloseTo(1 / beforeRatio, 1);
+
+    // And it must not be distorted: CSS box ratio matches the backing-store ratio.
     const skew = await page.locator('.dv-page canvas').first().evaluate((el) => {
       const c = el as HTMLCanvasElement;
       const r = c.getBoundingClientRect();
