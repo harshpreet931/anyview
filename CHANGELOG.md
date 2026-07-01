@@ -5,6 +5,33 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.2.1]
+
+### Security
+- **Jupyter output XSS**: notebook image outputs validate their base64 data before it is interpolated into a `src` attribute, so a crafted value can no longer break out and inject markup on open.
+- **Document images can't reach the network**: `<img src="http://…">` (HTML/DOCX) and `![](http://…)` (Markdown/notebook) are stripped to inline `data:`/fragment sources only, blocking open-time beacons and internal-host probes.
+- **Oversized documents are refused**: reflowable adapters reject files over 24 MB before their synchronous whole-document transform, so a pathological input can't freeze the page.
+
+### Fixed
+- **PDF rotation** keeps the page aspect ratio at 90°/270°; the canvas box and reported size now match the rotated bitmap instead of stretching it.
+- **Multi-viewer search isolation**: DOM-search state is keyed per viewer instance, so two `<DocViewer>`s on one page no longer leak matches into each other.
+- **Keyboard shortcuts** are scoped to each viewer's root, and navigation keys act only when the content region has focus (not when a toolbar control is focused).
+- **Controlled `page` prop** set before the document finishes loading is applied on load instead of being dropped.
+- **Buffer sources** are no longer detached: opening a `{ kind: 'buffer' }` source keeps the caller's `ArrayBuffer` intact.
+- **High-DPI cache budget**: the page-cache byte estimate accounts for device-pixel-ratio squared, so 2× displays no longer hold ~4× the intended memory.
+- **Outline `scrollOffset`** is honored, so jumping to a heading inside a reflowable document scrolls to it.
+
+### Performance
+- **Zoom gestures** scale the page live with a CSS transform and rasterize once when the gesture settles, instead of re-rendering on every wheel/pinch event.
+- **XLSX** sheets are sanitized and styled once at parse rather than on every render.
+- **Search** is debounced as the user types.
+
+### Accessibility
+- The sidebar **resize separator** is keyboard operable: focusable, Arrow keys to resize, Home/End to the bounds, with an `aria-value` range.
+
+### Internationalization
+- The sidebar, empty/loading/error states, dialogs, and the screen-reader page announcer read their strings from the locale table, so a registered locale localizes the whole UI (not just the toolbar).
+
 ## [0.2.0]
 
 ### Added
