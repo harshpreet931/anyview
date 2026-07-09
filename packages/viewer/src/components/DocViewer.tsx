@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
   useMemo,
+  useState,
   useImperativeHandle,
   forwardRef,
   type CSSProperties,
@@ -279,24 +280,22 @@ function DocViewerInner(
 
 export const DocViewer = forwardRef<DocViewerRef, DocViewerProps>(
   function DocViewer(props, ref) {
-    const storeRef = useRef<ReturnType<typeof createViewerStore>>(undefined);
-
-    if (!storeRef.current) {
-      storeRef.current = createViewerStore(
+    // Lazy initializer: React guarantees this runs exactly once per mount,
+    // giving each <DocViewer> its own store without reading/writing a ref
+    // during render.
+    const [store] = useState(() => {
+      const s = createViewerStore(
         props.persistKey ? { persistKey: props.persistKey } : undefined,
       );
 
-      const registry: AdapterRegistry =
-        props.registry ?? createRegistry();
-
+      const registry: AdapterRegistry = props.registry ?? createRegistry();
       if (!props.registry) {
         registerBuiltInAdapters(registry);
       }
+      s.getState().setRegistry(registry);
 
-      storeRef.current.getState().setRegistry(registry);
-    }
-
-    const store = storeRef.current;
+      return s;
+    });
 
     useImperativeHandle(ref, () => ({
       goToPage: (index: number) => store.getState().goToPage(index),
