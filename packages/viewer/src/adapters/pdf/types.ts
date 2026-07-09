@@ -30,7 +30,11 @@ export interface PdfMetadata {
 }
 
 export interface PdfWorkerApi {
-  parse(data: ArrayBuffer, password?: string): Promise<ParsedPdf>;
+  parse(
+    data: ArrayBuffer,
+    password?: string,
+    assetBase?: string,
+  ): Promise<ParsedPdf>;
   renderPage(
     docId: number,
     pageIndex: number,

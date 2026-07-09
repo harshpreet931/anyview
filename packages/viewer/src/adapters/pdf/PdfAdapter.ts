@@ -50,6 +50,18 @@ export const pdfManifest: AdapterManifest = {
 export class PdfAdapter implements Adapter {
   readonly manifest = pdfManifest;
 
+  // Base URL (ending in '/') the worker resolves pdf.js's cmaps/standard
+  // fonts/wasm/icc profiles from. Deployment-wide, not per-document, so it's
+  // a static config point (mirrors pdfjsLib.GlobalWorkerOptions.workerSrc).
+  // Defaults to a path relative to the worker script itself, which is
+  // correct out of the box for this package's own build; override it if
+  // your bundler/host serves those assets somewhere else (e.g. copy
+  // node_modules/anyview/dist/pdfjs to a public path and pass its URL).
+  static pdfAssetBase: string | undefined;
+  static configureAssets(baseUrl: string): void {
+    PdfAdapter.pdfAssetBase = baseUrl;
+  }
+
   private worker: Worker | null = null;
   private remote: Comlink.Remote<PdfWorkerApi> | null = null;
   private docId: number | null = null;
@@ -85,6 +97,7 @@ export class PdfAdapter implements Adapter {
       const result = await remote.parse(
         Comlink.transfer(buffer, [buffer]),
         options?.password,
+        PdfAdapter.pdfAssetBase,
       );
       this.docId = result.docId;
       this.parsedPdf = result;

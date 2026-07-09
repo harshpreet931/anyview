@@ -10,8 +10,23 @@
     "noEmit": true,
     "rootDir": "../..",
     "paths": {
+      // Mirror packages/viewer/package.json's "exports" map exactly (every
+      // subpath there resolves to src/adapters/<name>/index.ts, not
+      // src/<name>) so dev-mode source-aliasing matches how a real npm
+      // consumer resolves these subpaths against the published dist.
       "anyview": ["../../packages/viewer/src/index.ts"],
-      "anyview/*": ["../../packages/viewer/src/*"]
+      "anyview/core": ["../../packages/viewer/src/core/index.ts"],
+      "anyview/pdf": ["../../packages/viewer/src/adapters/pdf/index.ts"],
+      "anyview/docx": ["../../packages/viewer/src/adapters/docx/index.ts"],
+      "anyview/xlsx": ["../../packages/viewer/src/adapters/xlsx/index.ts"],
+      "anyview/pptx": ["../../packages/viewer/src/adapters/pptx/index.ts"],
+      "anyview/image": ["../../packages/viewer/src/adapters/image/index.ts"],
+      "anyview/markdown": ["../../packages/viewer/src/adapters/markdown/index.ts"],
+      "anyview/code": ["../../packages/viewer/src/adapters/code/index.ts"],
+      "anyview/csv": ["../../packages/viewer/src/adapters/csv/index.ts"],
+      "anyview/html": ["../../packages/viewer/src/adapters/html/index.ts"],
+      "anyview/ipynb": ["../../packages/viewer/src/adapters/ipynb/index.ts"],
+      "anyview/text": ["../../packages/viewer/src/adapters/text/index.ts"]
     }
   },
   "include": ["src"]

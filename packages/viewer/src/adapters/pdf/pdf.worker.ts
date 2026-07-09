@@ -37,18 +37,32 @@ class OffscreenCanvasFactory {
   }
 }
 
-const ASSET_BASE = `${import.meta.env.BASE_URL}pdfjs/`;
-const PDF_ASSETS = {
-  cMapUrl: `${ASSET_BASE}cmaps/`,
-  cMapPacked: true,
-  standardFontDataUrl: `${ASSET_BASE}standard_fonts/`,
-  wasmUrl: `${ASSET_BASE}wasm/`,
-  iccUrl: `${ASSET_BASE}iccs/`,
-  disableFontFace: true,
-  useSystemFonts: false,
-  useWorkerFetch: true,
-  CanvasFactory: OffscreenCanvasFactory,
-} as const;
+// Default: resolve relative to this worker script's OWN emitted location, not
+// the host app's routing base (which has nothing to do with where a
+// dependency's assets live). Our library build always emits the worker chunk
+// one level under dist/ (e.g. dist/assets/pdf.worker-HASH.js) with the copied
+// pdfjs assets as a dist/pdfjs/ sibling, so '../pdfjs/' is correct out of the
+// box for any bundler that honours `new URL(x, import.meta.url)` inside a
+// worker module (Vite, Rollup, webpack 5, esbuild) - the same convention this
+// file already relies on for the pdf.worker.min.mjs import above.
+// A host app can override this - e.g. to serve the assets from its own public
+// folder or a CDN - via PdfAdapter.configureAssets(baseUrl).
+const DEFAULT_ASSET_BASE = new URL('../pdfjs/', import.meta.url).href;
+
+function buildPdfAssets(assetBase: string | undefined) {
+  const base = assetBase || DEFAULT_ASSET_BASE;
+  return {
+    cMapUrl: `${base}cmaps/`,
+    cMapPacked: true,
+    standardFontDataUrl: `${base}standard_fonts/`,
+    wasmUrl: `${base}wasm/`,
+    iccUrl: `${base}iccs/`,
+    disableFontFace: true,
+    useSystemFonts: false,
+    useWorkerFetch: true,
+    CanvasFactory: OffscreenCanvasFactory,
+  } as const;
+}
 
 // The parsed documents live here, inside the worker. They are not
 // serializable across Comlink, so the main thread references them by id.
@@ -106,11 +120,15 @@ async function mapOutline(
 }
 
 const api: PdfWorkerApi = {
-  async parse(data: ArrayBuffer, password?: string): Promise<ParsedPdf> {
+  async parse(
+    data: ArrayBuffer,
+    password?: string,
+    assetBase?: string,
+  ): Promise<ParsedPdf> {
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(data),
       password,
-      ...PDF_ASSETS,
+      ...buildPdfAssets(assetBase),
     });
 
     let doc;

@@ -1,4 +1,7 @@
-import { defineConfig } from 'vite';
+import path from 'node:path';
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
 
@@ -14,6 +17,35 @@ const assetFileNames = (assetInfo: { name?: string }) =>
 const clientBanner = (chunk: { isEntry?: boolean; name?: string }) =>
   chunk.isEntry && chunk.name === 'index' ? "'use client';" : '';
 
+const require = createRequire(import.meta.url);
+const PDFJS_ROOT = path.dirname(require.resolve('pdfjs-dist/package.json'));
+const PDFJS_ASSET_DIRS = ['cmaps', 'standard_fonts', 'wasm', 'iccs'];
+
+// pdf.js needs its CMaps (CID-keyed/CJK fonts), standard-font fallbacks, WASM
+// decoders, and ICC profiles at runtime. They must ship IN the published
+// package (dist/pdfjs/) - otherwise pdf.worker.ts's default asset resolution
+// (relative to its own emitted URL, see pdf.worker.ts) has nothing to load,
+// and non-embedded/CJK glyphs silently render as blank boxes for every real
+// npm consumer. Bake in the exact assets from the pdfjs-dist we built/tested
+// against, so version drift in a consumer's own pdfjs-dist install (the peer
+// dependency only requires ^6.1) can't produce mismatched cmap data.
+function copyPdfjsAssets(): Plugin {
+  return {
+    name: 'copy-pdfjs-assets',
+    apply: 'build',
+    async writeBundle(options) {
+      const outDir = options.dir ?? path.resolve(import.meta.dirname, 'dist');
+      await Promise.all(
+        PDFJS_ASSET_DIRS.map((d) =>
+          fs.promises.cp(path.join(PDFJS_ROOT, d), path.join(outDir, 'pdfjs', d), {
+            recursive: true,
+          }),
+        ),
+      );
+    },
+  };
+}
+
 export default defineConfig({
   // Relative base so the bundled PDF Web Worker resolves via `import.meta.url`
   // relative to the package - NOT the consumer's site root (which 404s).
@@ -21,6 +53,7 @@ export default defineConfig({
   plugins: [
     react(),
     dts({ include: ['src'], exclude: ['**/*.test.*', 'apps/**'] }),
+    copyPdfjsAssets(),
   ],
   worker: {
     format: 'es',

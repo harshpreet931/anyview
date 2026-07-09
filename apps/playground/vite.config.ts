@@ -61,6 +61,21 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // Mirror packages/viewer/package.json's "exports" map exactly (see the
+      // matching comment in tsconfig.json) so dev-mode resolves the same
+      // subpaths a real npm consumer would get from the published dist.
+      'anyview/core': path.resolve(__dirname, '../../packages/viewer/src/core/index.ts'),
+      'anyview/pdf': path.resolve(__dirname, '../../packages/viewer/src/adapters/pdf/index.ts'),
+      'anyview/docx': path.resolve(__dirname, '../../packages/viewer/src/adapters/docx/index.ts'),
+      'anyview/xlsx': path.resolve(__dirname, '../../packages/viewer/src/adapters/xlsx/index.ts'),
+      'anyview/pptx': path.resolve(__dirname, '../../packages/viewer/src/adapters/pptx/index.ts'),
+      'anyview/image': path.resolve(__dirname, '../../packages/viewer/src/adapters/image/index.ts'),
+      'anyview/markdown': path.resolve(__dirname, '../../packages/viewer/src/adapters/markdown/index.ts'),
+      'anyview/code': path.resolve(__dirname, '../../packages/viewer/src/adapters/code/index.ts'),
+      'anyview/csv': path.resolve(__dirname, '../../packages/viewer/src/adapters/csv/index.ts'),
+      'anyview/html': path.resolve(__dirname, '../../packages/viewer/src/adapters/html/index.ts'),
+      'anyview/ipynb': path.resolve(__dirname, '../../packages/viewer/src/adapters/ipynb/index.ts'),
+      'anyview/text': path.resolve(__dirname, '../../packages/viewer/src/adapters/text/index.ts'),
       'anyview': path.resolve(__dirname, '../../packages/viewer/src/index.ts'),
     },
   },
