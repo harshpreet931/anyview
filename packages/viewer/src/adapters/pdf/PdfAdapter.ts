@@ -22,6 +22,7 @@ import type {
   ParseOptions,
 } from '../../core/types';
 import { ViewerError } from '../../core/errors';
+import { totalRotation, isSidewaysRotation, type Rotation } from '../../core/rotation';
 import type { ParsedPdf, PdfWorkerApi, PdfOutlineItem } from './types';
 
 export const pdfManifest: AdapterManifest = {
@@ -157,7 +158,13 @@ export class PdfAdapter implements Adapter {
 
       const cssWidth = ctx.page.width * ctx.scale;
       const cssHeight = ctx.page.height * ctx.scale;
-      const isSideways = ctx.rotation === 90 || ctx.rotation === 270;
+      // ctx.page.width/height are the page's canonical (unrotated) dims;
+      // ctx.page.rotation is its intrinsic /Rotate, composed here with the
+      // interactively-applied ctx.rotation to match the bitmap the worker
+      // just rendered (which composes the same two values).
+      const isSideways = isSidewaysRotation(
+        totalRotation(ctx.page.rotation as Rotation, ctx.rotation as Rotation),
+      );
       const outWidth = isSideways ? cssHeight : cssWidth;
       const outHeight = isSideways ? cssWidth : cssHeight;
 
@@ -192,13 +199,14 @@ export class PdfAdapter implements Adapter {
   async getTextLayer(
     pageIndex: number,
     _signal?: AbortSignal,
+    rotation = 0,
   ): Promise<TextLayer> {
     if (!this.remote || this.docId == null) {
       return { pageIndex, items: [] };
     }
 
     try {
-      const result = await this.remote.getTextContent(this.docId, pageIndex);
+      const result = await this.remote.getTextContent(this.docId, pageIndex, rotation);
 
       const items: TextLayerItem[] = result.items.map((item) => ({
         str: item.str,
@@ -217,6 +225,7 @@ export class PdfAdapter implements Adapter {
   async search(
     query: SearchQuery,
     signal: AbortSignal,
+    rotation = 0,
   ): Promise<SearchResult> {
     if (!this.remote || this.docId == null || !this.parsedPdf) {
       return { query, matches: [], totalMatches: 0 };
@@ -228,7 +237,7 @@ export class PdfAdapter implements Adapter {
       // Stop early when a newer query supersedes this one - the caller
       // discards an aborted result, so there's no point finishing the walk.
       if (signal.aborted) break;
-      const textLayer = await this.getTextLayer(pageIdx, signal);
+      const textLayer = await this.getTextLayer(pageIdx, signal, rotation);
       for (const item of textLayer.items) {
         if (this.matchText(item.str, query)) {
           matches.push({

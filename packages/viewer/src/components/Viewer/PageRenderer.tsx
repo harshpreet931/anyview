@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RenderContext } from '../../core/types';
+import { totalRotation, isSidewaysRotation, type Rotation } from '../../core/rotation';
 import { makeCacheKey, estimateBitmapByteSize } from '../../core/cache/page-cache';
 import type { CachedPage } from '../../core/cache/page-cache';
 import { useViewerStore } from '../../hooks/useDocViewer';
@@ -107,7 +108,12 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
   const page = document.pages[pageIndex];
   if (!page) return null;
 
-  const isSideways = rotation === 90 || rotation === 270;
+  // page.rotation is the format's own intrinsic rotation (always 0 outside
+  // PDF); compose it with the interactively-applied one so a page that's
+  // already sideways on disk (a scanned/mobile-captured PDF) sizes correctly.
+  const isSideways = isSidewaysRotation(
+    totalRotation(page.rotation as Rotation, rotation as Rotation),
+  );
   const scaledWidth = (isSideways ? page.height : page.width) * zoom;
   const scaledHeight = (isSideways ? page.width : page.height) * zoom;
 

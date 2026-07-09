@@ -45,6 +45,7 @@ export interface PdfWorkerApi {
   getTextContent(
     docId: number,
     pageIndex: number,
+    rotation?: number,
   ): Promise<{
     items: Array<{ str: string; transform: readonly number[]; width: number; height: number; x: number; y: number }>;
     viewportWidth: number;

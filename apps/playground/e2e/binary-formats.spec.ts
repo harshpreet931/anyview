@@ -63,3 +63,67 @@ test.describe('binary formats - native (no iframe) rendering', () => {
     await expect(page.locator('.dv-page-count')).toContainText('2');
   });
 });
+
+test.describe('PDF - intrinsic /Rotate composes with interactive rotation', () => {
+  // rotated.pdf: page 1 has no /Rotate; page 2 has /Rotate 90 (as many
+  // scanner/mobile-captured PDFs do). The interactive rotation control must
+  // compose with a page's own rotation, not replace it.
+  async function pageBox(page: Page, index: number) {
+    return page.locator(`.dv-page[data-page-index="${index}"] canvas`).evaluate(
+      (c: HTMLCanvasElement) => ({ w: c.width, h: c.height }),
+    );
+  }
+
+  test('intrinsic /Rotate 90 renders sideways by default (UI rotation 0)', async ({ page }) => {
+    await openFile(page, 'rotated.pdf');
+    await page.locator('.dv-page canvas').first().waitFor({ state: 'attached' });
+    await page.waitForTimeout(500);
+
+    const page1 = await pageBox(page, 0);
+    const page2 = await pageBox(page, 1);
+
+    // Page 1 (no intrinsic rotation): portrait.
+    expect(page1.w).toBeLessThan(page1.h);
+    // Page 2 (/Rotate 90, no UI rotation applied): landscape - the intrinsic
+    // rotation must be applied even though the interactive control is at 0.
+    expect(page2.w).toBeGreaterThan(page2.h);
+  });
+
+  test('interactive rotation composes with (does not replace) intrinsic rotation', async ({ page }) => {
+    await openFile(page, 'rotated.pdf');
+    await page.locator('.dv-page canvas').first().waitFor({ state: 'attached' });
+    await page.waitForTimeout(500);
+
+    // Capture page 1's baseline ratio before any rotation is applied -
+    // rotation is a global/document-level control, so page 1 is affected by
+    // the same clicks as page 2 and can't be re-measured later as a fixed
+    // reference.
+    const page1Baseline = await pageBox(page, 0);
+    const baselineRatio = page1Baseline.w / page1Baseline.h;
+
+    await page.locator('button[aria-label="Next page"]').click();
+    await page.waitForTimeout(300);
+
+    const before = await pageBox(page, 1); // intrinsic 90, UI 0 -> landscape
+
+    // +90 interactively: total = 90 + 90 = 180 (portrait), NOT back to 0 and
+    // NOT double-sideways - a naive "replace" implementation would either
+    // ignore this click's effect on aspect or produce a distorted mid-state.
+    await page.locator('button[aria-label="Rotate clockwise"]').click();
+    await page.waitForTimeout(500);
+    const after180 = await pageBox(page, 1);
+    expect(after180.w).toBeLessThan(after180.h); // portrait again at total 180
+    // Same aspect ratio as the unrotated baseline (within rounding), not a
+    // distorted intermediate.
+    expect(Math.abs(after180.w / after180.h - baselineRatio)).toBeLessThan(0.02);
+
+    // +90 again: total = 90 + 180 = 270 (landscape again, same box dims as
+    // total 90 - both are "sideways", only the rotation direction differs).
+    await page.locator('button[aria-label="Rotate clockwise"]').click();
+    await page.waitForTimeout(500);
+    const after270 = await pageBox(page, 1);
+    expect(after270.w).toBeGreaterThan(after270.h);
+    expect(after270.w).toBe(before.w);
+    expect(after270.h).toBe(before.h);
+  });
+});

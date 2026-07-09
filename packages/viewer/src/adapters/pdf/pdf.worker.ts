@@ -9,6 +9,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import PdfJsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { ParsedPdf, PdfOutlineItem, PdfMetadata, PdfWorkerApi } from './types';
+import { totalRotation, type Rotation } from '../../core/rotation';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = PdfJsWorkerUrl;
 
@@ -143,12 +144,19 @@ const api: PdfWorkerApi = {
 
     for (let i = 1; i <= pageCount; i++) {
       const page = await doc.getPage(i);
-      const viewport = page.getViewport({ scale: 1 });
+      // Explicit rotation:0 (not omitted) gives the page's CANONICAL,
+      // unrotated dimensions - pdf.js only defaults to the page's own
+      // /Rotate when the property is omitted entirely, and an explicit
+      // rotation value replaces rather than composes with it. PageRef then
+      // consistently describes the page pre-rotation everywhere, and
+      // intrinsic rotation is carried separately so it composes with (not
+      // gets clobbered by) the interactive rotation applied later.
+      const viewport = page.getViewport({ scale: 1, rotation: 0 });
       pages.push({
         index: i - 1,
         width: viewport.width,
         height: viewport.height,
-        rotation: viewport.rotation as 0 | 90 | 180 | 270,
+        rotation: page.rotate as Rotation,
       });
     }
 
@@ -166,7 +174,12 @@ const api: PdfWorkerApi = {
     dpr: number,
   ): Promise<ImageBitmap> {
     const page = await getDoc(docId).getPage(pageIndex + 1);
-    const viewport = page.getViewport({ scale: scale * dpr, rotation });
+    // Compose the page's own intrinsic rotation with the interactively-
+    // applied one - an explicit `rotation` REPLACES page.rotate rather than
+    // adding to it, so passing the UI rotation alone (the previous
+    // behaviour) silently discarded any /Rotate the PDF itself declared.
+    const total = totalRotation(page.rotate as Rotation, rotation as Rotation);
+    const viewport = page.getViewport({ scale: scale * dpr, rotation: total });
 
     const canvas = new OffscreenCanvas(
       Math.ceil(viewport.width),
@@ -183,9 +196,12 @@ const api: PdfWorkerApi = {
     return canvas.transferToImageBitmap();
   },
 
-  async getTextContent(docId: number, pageIndex: number) {
+  async getTextContent(docId: number, pageIndex: number, rotation = 0) {
     const page = await getDoc(docId).getPage(pageIndex + 1);
-    const viewport = page.getViewport({ scale: 1 });
+    // Same composition as renderPage, so text-item positions land in the
+    // same frame as the (correctly rotated) rendered bitmap.
+    const total = totalRotation(page.rotate as Rotation, rotation as Rotation);
+    const viewport = page.getViewport({ scale: 1, rotation: total });
     const content = await page.getTextContent();
 
     const vt = viewport.transform;

@@ -7,6 +7,7 @@ import type { StateCreator } from 'zustand';
 import type { SearchMatch, SearchQuery, SearchResult } from '../types';
 import type { DocumentSlice } from './documentSlice';
 import type { NavigationSlice } from './navigationSlice';
+import type { ViewportSlice } from './viewportSlice';
 
 export type SearchState = 'idle' | 'searching' | 'done' | 'error';
 
@@ -41,7 +42,7 @@ export interface SearchSlice {
 }
 
 export const createSearchSlice: StateCreator<
-  SearchSlice & DocumentSlice & NavigationSlice,
+  SearchSlice & DocumentSlice & NavigationSlice & ViewportSlice,
   [],
   [],
   SearchSlice
@@ -87,7 +88,7 @@ export const createSearchSlice: StateCreator<
     if (!useAdapterSearch) return;
 
     adapter!
-      .search!(query, controller.signal)
+      .search!(query, controller.signal, get().rotation)
       .then((result) => {
         if (controller.signal.aborted) return;
         set({

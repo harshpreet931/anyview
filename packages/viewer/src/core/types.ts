@@ -337,8 +337,20 @@ export interface Adapter {
     options?: ParseOptions,
   ): Promise<DocumentModel>;
   renderPage(ctx: RenderContext): Promise<RenderResult>;
-  getTextLayer?(pageIndex: number, signal?: AbortSignal): Promise<TextLayer>;
-  search?(query: SearchQuery, signal: AbortSignal): Promise<SearchResult>;
+  // `rotation` is the interactively-applied rotation (0/90/180/270); adapters
+  // whose content can be rotated (PDF) compose it with any intrinsic
+  // rotation of their own so text/search geometry matches the rendered page.
+  // Formats with no such concept ignore it.
+  getTextLayer?(
+    pageIndex: number,
+    signal?: AbortSignal,
+    rotation?: number,
+  ): Promise<TextLayer>;
+  search?(
+    query: SearchQuery,
+    signal: AbortSignal,
+    rotation?: number,
+  ): Promise<SearchResult>;
   exportDocument?(format: 'original' | 'pdf'): Promise<Blob>;
   dispose?(): void;
 }

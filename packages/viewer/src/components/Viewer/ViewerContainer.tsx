@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useViewerStore } from '../../hooks/useDocViewer';
+import { totalRotation, isSidewaysRotation, type Rotation } from '../../core/rotation';
 import { PageRenderer } from './PageRenderer';
 import { EmptyState, LoadingState, ErrorState } from '../States';
 
@@ -164,11 +165,15 @@ export function ViewerContainer() {
       const gap = isHorizontal ? 0 : PAGE_VERTICAL_GAP;
       const row = document ? rows[rowIndex] : undefined;
       if (!row) return 400 + gap;
-      const isSideways = rotation === 90 || rotation === 270;
       let main = 0;
       for (const p of row) {
         const page = document!.pages[p];
         if (!page) continue;
+        // Each page's own intrinsic rotation composes with the interactive
+        // one, so a per-page check (not one shared for the whole row).
+        const isSideways = isSidewaysRotation(
+          totalRotation(page.rotation as Rotation, rotation as Rotation),
+        );
         const m = (isSideways ? page.width : page.height) * zoom;
         if (m > main) main = m; // a row is as tall as its tallest page
       }
@@ -450,7 +455,9 @@ export function ViewerContainer() {
     if (!el || !page) return;
 
     const recompute = () => {
-      const isSideways = rotation === 90 || rotation === 270;
+      const isSideways = isSidewaysRotation(
+        totalRotation(page.rotation as Rotation, rotation as Rotation),
+      );
       const pw = isSideways ? page.height : page.width;
       const ph = isSideways ? page.width : page.height;
       // A vertical spread lays two pages across the width, so fitting must

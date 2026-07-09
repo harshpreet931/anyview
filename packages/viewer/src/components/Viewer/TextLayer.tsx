@@ -18,11 +18,13 @@ export interface TextLayerProps {
 
 export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
   const adapter = useViewerStore((s) => s.adapter);
+  const rotation = useViewerStore((s) => s.rotation);
   const [items, setItems] = useState<readonly TextLayerItem[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Text geometry is zoom-independent (normalized 0–1), so fetch once per
-  // page/adapter and only re-scale via width/height afterwards.
+  // Text geometry is normalized against the current rotation (not
+  // zoom-independent across rotation changes - a rotated page has a
+  // different text-item frame), so re-fetch whenever rotation changes too.
   useEffect(() => {
     if (!adapter?.getTextLayer) {
       setItems([]);
@@ -31,7 +33,7 @@ export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
     let cancelled = false;
     const controller = new AbortController();
     adapter
-      .getTextLayer(pageIndex, controller.signal)
+      .getTextLayer(pageIndex, controller.signal, rotation)
       .then((layer) => {
         if (!cancelled) setItems(layer.items);
       })
@@ -42,7 +44,7 @@ export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
       cancelled = true;
       controller.abort();
     };
-  }, [adapter, pageIndex]);
+  }, [adapter, pageIndex, rotation]);
 
   // Match each span's rendered width to the source run width (pdf.js
   // technique) so selection rectangles line up with the bitmap glyphs.
