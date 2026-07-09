@@ -8,7 +8,7 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "baseUrl": ".",
+    "rootDir": "../..",
     "paths": {
       "anyview": ["../../packages/viewer/src/index.ts"],
       "anyview/*": ["../../packages/viewer/src/*"]
