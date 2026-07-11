@@ -16,6 +16,7 @@ import type {
 import { ViewerError } from '../../core/errors';
 import { loadSanitizer } from '../../core/sanitizer';
 import { assertTransformSize } from '../../core/limits';
+import { headingScrollOffset } from '../../core/reflow-outline';
 
 export const htmlManifest: AdapterManifest = {
   id: 'html',
@@ -181,7 +182,7 @@ export class HtmlAdapter implements Adapter {
         title: h.textContent ?? '',
         dest: {
           pageIndex: 0,
-          scrollOffset: (h as HTMLElement).offsetTop,
+          scrollOffset: headingScrollOffset(doc, h),
         },
       });
     });

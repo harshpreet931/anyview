@@ -17,6 +17,7 @@ import { ViewerError, isViewerError } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
 import { loadSanitizer } from '../../core/sanitizer';
 import { assertTransformSize } from '../../core/limits';
+import { headingScrollOffset } from '../../core/reflow-outline';
 
 export const docxManifest: AdapterManifest = {
   id: 'docx',
@@ -187,7 +188,7 @@ export class DocxAdapter implements Adapter {
         title: h.textContent ?? '',
         dest: {
           pageIndex: 0,
-          scrollOffset: (h as HTMLElement).offsetTop,
+          scrollOffset: headingScrollOffset(doc, h),
         },
         ...(level < 3 ? { children: [] as OutlineNode[] } : {}),
       });
