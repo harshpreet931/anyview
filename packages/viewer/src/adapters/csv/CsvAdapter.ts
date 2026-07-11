@@ -52,7 +52,7 @@ export class CsvAdapter implements Adapter {
     if (signal.aborted) throw new Error('Parse cancelled');
 
     const text = new TextDecoder('utf-8').decode(buffer);
-    const delimiter = source.meta.name.endsWith('.tsv') ? '\t' : ',';
+    const delimiter = source.meta.name.toLowerCase().endsWith('.tsv') ? '\t' : ',';
 
     try {
       const Papa = (await loadParser('papaparse', () => import('papaparse'))).default;
