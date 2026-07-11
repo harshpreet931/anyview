@@ -1,8 +1,3 @@
-/* ============================================================
- * PDF Adapter - main thread implementation
- * Uses Comlink to communicate with the worker.
- * ============================================================ */
-
 import * as Comlink from 'comlink';
 import type {
   Adapter,
@@ -51,13 +46,6 @@ export const pdfManifest: AdapterManifest = {
 export class PdfAdapter implements Adapter {
   readonly manifest = pdfManifest;
 
-  // Base URL (ending in '/') the worker resolves pdf.js's cmaps/standard
-  // fonts/wasm/icc profiles from. Deployment-wide, not per-document, so it's
-  // a static config point (mirrors pdfjsLib.GlobalWorkerOptions.workerSrc).
-  // Defaults to a path relative to the worker script itself, which is
-  // correct out of the box for this package's own build; override it if
-  // your bundler/host serves those assets somewhere else (e.g. copy
-  // node_modules/anyview/dist/pdfjs to a public path and pass its URL).
   static pdfAssetBase: string | undefined;
   static configureAssets(baseUrl: string): void {
     PdfAdapter.pdfAssetBase = baseUrl;
@@ -158,10 +146,6 @@ export class PdfAdapter implements Adapter {
 
       const cssWidth = ctx.page.width * ctx.scale;
       const cssHeight = ctx.page.height * ctx.scale;
-      // ctx.page.width/height are the page's canonical (unrotated) dims;
-      // ctx.page.rotation is its intrinsic /Rotate, composed here with the
-      // interactively-applied ctx.rotation to match the bitmap the worker
-      // just rendered (which composes the same two values).
       const isSideways = isSidewaysRotation(
         totalRotation(ctx.page.rotation as Rotation, ctx.rotation as Rotation),
       );
@@ -234,8 +218,6 @@ export class PdfAdapter implements Adapter {
     const matches: SearchMatch[] = [];
 
     for (let pageIdx = 0; pageIdx < this.parsedPdf.pageCount; pageIdx++) {
-      // Stop early when a newer query supersedes this one - the caller
-      // discards an aborted result, so there's no point finishing the walk.
       if (signal.aborted) break;
       const textLayer = await this.getTextLayer(pageIdx, signal, rotation);
       for (const item of textLayer.items) {

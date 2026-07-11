@@ -1,8 +1,3 @@
-/* ============================================================
- * Format Detection
- * Extension/MIME → FormatId mapping with ambiguity resolution.
- * ============================================================ */
-
 import type { FormatId, FormatSpec } from './types';
 
 const FORMAT_SPECS: readonly FormatSpec[] = [
@@ -13,9 +8,7 @@ const FORMAT_SPECS: readonly FormatSpec[] = [
   },
   {
     id: 'docx',
-    // Only OOXML .docx - mammoth cannot read the legacy binary .doc, so
-    // claiming it would route the file to a guaranteed parse failure instead
-    // of a clean "unsupported format" message.
+    // Only OOXML .docx - mammoth cannot read the legacy binary .doc.
     extensions: ['docx'],
     mimeTypes: [
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -86,8 +79,7 @@ const FORMAT_SPECS: readonly FormatSpec[] = [
   },
   {
     id: 'text',
-    // No 'rtf': routing it here would render raw RTF control words ({\rtf1...)
-    // as plain text rather than reporting it as unsupported.
+    // No 'rtf' - it would render raw RTF control words as plain text, not report unsupported.
     extensions: ['txt', 'log'],
     mimeTypes: ['text/plain'],
   },
@@ -111,11 +103,6 @@ for (const spec of FORMAT_SPECS) {
   }
 }
 
-/**
- * Detect the best-matching FormatId for a file.
- * Checks extension first, then MIME type.
- */
-// Well-known files that carry no extension.
 const EXTENSIONLESS_MAP = new Map<string, FormatId>([
   ['dockerfile', 'code'],
   ['makefile', 'code'],

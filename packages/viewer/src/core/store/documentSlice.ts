@@ -1,8 +1,3 @@
-/* ============================================================
- * Document Slice
- * Manages the loaded document, adapter, and load state.
- * ============================================================ */
-
 import type { StateCreator } from 'zustand';
 import type {
   Adapter,
@@ -19,8 +14,7 @@ import type { AnnotationSlice } from './annotationSlice';
 import { normalizeFileSource } from '../file-source';
 import { PageCache } from '../cache/page-cache';
 
-// Per-document view state cleared on open/close. Annotations are NOT here -
-// they reset via _resetAnnotations() so onAnnotationChange listeners fire.
+// Annotations are NOT reset here - _resetAnnotations() does that so change listeners fire.
 const PER_DOCUMENT_RESET = {
   currentPage: 0,
   scrollOffset: 0,
@@ -88,10 +82,7 @@ export const createDocumentSlice: StateCreator<
   openDocument: async (source: FileSource) => {
     get()._loadController?.abort();
     get()._searchController?.abort();
-    // Tear down the previously loaded document before opening another: dispose
-    // its adapter (frees the PDF worker / ImageBitmaps) and clear the page
-    // cache, whose key isn't document-scoped - otherwise a new same-format
-    // document would be served the previous one's cached pages.
+    // pageCache key isn't document-scoped - must clear or a new same-format doc gets stale pages.
     get().adapter?.dispose?.();
     get()._pendingPassword?.adapter.dispose?.();
     get().pageCache.clear();
@@ -162,9 +153,6 @@ export const createDocumentSlice: StateCreator<
     }
   },
 
-  // Runs adapter.parse and applies the result. A PASSWORD_REQUIRED/INCORRECT
-  // failure keeps the adapter + reader alive so submitPassword can retry the
-  // same instance (its worker and buffer are already warm).
   _runParse: async (adapter, reader, controller, source, password) => {
     try {
       const model = await adapter.parse(
@@ -309,8 +297,6 @@ export const createDocumentSlice: StateCreator<
     const { adapter, document: model } = get();
     if (!model) return;
 
-    // Print the original bytes in a new tab when the adapter can export them
-    // (PDF); otherwise fall back to the browser print of the rendered DOM.
     if (adapter?.exportDocument && model.format === 'pdf') {
       try {
         const blob = await adapter.exportDocument('original');
@@ -318,7 +304,6 @@ export const createDocumentSlice: StateCreator<
         const win = window.open(url);
         if (win) {
           win.addEventListener('load', () => win.print());
-          // Revoke once the print window has had time to load the bytes.
           setTimeout(() => URL.revokeObjectURL(url), 60_000);
           return;
         }

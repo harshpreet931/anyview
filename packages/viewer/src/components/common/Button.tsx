@@ -1,7 +1,3 @@
-/* ============================================================
- * Button - styled button with variants
- * ============================================================ */
-
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 type ButtonVariant = 'default' | 'primary' | 'ghost' | 'icon';

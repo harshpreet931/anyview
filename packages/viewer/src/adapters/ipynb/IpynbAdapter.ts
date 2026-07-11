@@ -1,10 +1,3 @@
-/* ============================================================
- * Jupyter Notebook (.ipynb) Adapter
- * Renders markdown cells (react-markdown), code cells (Shiki), and
- * saved outputs (text, HTML, images, tracebacks) - no kernel, no Python,
- * no server. A notebook is just JSON; every dependency is already shipped.
- * ============================================================ */
-
 import type {
   Adapter,
   AdapterManifest,
@@ -72,15 +65,11 @@ function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
-// Keep only valid base64 characters. A notebook output's image data is
-// interpolated into a `src="data:...,<here>"` attribute, so a value containing
-// a quote would otherwise break out and inject markup (zero-click XSS).
+// Strip non-base64 chars: the value is interpolated into a data: URI src, so a quote would break out and inject markup (XSS).
 function safeBase64(s: string): string {
   return s.replace(/[^A-Za-z0-9+/=]/g, '');
 }
 
-// ANSI SGR escape codes (ESC[...m) in tracebacks; built via RegExp so no
-// literal ESC control char sits in source.
 const ANSI = new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g");
 
 export class IpynbAdapter implements Adapter {
@@ -180,7 +169,6 @@ export class IpynbAdapter implements Adapter {
         try {
           return codeToHtml(src);
         } catch {
-          /* fall through */
         }
       }
       return `<pre class="dv-ipynb-code"><code>${escapeHtml(src)}</code></pre>`;
@@ -253,7 +241,7 @@ export class IpynbAdapter implements Adapter {
         const m = /^(#{1,6})\s+(.+)$/.exec(line);
         if (m) {
           outline.push({ title: m[2]!.trim(), dest: { pageIndex: 0 } });
-          break; // one entry per markdown cell (its first heading)
+          break;
         }
       }
     }

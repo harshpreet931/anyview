@@ -1,7 +1,3 @@
-/* ============================================================
- * useFileInput - file picker + drag-drop helper
- * ============================================================ */
-
 import { useCallback, useRef, useState } from 'react';
 import type { FileSource } from '../core/types';
 

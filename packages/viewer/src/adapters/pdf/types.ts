@@ -1,14 +1,8 @@
-/* ============================================================
- * PDF Adapter Types
- * ============================================================ */
-
 import type { PageRef } from '../../core/types';
 
 export interface ParsedPdf {
   readonly pageCount: number;
   readonly pages: PageRef[];
-  // The parsed PDFDocumentProxy stays inside the worker (it is not
-  // serializable across Comlink); the main thread references it by id.
   readonly docId: number;
 }
 

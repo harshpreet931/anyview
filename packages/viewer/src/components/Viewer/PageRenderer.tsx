@@ -23,14 +23,12 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
   const targetRef = useRef<HTMLCanvasElement | HTMLDivElement | null>(null);
   const reflowRef = useRef<HTMLElement | null>(null);
   const renderTokenRef = useRef(0);
-  // Bumps after reflowable content is (re)painted so DOM search re-scans it.
   const [contentKey, setContentKey] = useState(0);
 
   const format = document?.format;
   const isCanvasFormat = format === 'pdf' || format === 'image';
   const features = adapter?.manifest.features;
 
-  // DOM-based search for reflowable formats (real DOM text). No-op for canvas.
   useDomSearch(reflowRef, !isCanvasFormat, contentKey, pageIndex);
 
   useEffect(() => {
@@ -94,7 +92,6 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
             })
             .catch(() => {});
         } else {
-          // Reflowable content just landed in the DOM - let search re-scan it.
           setContentKey((k) => k + 1);
         }
       })
@@ -108,9 +105,6 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
   const page = document.pages[pageIndex];
   if (!page) return null;
 
-  // page.rotation is the format's own intrinsic rotation (always 0 outside
-  // PDF); compose it with the interactively-applied one so a page that's
-  // already sideways on disk (a scanned/mobile-captured PDF) sizes correctly.
   const isSideways = isSidewaysRotation(
     totalRotation(page.rotation as Rotation, rotation as Rotation),
   );
@@ -124,7 +118,6 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
       className="dv-page"
       style={{
         width: `${scaledWidth}px`,
-        // Reflowable content grows past the estimate; keep the estimate as a floor.
         height: isCanvasFormat ? `${scaledHeight}px` : 'auto',
         minHeight: isCanvasFormat ? undefined : `${scaledHeight}px`,
       }}

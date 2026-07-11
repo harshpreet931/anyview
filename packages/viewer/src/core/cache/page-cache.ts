@@ -1,8 +1,3 @@
-/* ============================================================
- * Page Cache
- * Byte-budgeted LRU cache for rendered page bitmaps.
- * ============================================================ */
-
 import type { RenderResult } from '../types';
 
 export interface CachedPage extends RenderResult {
@@ -91,11 +86,7 @@ export class PageCache {
     }
   }
 
-  /**
-   * Drop least-recently-used pages down to a fraction of the budget. Called
-   * under memory pressure (e.g. when the tab is backgrounded); the evicted
-   * pages re-render lazily on return.
-   */
+  /** Drop least-recently-used pages down to a fraction of the budget. */
   trim(fraction: number = 0.25): void {
     this.shrinkTo(Math.floor(this.maxBytes * fraction));
   }
@@ -123,11 +114,7 @@ export function makeCacheKey(
   return `${format}:${pageIndex}:${zoom}:${rotation}:${dpr}`;
 }
 
-/**
- * Estimate the byte size of an ImageBitmap or canvas. `width`/`height` are CSS
- * pixels; the backing store is `dpr`x larger on each axis, so the pixel count
- * scales with dpr squared (4 bytes/pixel, RGBA).
- */
+/** Estimate the byte size of an ImageBitmap or canvas. */
 export function estimateBitmapByteSize(
   width: number,
   height: number,

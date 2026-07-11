@@ -1,8 +1,4 @@
 /// <reference types="vite/client" />
-/* ============================================================
- * PDF Worker - runs in Web Worker via Comlink
- * Handles PDF.js parsing and page rendering off main thread.
- * ============================================================ */
 
 import * as Comlink from 'comlink';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -38,16 +34,7 @@ class OffscreenCanvasFactory {
   }
 }
 
-// Default: resolve relative to this worker script's OWN emitted location, not
-// the host app's routing base (which has nothing to do with where a
-// dependency's assets live). Our library build always emits the worker chunk
-// one level under dist/ (e.g. dist/assets/pdf.worker-HASH.js) with the copied
-// pdfjs assets as a dist/pdfjs/ sibling, so '../pdfjs/' is correct out of the
-// box for any bundler that honours `new URL(x, import.meta.url)` inside a
-// worker module (Vite, Rollup, webpack 5, esbuild) - the same convention this
-// file already relies on for the pdf.worker.min.mjs import above.
-// A host app can override this - e.g. to serve the assets from its own public
-// folder or a CDN - via PdfAdapter.configureAssets(baseUrl).
+// Resolves relative to this worker's own emitted location, not the host app's routing base.
 const DEFAULT_ASSET_BASE = new URL('../pdfjs/', import.meta.url).href;
 
 function buildPdfAssets(assetBase: string | undefined) {
@@ -65,8 +52,6 @@ function buildPdfAssets(assetBase: string | undefined) {
   } as const;
 }
 
-// The parsed documents live here, inside the worker. They are not
-// serializable across Comlink, so the main thread references them by id.
 const docs = new Map<number, PDFDocumentProxy>();
 let nextDocId = 1;
 
@@ -101,7 +86,6 @@ type RawOutlineItem = {
   items?: readonly RawOutlineItem[];
 };
 
-// Recurse the full bookmark tree, resolving each dest to a page index.
 async function mapOutline(
   doc: PDFDocumentProxy,
   items: readonly RawOutlineItem[],
@@ -144,13 +128,7 @@ const api: PdfWorkerApi = {
 
     for (let i = 1; i <= pageCount; i++) {
       const page = await doc.getPage(i);
-      // Explicit rotation:0 (not omitted) gives the page's CANONICAL,
-      // unrotated dimensions - pdf.js only defaults to the page's own
-      // /Rotate when the property is omitted entirely, and an explicit
-      // rotation value replaces rather than composes with it. PageRef then
-      // consistently describes the page pre-rotation everywhere, and
-      // intrinsic rotation is carried separately so it composes with (not
-      // gets clobbered by) the interactive rotation applied later.
+      // Explicit rotation:0 gives canonical dims - pdf.js only applies the page's /Rotate when rotation is omitted.
       const viewport = page.getViewport({ scale: 1, rotation: 0 });
       pages.push({
         index: i - 1,
@@ -174,10 +152,7 @@ const api: PdfWorkerApi = {
     dpr: number,
   ): Promise<ImageBitmap> {
     const page = await getDoc(docId).getPage(pageIndex + 1);
-    // Compose the page's own intrinsic rotation with the interactively-
-    // applied one - an explicit `rotation` REPLACES page.rotate rather than
-    // adding to it, so passing the UI rotation alone (the previous
-    // behaviour) silently discarded any /Rotate the PDF itself declared.
+    // Explicit rotation REPLACES page.rotate rather than composing, so combine the two.
     const total = totalRotation(page.rotate as Rotation, rotation as Rotation);
     const viewport = page.getViewport({ scale: scale * dpr, rotation: total });
 
@@ -198,8 +173,6 @@ const api: PdfWorkerApi = {
 
   async getTextContent(docId: number, pageIndex: number, rotation = 0) {
     const page = await getDoc(docId).getPage(pageIndex + 1);
-    // Same composition as renderPage, so text-item positions land in the
-    // same frame as the (correctly rotated) rendered bitmap.
     const total = totalRotation(page.rotate as Rotation, rotation as Rotation);
     const viewport = page.getViewport({ scale: 1, rotation: total });
     const content = await page.getTextContent();
@@ -214,19 +187,13 @@ const api: PdfWorkerApi = {
       .map((item) => {
         const tm = item.transform as readonly number[];
 
-        // Compose the page viewport transform with the per-item text matrix
-        // (Util.transform): maps PDF text space → top-left device space.
         const c = vt[0] * tm[2] + vt[2] * tm[3];
         const d = vt[1] * tm[2] + vt[3] * tm[3];
         const e = vt[0] * tm[4] + vt[2] * tm[5] + vt[4];
         const f = vt[1] * tm[4] + vt[3] * tm[5] + vt[5];
 
-        // fontHeight = vertical scale magnitude of the composed matrix.
         const fontHeight = Math.hypot(c, d) || item.height || 10;
 
-        // `transform[4..5]` (e,f) is the baseline origin; the box top is one
-        // ascent above it. Emit a top-left box so the layer can position text
-        // and search highlights without any further transform math.
         return {
           str: item.str,
           transform: tm,

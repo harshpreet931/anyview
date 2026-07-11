@@ -1,8 +1,3 @@
-/* ============================================================
- * Viewport Slice
- * Zoom, rotation, scroll mode, spread mode, fullscreen.
- * ============================================================ */
-
 import type { StateCreator } from 'zustand';
 import type {
   FitMode,
@@ -24,7 +19,6 @@ export interface ViewportSlice {
   zoomIn: () => void;
   zoomOut: () => void;
   setFitMode: (mode: FitMode) => void;
-  /** Apply a computed fit zoom WITHOUT switching fitMode back to 'custom'. */
   _applyFitZoom: (zoom: number) => void;
   setRotation: (rotation: 0 | 90 | 180 | 270) => void;
   rotateClockwise: () => void;
@@ -34,10 +28,8 @@ export interface ViewportSlice {
   setCursorMode: (mode: CursorMode) => void;
   toggleFullscreen: () => void;
 
-  /** The viewer root element, used as the fullscreen target. */
   _rootElement: HTMLElement | null;
   setRootElement: (el: HTMLElement | null) => void;
-  /** Sync isFullscreen with the actual document state (fullscreenchange). */
   _setFullscreen: (value: boolean) => void;
 }
 
@@ -105,8 +97,7 @@ export const createViewportSlice: StateCreator<
 
   toggleFullscreen: () => {
     if (typeof document === 'undefined') return;
-    // isFullscreen is not flipped optimistically here - the fullscreenchange
-    // listener in DocViewer drives it, so Esc and browser chrome stay in sync.
+    // Don't flip isFullscreen here - the fullscreenchange listener drives it so Esc stays in sync.
     if (document.fullscreenElement) {
       document.exitFullscreen?.().catch(() => {});
       return;

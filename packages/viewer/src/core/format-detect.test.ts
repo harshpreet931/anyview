@@ -34,12 +34,9 @@ describe('detectFormat', () => {
   });
 
   it('does not claim legacy formats it cannot parse', () => {
-    // Binary .doc/.ppt and .rtf would route to adapters that fail or render
-    // garbage, so they must be reported as unsupported instead.
     expect(detectFormat('legacy.doc')).toBeNull();
     expect(detectFormat('deck.ppt')).toBeNull();
     expect(detectFormat('memo.rtf')).toBeNull();
-    // .xls stays supported - SheetJS reads the binary format.
     expect(detectFormat('book.xls')).toBe('xlsx');
   });
 

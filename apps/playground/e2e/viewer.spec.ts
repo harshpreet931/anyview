@@ -1,11 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
 
-/* ============================================================
- * Anyview - in-depth end-to-end tests against the real
- * playground (Vite dev server + the library source).
- * ============================================================ */
-
-// Sample chips render in this order (apps/playground/src/samples/index.ts)
 const SAMPLE_INDEX: Record<string, number> = {
   Markdown: 0,
   Text: 1,
@@ -85,8 +79,6 @@ test.describe('rendering - every sample format', () => {
 
     const thumbs = page.locator('.dv-thumbnail-canvas');
     await expect(thumbs).toHaveCount(2);
-    // A rendered portrait page is sized height > width; an unrendered canvas
-    // keeps the 300×150 default (landscape), so this proves it actually drew.
     await expect
       .poll(() => thumbs.first().evaluate((c: HTMLCanvasElement) => (c.height > c.width ? 1 : 0)), {
         timeout: 15_000,
@@ -116,7 +108,6 @@ test.describe('PDF - text selection', () => {
     await loadSample(page, 'PDF');
     await waitForCanvasRendered(page);
 
-    // Text layer should populate with the page's words.
     await expect.poll(async () =>
       page.locator('.dv-text-layer span').count(), { timeout: 20_000 },
     ).toBeGreaterThan(0);
@@ -142,11 +133,9 @@ test.describe('PDF - search highlight + navigation', () => {
     await waitForCanvasRendered(page);
 
     await openSearch(page, 'anyview');
-    // Match count appears (e.g. "1 of N")
     await expect(page.locator('.dv-search-count')).toContainText(/of/i, {
       timeout: 15_000,
     });
-    // Positioned highlight boxes appear over the page.
     await expect(page.locator('.dv-search-highlight').first()).toBeAttached();
     await expect(page.locator('.dv-search-highlight-current')).toHaveCount(1);
 
@@ -251,14 +240,10 @@ test.describe('PDF - viewport controls', () => {
       .poll(async () => (await dims()).w)
       .not.toBe(before.w);
 
-    // The bitmap must actually rotate: a portrait page's backing store becomes
-    // landscape (ratio inverts). Guards against the render silently failing and
-    // leaving the un-rotated page (which a distortion-only check would miss).
     await expect
       .poll(canvasRatio)
       .toBeCloseTo(1 / beforeRatio, 1);
 
-    // And it must not be distorted: CSS box ratio matches the backing-store ratio.
     const skew = await page.locator('.dv-page canvas').first().evaluate((el) => {
       const c = el as HTMLCanvasElement;
       const r = c.getBoundingClientRect();
@@ -270,7 +255,6 @@ test.describe('PDF - viewport controls', () => {
   test('continuous wheel zoom scales live and rasterizes once (no storm)', async ({
     page,
   }) => {
-    // Count main-thread bitmap rasterizations (one per cached page render).
     await page.addInitScript(() => {
       const orig = window.createImageBitmap.bind(window);
       (window as unknown as { __bmp: number }).__bmp = 0;
@@ -283,15 +267,12 @@ test.describe('PDF - viewport controls', () => {
     await loadSample(page, 'PDF');
     await waitForCanvasRendered(page);
 
-    // Reset the counter after the initial render settles.
     await page.waitForTimeout(300);
     await page.evaluate(() => ((window as unknown as { __bmp: number }).__bmp = 0));
 
     const pageBox = page.locator('.dv-page').first();
     const before = (await pageBox.boundingBox())!;
 
-    // Fire a burst of ctrl+wheel zoom-in events, each in its own task (this is
-    // what defeats React batching and caused the rasterize storm).
     const dispatch = () =>
       page.evaluate(() => {
         const el = document.querySelector('.dv-viewer-container')!;
@@ -309,11 +290,9 @@ test.describe('PDF - viewport controls', () => {
       });
     for (let i = 0; i < 5; i++) {
       await dispatch();
-      await page.waitForTimeout(12); // within the 90ms settle window
+      await page.waitForTimeout(12);
     }
 
-    // Mid-gesture: the content is scaled with a CSS transform and nothing has
-    // been rasterized yet.
     const mid = await page.evaluate(() => {
       const content = document.querySelector('.dv-viewer-container > div') as HTMLElement;
       return {
@@ -324,9 +303,6 @@ test.describe('PDF - viewport controls', () => {
     expect(mid.transform).not.toBe('none');
     expect(mid.bmp).toBe(0);
 
-    // After the gesture settles: transform is dropped, the page is committed at
-    // the new zoom, and only a handful of (visible) pages rasterized - not one
-    // per wheel event.
     await page.waitForTimeout(350);
     const after = await page.evaluate(() => {
       const content = document.querySelector('.dv-viewer-container > div') as HTMLElement;
@@ -357,7 +333,6 @@ test.describe('PDF - viewport controls', () => {
     await loadSample(page, 'PDF');
     await waitForCanvasRendered(page);
 
-    // Shortcuts are scoped to focus inside the viewer.
     await page.locator('.dv-viewer-container').focus();
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('.dv-page-input')).toHaveValue('2');
@@ -368,12 +343,10 @@ test.describe('PDF - viewport controls', () => {
     await loadSample(page, 'PDF');
     await waitForCanvasRendered(page);
 
-    // Focus a toolbar button (outside the scrollable content region).
     await page.locator('button[aria-label="Zoom in"]').focus();
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('.dv-page-input')).toHaveValue('1');
 
-    // Focusing the content region still navigates.
     await page.locator('.dv-viewer-container').focus();
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('.dv-page-input')).toHaveValue('2');
@@ -441,14 +414,12 @@ test.describe('outline navigation', () => {
     await loadSample(page, 'Markdown');
     await waitForReflowContent(page);
 
-    // Zoom in so the document overflows the viewport and can actually scroll.
     const zoomIn = page.locator('button[aria-label="Zoom in"]');
     for (let i = 0; i < 10; i++) await zoomIn.click();
 
     const container = page.locator('.dv-viewer-container');
     await expect.poll(() => container.evaluate((el) => el.scrollTop)).toBe(0);
 
-    // Jump to the last heading via the outline.
     await page.getByRole('tab', { name: 'Outline' }).click();
     await page.locator('.dv-outline-item').last().click();
 

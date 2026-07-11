@@ -1,7 +1,3 @@
-/* ============================================================
- * Spinner - loading spinner
- * ============================================================ */
-
 interface SpinnerProps {
   size?: number;
   className?: string;

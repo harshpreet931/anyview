@@ -1,8 +1,3 @@
-/* ============================================================
- * Annotation Slice
- * Annotation state management with change listeners.
- * ============================================================ */
-
 import type { StateCreator } from 'zustand';
 import type {
   Annotation,
@@ -26,7 +21,6 @@ export interface AnnotationSlice {
   selectAnnotation: (id: string | null) => void;
   setActiveTool: (tool: AnnotationTool | null) => void;
   onAnnotationChange: (cb: AnnotationChangeListener) => () => void;
-  /** Clear annotations on document open/close AND notify listeners. */
   _resetAnnotations: () => void;
 }
 

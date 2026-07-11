@@ -46,7 +46,6 @@ function copyPdfjsAssets(): Plugin {
 }
 
 export default defineConfig({
-  // Set to "/anyview/" by the GitHub Pages workflow; "/" everywhere else.
   base: process.env.PAGES_BASE ?? '/',
   plugins: [react(), copyPdfjsAssets()],
   server: {
@@ -61,9 +60,6 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      // Mirror packages/viewer/package.json's "exports" map exactly (see the
-      // matching comment in tsconfig.json) so dev-mode resolves the same
-      // subpaths a real npm consumer would get from the published dist.
       'anyview/core': path.resolve(__dirname, '../../packages/viewer/src/core/index.ts'),
       'anyview/pdf': path.resolve(__dirname, '../../packages/viewer/src/adapters/pdf/index.ts'),
       'anyview/docx': path.resolve(__dirname, '../../packages/viewer/src/adapters/docx/index.ts'),

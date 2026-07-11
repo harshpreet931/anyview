@@ -10,11 +10,9 @@ describe('navigation slice - visiblePages', () => {
     const ref = s.getState().visiblePages;
     expect(ref).toEqual([0, 1]);
 
-    // Same content → same reference (no state churn).
     s.getState().setVisiblePages([0, 1]);
     expect(s.getState().visiblePages).toBe(ref);
 
-    // Different content → new value.
     s.getState().setVisiblePages([0, 1, 2]);
     expect(s.getState().visiblePages).toEqual([0, 1, 2]);
   });

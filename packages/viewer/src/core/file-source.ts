@@ -1,15 +1,7 @@
-/* ============================================================
- * File Source Abstraction
- * Normalizes any FileSource into a FileSourceReader.
- * ============================================================ */
-
 import type { FileSource, FileSourceReader } from './types';
 import { ViewerError } from './errors';
 
-/**
- * Normalize any FileSource into a FileSourceReader.
- * This is the single entry point adapters use.
- */
+/** Normalize any FileSource into a FileSourceReader. */
 export async function normalizeFileSource(
   source: FileSource,
 ): Promise<FileSourceReader> {
@@ -107,8 +99,6 @@ function extractFilenameFromUrl(url: string): string {
     if (slash !== -1 && slash < pathname.length - 1) {
       return decodeURIComponent(pathname.slice(slash + 1));
     }
-  } catch {
-    // ignore
-  }
+  } catch {}
   return 'document';
 }

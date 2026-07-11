@@ -36,9 +36,9 @@ describe('viewport slice - zoom & fit', () => {
     const s = createViewerStore();
     s.getState().setZoom(4.95);
     s.getState().zoomIn();
-    expect(s.getState().zoom).toBe(5); // clamped at max
+    expect(s.getState().zoom).toBe(5);
     s.getState().setZoom(0.12);
     s.getState().zoomOut();
-    expect(s.getState().zoom).toBe(0.1); // clamped at min
+    expect(s.getState().zoom).toBe(0.1);
   });
 });

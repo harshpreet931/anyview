@@ -1,7 +1,3 @@
-/* ============================================================
- * Icon - lightweight SVG icon component
- * ============================================================ */
-
 import { type ReactNode, memo } from 'react';
 
 interface IconProps {

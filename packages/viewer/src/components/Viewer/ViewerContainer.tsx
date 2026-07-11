@@ -1,7 +1,3 @@
-/* ============================================================
- * ViewerContainer - scrollable container with virtualization
- * ============================================================ */
-
 import {
   useRef,
   useEffect,
@@ -24,7 +20,6 @@ import { EmptyState, LoadingState, ErrorState } from '../States';
 const PAGE_VERTICAL_GAP = 48;
 const PAGE_SPREAD_GAP = 16;
 
-// Mirror viewportSlice's clamp so the gesture focal-point math matches setZoom.
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 5;
 const clampZoom = (z: number) => Math.max(MIN_ZOOM, Math.min(z, MAX_ZOOM));
@@ -50,20 +45,12 @@ export function ViewerContainer() {
   const setCursorMode = useViewerStore((s) => s.setCursorMode);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  // The virtualized, sized content layer. A zoom gesture scales this with a
-  // cheap CSS transform for instant feedback, deferring the (expensive)
-  // re-rasterize until the gesture settles.
   const contentRef = useRef<HTMLDivElement>(null);
-  // Rubber-band rect (content coords) while dragging a marquee zoom.
   const [marquee, setMarquee] = useState<{ left: number; top: number; w: number; h: number } | null>(null);
   const isProgrammaticScroll = useRef(false);
-  // Mirror the latest zoom so the imperative wheel listener reads it fresh.
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
 
-  // An in-progress wheel/pinch zoom. `factor` is the live multiplier applied on
-  // top of `base` (the committed zoom when the gesture began); `origin` is the
-  // focal point in content coordinates and `cursor` its offset in the viewport.
   const gesture = useRef<{
     base: number;
     factor: number;
@@ -73,11 +60,8 @@ export function ViewerContainer() {
     cursorY: number;
   } | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // Carries the focal anchor from commit to the layout effect that re-applies
-  // it once the page boxes have re-measured at the committed zoom.
   const pendingAnchor = useRef<{ ratio: number; x: number; y: number; cx: number; cy: number } | null>(null);
 
-  // Paint the live gesture scale (no React render, no rasterization).
   const applyLiveScale = useCallback(() => {
     const content = contentRef.current;
     const g = gesture.current;
@@ -86,9 +70,6 @@ export function ViewerContainer() {
     content.style.transform = `scale(${g.factor})`;
   }, []);
 
-  // End the gesture: commit the real zoom (one rasterize) and hand the focal
-  // anchor to the layout effect so the swap from transform to real layout is
-  // seamless.
   const commitGesture = useCallback(() => {
     if (settleTimer.current) clearTimeout(settleTimer.current);
     const g = gesture.current;
@@ -97,7 +78,6 @@ export function ViewerContainer() {
     if (!g) return;
     const next = clampZoom(g.base * g.factor);
     if (Math.abs(next - g.base) < 1e-4) {
-      // No real change - just drop the (near-identity) transform.
       if (content) {
         content.style.transform = '';
         content.style.transformOrigin = '';
@@ -115,8 +95,6 @@ export function ViewerContainer() {
     setZoom(next);
   }, [setZoom]);
 
-  // Once the committed zoom has re-laid out the pages, drop the transform and
-  // restore the focal point - both in the same paint, so there's no flash.
   useLayoutEffect(() => {
     const anchor = pendingAnchor.current;
     if (!anchor) return;
@@ -136,9 +114,6 @@ export function ViewerContainer() {
   const isHorizontal = scrollMode === 'horizontal';
   const pageCount = document?.pages.length ?? 0;
 
-  // Group page indices into rows. Each row is one page (single-page layout) or
-  // a facing pair (spread). Spreads only apply to vertical scrolling; 'odd'
-  // keeps the first page on its own (cover), 'even' pairs from the start.
   const rows = useMemo<number[][]>(() => {
     if (pageCount === 0) return [];
     if (isHorizontal || spreadMode === 'none') {
@@ -156,7 +131,6 @@ export function ViewerContainer() {
     return out;
   }, [pageCount, isHorizontal, spreadMode]);
 
-  // pageIndex -> row index, for mapping navigation to the virtualized rows.
   const pageToRow = useMemo<number[]>(() => {
     const map: number[] = [];
     rows.forEach((row, r) => row.forEach((p) => { map[p] = r; }));
@@ -202,9 +176,6 @@ export function ViewerContainer() {
     }
   }, [currentPage, pageCount, virtualizer, pageToRow]);
 
-  // Honour an outline destination's scrollOffset (e.g. a heading inside a
-  // reflowable document): scroll to the target page's top, then down by the
-  // offset (scaled with the current zoom).
   useEffect(() => {
     if (!isScrolling) return;
     const el = scrollRef.current;
@@ -245,7 +216,6 @@ export function ViewerContainer() {
           if (it.start <= offset + 1) topRow = it.index;
           else break;
         }
-        // Report the first page of the row at the top of the viewport.
         setCurrentPage(rows[topRow]?.[0] ?? 0);
         ticking = false;
       });
@@ -258,9 +228,7 @@ export function ViewerContainer() {
     };
   }, [virtualizer, pageCount, setCurrentPage, isHorizontal, rows]);
 
-  // Ctrl/Cmd + wheel zoom, anchored at the cursor. On macOS Chrome a trackpad
-  // pinch is delivered as a wheel event with ctrlKey set, so this covers pinch
-  // too. Listener is non-passive so we can preventDefault the browser page zoom.
+  // macOS Chrome delivers a trackpad pinch as ctrl+wheel; listener stays non-passive to preventDefault the page zoom.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -272,8 +240,6 @@ export function ViewerContainer() {
       const rect = el.getBoundingClientRect();
       const cursorX = e.clientX - rect.left;
       const cursorY = e.clientY - rect.top;
-      // Begin a gesture on the first event, anchored at the cursor. A burst of
-      // events within the settle window accumulates into this one gesture.
       if (!gesture.current) {
         gesture.current = {
           base: zoomRef.current,
@@ -296,8 +262,6 @@ export function ViewerContainer() {
     return () => el.removeEventListener('wheel', onWheel);
   }, [applyLiveScale, commitGesture]);
 
-  // Two-finger touch pinch zoom, anchored at the pinch midpoint. (Trackpad
-  // pinch is already handled as ctrl+wheel above; this is for touchscreens.)
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -323,8 +287,6 @@ export function ViewerContainer() {
         pinching = true;
         startDist = distance() || 1;
         const mid = midpoint();
-        // Drive the pinch through the shared gesture: scale live, rasterize once
-        // on lift.
         gesture.current = {
           base: zoomRef.current,
           factor: 1,
@@ -365,7 +327,6 @@ export function ViewerContainer() {
     };
   }, [applyLiveScale, commitGesture]);
 
-  // Marquee zoom: while in 'marquee' cursor mode, drag a box to zoom into it.
   useEffect(() => {
     if (cursorMode !== 'marquee') {
       setMarquee(null);
@@ -386,7 +347,6 @@ export function ViewerContainer() {
       try {
         el.setPointerCapture(e.pointerId);
       } catch {
-        /* pointer already released / unsupported */
       }
     };
     const onMove = (e: PointerEvent) => {
@@ -411,10 +371,9 @@ export function ViewerContainer() {
       try {
         el.releasePointerCapture(e.pointerId);
       } catch {
-        /* already released */
       }
-      setCursorMode('select'); // one-shot: return to normal after zooming
-      if (w < 12 || h < 12) return; // ignore taps / tiny boxes
+      setCursorMode('select');
+      if (w < 12 || h < 12) return;
 
       const cw = el.clientWidth;
       const ch = el.clientHeight;
@@ -443,8 +402,6 @@ export function ViewerContainer() {
     };
   }, [cursorMode, setZoom, setCursorMode]);
 
-  // Publish the page indices currently rendered (the virtualizer re-renders on
-  // scroll, so this stays current). setVisiblePages no-ops when unchanged.
   useEffect(() => {
     const pages = virtualizer
       .getVirtualItems()
@@ -452,9 +409,6 @@ export function ViewerContainer() {
     setVisiblePages(pages);
   });
 
-  // Fit modes: derive a zoom from the container size + first page dims and keep
-  // it in sync as the container resizes. Based on the first page so scrolling
-  // between differently-sized pages doesn't jump the zoom.
   useEffect(() => {
     if (fitMode === 'custom') return;
     const el = scrollRef.current;
@@ -467,8 +421,6 @@ export function ViewerContainer() {
       );
       const pw = isSideways ? page.height : page.width;
       const ph = isSideways ? page.width : page.height;
-      // A vertical spread lays two pages across the width, so fitting must
-      // account for both pages plus the gap between them.
       const cols = spreadMode !== 'none' && !isHorizontal ? 2 : 1;
       const rowWidth = cols * pw;
       const availW = el.clientWidth - PAGE_VERTICAL_GAP - (cols - 1) * PAGE_SPREAD_GAP;

@@ -1,7 +1,3 @@
-/* ============================================================
- * Core barrel export - framework-agnostic
- * ============================================================ */
-
 export * from './types';
 export { ViewerError, isViewerError, type ViewerErrorCode } from './errors';
 export { createRegistry } from './registry';

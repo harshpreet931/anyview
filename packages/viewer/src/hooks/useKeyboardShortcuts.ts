@@ -1,8 +1,3 @@
-/* ============================================================
- * useKeyboardShortcuts - shortcuts scoped to this viewer's root,
- * so multiple viewers (and the host page) keep their own keys.
- * ============================================================ */
-
 import { useEffect } from 'react';
 import { useViewerStore } from './useDocViewer';
 
@@ -26,9 +21,6 @@ export function useKeyboardShortcuts(
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      // Ctrl/Cmd+F opens the in-document search, overriding the browser's
-      // native find. The listener is on this viewer's root, so it only fires
-      // when focus is already inside this viewer.
       if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         setSearchOpen(true);
@@ -36,7 +28,6 @@ export function useKeyboardShortcuts(
       }
 
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-        // Allow Escape to dismiss search while typing in its field.
         if (e.key === 'Escape') setSearchOpen(false);
         return;
       }
@@ -61,9 +52,6 @@ export function useKeyboardShortcuts(
         return;
       }
 
-      // Navigation keys only act (and only swallow the default) when focus is in
-      // the scrollable content region, so arrows/Home/End on a focused control
-      // (button, select, the toolbar) keep their normal behavior.
       if (!target.closest('.dv-viewer-container')) return;
 
       switch (e.key) {

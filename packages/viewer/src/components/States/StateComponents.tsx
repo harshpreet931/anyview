@@ -1,8 +1,3 @@
-/* ============================================================
- * State Components
- * Empty, Loading, Error, Unsupported states.
- * ============================================================ */
-
 import { type ReactNode } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useFileInput } from '../../hooks/useFileInput';
@@ -30,9 +25,6 @@ function StateContainer({
 }
 
 export function EmptyState({ description }: { description?: string }) {
-  // The empty state is a real dropzone: click to browse or drop a file to open
-  // it. It opens through the store, so it works whether or not the host passes
-  // a `source` prop (when a source is given, this state isn't shown).
   const openDocument = useViewerStore((s) => s.openDocument);
   const strings = useStrings();
   const { inputRef, isDragging, openPicker, handleInputChange, dragProps } =

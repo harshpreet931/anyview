@@ -1,13 +1,3 @@
-/* ============================================================
- * useDomSearch - search for reflowable formats (markdown, code,
- * docx, html, csv, text) whose content is real DOM text.
- *
- * Finds query occurrences in a container, reports the match count
- * back to the store, paints highlights with the CSS Custom
- * Highlight API (graceful no-op where unsupported), and scrolls
- * the active match into view.
- * ============================================================ */
-
 import { useEffect, useId, type RefObject } from 'react';
 import type { SearchMatch, SearchQuery } from '../core/types';
 import { useViewerStore } from './useDocViewer';
@@ -120,13 +110,9 @@ function clearOwner(id: string, ownerId: string): void {
   schedulePublish(id);
 }
 
-// Guard against pathological queries: an over-long pattern (usually a paste
-// accident) and unbounded match counts that would freeze the main thread -
-// a user-supplied regex can be catastrophically slow or match endlessly.
 const MAX_QUERY_LENGTH = 1000;
 const MAX_MATCHES = 10_000;
 
-/** Locate query occurrences in `container`, returning DOM ranges + match records. */
 function findRanges(
   container: HTMLElement,
   query: SearchQuery,
@@ -193,7 +179,6 @@ function findRanges(
   }
 
   const locate = (globalOffset: number): { node: Text; offset: number } => {
-    // Binary search the node whose range contains globalOffset.
     let lo = 0;
     let hi = nodes.length - 1;
     while (lo < hi) {
@@ -221,7 +206,6 @@ function findRanges(
         height: 0,
       });
     } catch {
-      /* skip ranges that cross unexpected boundaries */
     }
   }
 
@@ -251,13 +235,8 @@ export function useDomSearch(
   const instanceId = useViewerStore((s) => s.instanceId);
   const ownerId = useId();
 
-  // Reflowable formats (passed active=true by PageRenderer) are always searched
-  // against their DOM text here - even when their adapter ships a search()
-  // method - because only this path produces visible highlights for them.
-  // Canvas formats (PDF) pass active=false and use the positioned layer.
   const enabled = active;
 
-  // (Re)scan this page when the query or its rendered content changes.
   useEffect(() => {
     if (!enabled) return;
     getInstance(instanceId).apply = applySearchMatches;

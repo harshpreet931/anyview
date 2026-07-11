@@ -1,7 +1,3 @@
-/* ============================================================
- * English Locale
- * ============================================================ */
-
 import type { ViewerStrings } from './types';
 
 export const en: ViewerStrings = {

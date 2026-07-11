@@ -1,8 +1,3 @@
-/* ============================================================
- * Code Adapter
- * Uses Shiki for syntax highlighting (dynamic import).
- * ============================================================ */
-
 import type {
   Adapter,
   AdapterManifest,
@@ -98,9 +93,7 @@ export class CodeAdapter implements Adapter {
     const lines = this.codeText.split('\n');
     const lineHeight = 20;
     const charWidth = 8;
-    // Compute the longest line with a loop, not Math.max(...spread): spreading
-    // a 125k+ element array overflows the call-stack argument limit and crashes
-    // parse() on large minified/generated files.
+    // Loop instead of Math.max(...spread): spreading a huge array overflows the call-stack arg limit.
     let maxLineLength = 0;
     for (const line of lines) {
       if (line.length > maxLineLength) maxLineLength = line.length;

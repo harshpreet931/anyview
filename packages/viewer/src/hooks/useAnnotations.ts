@@ -1,7 +1,3 @@
-/* ============================================================
- * useAnnotations - annotation state and controls
- * ============================================================ */
-
 import { useViewerStore } from './useDocViewer';
 
 export function useAnnotations() {

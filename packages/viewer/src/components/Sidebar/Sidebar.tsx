@@ -1,13 +1,8 @@
-/* ============================================================
- * Sidebar - collapsible sidebar with view selector
- * ============================================================ */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
 import type { SidebarView, PageRef, Adapter, FormatId } from '../../core/types';
 
-// Mirror the store's sidebar-width clamp, for the resizer's aria-value range.
 const SIDEBAR_MIN_WIDTH = 140;
 const SIDEBAR_MAX_WIDTH = 400;
 
@@ -41,7 +36,7 @@ export function Sidebar() {
       const startWidth = sidebarWidth;
       setResizing(true);
       const onMove = (ev: PointerEvent) =>
-        setSidebarWidth(startWidth + (ev.clientX - startX)); // store clamps
+        setSidebarWidth(startWidth + (ev.clientX - startX));
       const onUp = () => {
         setResizing(false);
         window.removeEventListener('pointermove', onMove);
@@ -53,7 +48,6 @@ export function Sidebar() {
     [sidebarWidth, setSidebarWidth],
   );
 
-  // Keyboard resize for the separator (the store clamps to the same bounds).
   const onResizeKey = useCallback(
     (e: React.KeyboardEvent) => {
       const STEP = 16;
@@ -81,8 +75,6 @@ export function Sidebar() {
 
   if (!sidebarOpen || !document) return null;
 
-  // Only offer tabs that have content - an empty Outline/Attachments tab is a
-  // dead click. Thumbnails always apply.
   const views: { id: SidebarView; label: string }[] = [
     { id: 'thumbnails', label: strings.sidebar.thumbnails },
     ...(document.outline && document.outline.length > 0
@@ -93,7 +85,6 @@ export function Sidebar() {
       : []),
   ];
 
-  // If the persisted view is no longer available, fall back to thumbnails.
   const activeView = views.some((v) => v.id === sidebarView)
     ? sidebarView
     : 'thumbnails';
@@ -217,9 +208,6 @@ function Thumbnail({
   current: boolean;
   onClick: () => void;
 }) {
-  // Canvas formats (PDF, image) paint into a <canvas>; reflowable formats
-  // render their real DOM at full size into a <div> that we shrink with a CSS
-  // transform - both produce a true preview of the page.
   const canvasFormat = format === 'pdf' || format === 'image';
   const buttonRef = useRef<HTMLButtonElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -250,7 +238,6 @@ function Thumbnail({
             signal: controller.signal,
           })
           .then(() => {
-            // Let CSS size the display; keep the high-res backing store.
             canvas.style.width = '';
             canvas.style.height = '';
           })
@@ -275,7 +262,6 @@ function Thumbnail({
         .catch(() => {});
     };
 
-    // Lazily render only when the thumbnail scrolls near the viewport.
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {

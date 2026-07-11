@@ -1,7 +1,3 @@
-/* ============================================================
- * useDocViewer - main hook for accessing the viewer store
- * ============================================================ */
-
 import { useStore } from 'zustand';
 import { useContext, createContext, useMemo, type ReactNode } from 'react';
 import { createViewerStore, type ViewerStore } from '../core/store';

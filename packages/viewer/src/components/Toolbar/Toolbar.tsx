@@ -1,7 +1,3 @@
-/* ============================================================
- * Toolbar - main toolbar with zoom, navigation, and actions
- * ============================================================ */
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings, formatString } from '../../i18n/I18nProvider';
@@ -94,8 +90,6 @@ export function Toolbar({ features }: ToolbarProps) {
   const isFullscreen = useViewerStore((s) => s.isFullscreen);
   const setPropertiesOpen = useViewerStore((s) => s.setPropertiesOpen);
   const hasDocument = useViewerStore((s) => s.document !== null);
-  // Search open/close lives in the store so the Ctrl/Cmd+F shortcut and the
-  // toolbar toggle drive the same panel.
   const searchOpen = useViewerStore((s) => s.searchOpen);
   const setSearchOpen = useViewerStore((s) => s.setSearchOpen);
 
@@ -107,15 +101,12 @@ export function Toolbar({ features }: ToolbarProps) {
     if (searchOpen) {
       searchInputRef.current?.focus();
     } else {
-      // Closing (toolbar button, Escape, or shortcut) clears the query so a
-      // reopen starts fresh and stale highlights are dropped.
       if (searchTimer.current) clearTimeout(searchTimer.current);
       setSearchText('');
       clearSearch();
     }
   }, [searchOpen, clearSearch]);
 
-  // Cancel a pending search when the toolbar unmounts.
   useEffect(() => () => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
   }, []);
@@ -123,8 +114,6 @@ export function Toolbar({ features }: ToolbarProps) {
   const handleSearch = useCallback(
     (text: string) => {
       setSearchText(text);
-      // Keep the input responsive but debounce the actual search, which walks
-      // the whole document (or all PDF pages) on every keystroke.
       if (searchTimer.current) clearTimeout(searchTimer.current);
       if (text.trim()) {
         searchTimer.current = setTimeout(() => {
@@ -147,8 +136,6 @@ export function Toolbar({ features }: ToolbarProps) {
     setSearchOpen(false);
   }, [setSearchOpen]);
 
-  // Value shown in the zoom control. Fit modes win; otherwise a matching preset,
-  // else a live "NN%" entry so custom zoom (wheel, Ctrl±) reads correctly.
   const ZOOM_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 5];
   const zoomPct = Math.round(zoom * 100);
   const matchedPreset = ZOOM_PRESETS.find((p) => Math.abs(p - zoom) < 0.005);
@@ -168,9 +155,7 @@ export function Toolbar({ features }: ToolbarProps) {
       if (value === 'fit-page') setFitMode('page-fit');
       else if (value === 'fit-width') setFitMode('page-width');
       else if (value === 'actual') setFitMode('actual-size');
-      else if (value === 'live') {
-        /* display-only */
-      } else setZoom(parseFloat(value));
+      else if (value !== 'live') setZoom(parseFloat(value));
     },
     [setFitMode, setZoom],
   );

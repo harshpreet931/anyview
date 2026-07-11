@@ -1,7 +1,3 @@
-/* ============================================================
- * useSearch - search state and controls
- * ============================================================ */
-
 import { useViewerStore } from './useDocViewer';
 
 export function useSearch() {

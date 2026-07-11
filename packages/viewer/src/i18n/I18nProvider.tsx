@@ -1,17 +1,7 @@
-/* ============================================================
- * i18n Provider
- * Resolves a locale string to a ViewerStrings table and exposes
- * it (plus a {0}/{1} formatter) to components via context.
- * ============================================================ */
-
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { ViewerStrings } from './types';
 import { en } from './en';
 
-/**
- * Built-in locale registry. Consumers can add locales with
- * {@link registerStrings} before mounting the viewer.
- */
 const localeRegistry = new Map<string, ViewerStrings>([['en', en]]);
 
 /** Register (or override) the strings for a locale, e.g. `registerStrings('fr', fr)`. */

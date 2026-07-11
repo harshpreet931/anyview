@@ -1,7 +1,3 @@
-/* ============================================================
- * Typed Error Classes
- * ============================================================ */
-
 export type ViewerErrorCode =
   | 'UNSUPPORTED_FORMAT'
   | 'PARSE_ERROR'

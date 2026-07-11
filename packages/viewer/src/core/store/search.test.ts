@@ -105,7 +105,7 @@ describe('search slice', () => {
     expect(store.getState().currentMatchIndex).toBe(0);
     expect(store.getState().currentPage).toBe(0);
 
-    store.getState().prevMatch(); // wrap to last
+    store.getState().prevMatch();
     expect(store.getState().currentMatchIndex).toBe(2);
     expect(store.getState().currentPage).toBe(4);
   });
@@ -113,7 +113,7 @@ describe('search slice', () => {
   it('accepts externally-computed matches for reflowable formats', () => {
     const store = createViewerStore();
     store.setState({ document: makeDoc(1) });
-    store.getState().search(QUERY); // no adapter.search → awaits DOM results
+    store.getState().search(QUERY);
     expect(store.getState().searchState).toBe('searching');
 
     store.getState().applySearchMatches([

@@ -1,7 +1,3 @@
-/* ============================================================
- * PropertiesDialog - document metadata viewer
- * ============================================================ */
-
 import { useRef } from 'react';
 import type { DocumentModel } from '../../core/types';
 import { Button } from '../common/Button';

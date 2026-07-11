@@ -1,8 +1,3 @@
-/* ============================================================
- * Markdown Adapter
- * Uses react-markdown + remark-gfm (dynamic import).
- * ============================================================ */
-
 import type {
   Adapter,
   AdapterManifest,
@@ -56,7 +51,6 @@ export class MarkdownAdapter implements Adapter {
 
     this.markdownText = new TextDecoder('utf-8').decode(buffer);
 
-    // Dynamically import react-markdown + remark-gfm
     const React = await import('react');
     const { renderToStaticMarkup } = await import('react-dom/server');
     const { default: ReactMarkdown, defaultUrlTransform } = await import('react-markdown');
@@ -73,7 +67,6 @@ export class MarkdownAdapter implements Adapter {
 
     this.htmlContent = renderToStaticMarkup(element);
 
-    // Estimate dimensions
     const charCount = this.markdownText.length;
     const estimatedHeight = Math.ceil(charCount / 80) * 24 + 200;
 

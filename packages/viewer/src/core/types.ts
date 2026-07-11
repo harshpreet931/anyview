@@ -1,16 +1,4 @@
-/* ============================================================
- * Core Type System
- * All shared types & interfaces for the document viewer.
- * This file is framework-agnostic - no React imports.
- * ============================================================ */
-
-/* ---------- §3.1 Format Identity ---------- */
-
-/**
- * String literal union of all supported format identifiers.
- * Adapters are keyed by this. The union is exhaustive -
- * the switch in format-detect.ts must cover every variant.
- */
+/** String literal union of all supported format identifiers. */
 export type FormatId =
   | 'pdf'
   | 'docx'
@@ -24,32 +12,21 @@ export type FormatId =
   | 'text'
   | 'ipynb';
 
-/**
- * Extended MIME superset for format detection.
- * Each FormatId maps to one or more MIME types and extensions.
- */
+/** Each FormatId maps to one or more MIME types and extensions. */
 export interface FormatSpec {
   readonly id: FormatId;
   readonly extensions: readonly string[];
   readonly mimeTypes: readonly string[];
 }
 
-/* ---------- §3.2 File Source ---------- */
-
-/**
- * Unified file input abstraction. Adapters receive this and
- * normalize it internally. Every entry point (drag-drop, picker,
- * URL, buffer) produces one of these variants.
- */
+/** Unified file input abstraction produced by every entry point. */
 export type FileSource =
   | { kind: 'file'; file: File }
   | { kind: 'handle'; handle: FileSystemFileHandle }
   | { kind: 'url'; url: string; filename?: string }
   | { kind: 'buffer'; buffer: ArrayBuffer; name: string; type: string };
 
-/**
- * Normalized metadata extracted from any FileSource.
- */
+/** Normalized metadata extracted from any FileSource. */
 export interface FileMeta {
   readonly name: string;
   readonly size: number;
@@ -57,23 +34,14 @@ export interface FileMeta {
   readonly lastModified?: number;
 }
 
-/**
- * Convert any FileSource to an ArrayBuffer (for worker transfer)
- * or a ReadableStream (for streaming). Adapters choose.
- */
+/** Convert any FileSource to an ArrayBuffer or a ReadableStream. */
 export interface FileSourceReader {
   readonly meta: FileMeta;
   arrayBuffer(): Promise<ArrayBuffer>;
   stream(): ReadableStream<Uint8Array> | null;
 }
 
-/* ---------- §3.3 Document Model ---------- */
-
-/**
- * The parsed representation of a document, produced by an adapter.
- * This is format-agnostic - the viewer core operates on this shape
- * regardless of whether it's a PDF, DOCX, or image.
- */
+/** The parsed, format-agnostic representation of a document, produced by an adapter. */
 export interface DocumentModel {
   readonly format: FormatId;
   readonly meta: FileMeta;
@@ -133,8 +101,6 @@ export interface DocumentPermissions {
   readonly canFillForms: boolean;
 }
 
-/* ---------- §3.4 Adapter Capabilities ---------- */
-
 export interface AdapterFeatures {
   readonly search: boolean;
   readonly annotations: boolean;
@@ -148,8 +114,6 @@ export interface AdapterFeatures {
   readonly fullscreen: boolean;
   readonly download: boolean;
 }
-
-/* ---------- §3.5 Render Target & Result ---------- */
 
 export type RenderTarget = HTMLCanvasElement | HTMLElement;
 
@@ -167,15 +131,7 @@ export interface RenderResult {
   readonly height: number;
 }
 
-/**
- * Text layer for search + selection + a11y.
- * Adapters that support textSelection provide this per-page.
- *
- * NOTE: PDF.js `getTextContent()` returns items in PDF device-space
- * coordinates (using a 6-element `transform` array). The PDF adapter
- * must apply `page.getViewport({ scale: 1 }).transform` to convert
- * to page-relative coordinates, then normalize to 0–1 range.
- */
+/** A positioned text item (coordinates normalized to 0–1) for search, selection, and a11y. */
 export interface TextLayerItem {
   readonly str: string;
   readonly x: number;
@@ -188,8 +144,6 @@ export interface TextLayer {
   readonly pageIndex: number;
   readonly items: ReadonlyArray<TextLayerItem>;
 }
-
-/* ---------- §3.6 Search ---------- */
 
 export interface SearchQuery {
   readonly text: string;
@@ -213,8 +167,6 @@ export interface SearchResult {
   readonly matches: ReadonlyArray<SearchMatch>;
   readonly totalMatches: number;
 }
-
-/* ---------- §3.7 Annotations ---------- */
 
 export type AnnotationType =
   | 'highlight'
@@ -310,8 +262,6 @@ export type AnnotationTool =
 
 export type AnnotationChangeListener = (annotations: Annotation[]) => void;
 
-/* ---------- §4 Adapter Registry Protocol ---------- */
-
 export interface AdapterManifest {
   readonly id: FormatId;
   readonly label: string;
@@ -324,8 +274,7 @@ export interface AdapterManifest {
 }
 
 export interface ParseOptions {
-  /** Password for an encrypted document, supplied on a retry after the
-   *  adapter reported PASSWORD_REQUIRED/PASSWORD_INCORRECT. */
+  /** Password for an encrypted document, supplied on a retry. */
   readonly password?: string;
 }
 
@@ -337,10 +286,7 @@ export interface Adapter {
     options?: ParseOptions,
   ): Promise<DocumentModel>;
   renderPage(ctx: RenderContext): Promise<RenderResult>;
-  // `rotation` is the interactively-applied rotation (0/90/180/270); adapters
-  // whose content can be rotated (PDF) compose it with any intrinsic
-  // rotation of their own so text/search geometry matches the rendered page.
-  // Formats with no such concept ignore it.
+  // `rotation` is the interactively-applied rotation; adapters compose it with any intrinsic rotation of their own.
   getTextLayer?(
     pageIndex: number,
     signal?: AbortSignal,
@@ -355,21 +301,10 @@ export interface Adapter {
   dispose?(): void;
 }
 
-/**
- * A no-argument constructor that produces a fresh {@link Adapter} instance.
- *
- * Adapters MUST be loaded as classes (not pre-constructed singletons) so the
- * registry can hand every open document its own instance. Sharing a single
- * adapter instance across documents/viewers corrupts per-document state
- * (worker handles, buffers, page refs).
- */
+/** A no-argument constructor that produces a fresh {@link Adapter} instance. */
 export type AdapterConstructor = new () => Adapter;
 
-/**
- * The loader registered with the registry. Performs a dynamic `import()` of
- * the adapter module and resolves to its default export, which must be an
- * {@link AdapterConstructor}.
- */
+/** Dynamic-import loader resolving to the adapter module's default {@link AdapterConstructor}. */
 export type AdapterLoader = () => Promise<{ default: AdapterConstructor }>;
 
 export interface AdapterRegistry {
@@ -377,17 +312,11 @@ export interface AdapterRegistry {
   getManifests(): readonly AdapterManifest[];
   detectFormat(filename: string, mimeType?: string): FormatId | null;
   getManifest(format: FormatId): AdapterManifest | null;
-  /**
-   * Load the adapter for a format and return a FRESH instance. The underlying
-   * module is imported once and cached; the constructor is invoked on every
-   * call so each document gets isolated state.
-   */
+  /** Load the adapter for a format and return a FRESH instance. */
   loadAdapter(format: FormatId): Promise<Adapter>;
   unloadAdapter(format: FormatId): void;
   onRegister(cb: (manifest: AdapterManifest) => void): () => void;
 }
-
-/* ---------- §7 Store Types ---------- */
 
 export type Theme = 'light' | 'dark' | 'auto' | 'sepia';
 export type SidebarView = 'thumbnails' | 'outline' | 'attachments' | 'layers';
@@ -402,8 +331,6 @@ export interface RecentFile {
   readonly format: FormatId;
   readonly handle?: FileSystemFileHandle;
 }
-
-/* ---------- §12 Component Props ---------- */
 
 export interface DocViewerSelection {
   readonly text: string;
@@ -429,10 +356,7 @@ export interface DocViewerProps {
   registry?: AdapterRegistry;
   locale?: string;
   className?: string;
-  /**
-   * localStorage key for persisted UI preferences. Give each <DocViewer> on a
-   * page a distinct key so their zoom/theme/sidebar prefs don't collide.
-   */
+  /** localStorage key for persisted UI preferences; give each <DocViewer> a distinct key. */
   persistKey?: string;
 }
 

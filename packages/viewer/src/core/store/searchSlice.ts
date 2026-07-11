@@ -1,8 +1,3 @@
-/* ============================================================
- * Search Slice
- * Search query state, results, and match navigation.
- * ============================================================ */
-
 import type { StateCreator } from 'zustand';
 import type { SearchMatch, SearchQuery, SearchResult } from '../types';
 import type { DocumentSlice } from './documentSlice';
@@ -16,11 +11,7 @@ export interface SearchSlice {
   searchState: SearchState;
   searchResult: SearchResult | null;
   currentMatchIndex: number;
-  /**
-   * Bumped every time the active match changes (including re-selecting the
-   * same index). UI layers watch this to re-scroll the current match into
-   * view even when the target page is already visible.
-   */
+  /** Bumped every time the active match changes so UI layers can re-scroll it into view. */
   matchNonce: number;
 
   search: (query: SearchQuery) => void;
@@ -28,13 +19,7 @@ export interface SearchSlice {
   nextMatch: () => void;
   prevMatch: () => void;
   goToMatch: (index: number) => void;
-  /**
-   * Supply matches computed outside the adapter (e.g. DOM-based search for
-   * reflowable formats that have no adapter `search()`), keyed to the active
-   * query. The matches are the full set aggregated across every rendered page,
-   * so the current index is preserved (clamped) rather than reset - a fresh
-   * query already resets it via `search()`.
-   */
+  /** Supply matches computed outside the adapter (e.g. DOM-based search for reflowable formats). */
   applySearchMatches: (matches: SearchMatch[]) => void;
   _setSearchResult: (result: SearchResult) => void;
   _setSearchState: (state: SearchState) => void;
@@ -47,7 +32,6 @@ export const createSearchSlice: StateCreator<
   [],
   SearchSlice
 > = (set, get) => {
-  /** Move the viewport to the page holding the active match. */
   const jumpToCurrentMatch = () => {
     const { searchResult, currentMatchIndex } = get();
     const match = searchResult?.matches[currentMatchIndex];
@@ -79,10 +63,6 @@ export const createSearchSlice: StateCreator<
       _searchController: controller,
     });
 
-    // Adapter search only drives canvas-rendered formats (PDF), where matches
-    // carry real pixel coordinates for the positioned highlight layer. Every
-    // reflowable format is searched against its real DOM text by the
-    // useDomSearch hook, which reports matches via applySearchMatches().
     const useAdapterSearch =
       !!adapter?.search && (format === 'pdf' || format === 'image');
     if (!useAdapterSearch) return;

@@ -1,8 +1,3 @@
-/* ============================================================
- * Annotation serialization
- * Sidecar JSON format for persisting / restoring annotations.
- * ============================================================ */
-
 import type { Annotation } from './types';
 
 export interface SerializedAnnotations {

@@ -5,15 +5,9 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
 
-// Keep the CSS asset name stable (the "./styles" export → dist/viewer.css) and
-// identical across both outputs so Vite doesn't warn or emit a duplicate.
 const assetFileNames = (assetInfo: { name?: string }) =>
   assetInfo.name?.endsWith('.css') ? 'viewer.css' : 'assets/[name][extname]';
 
-// Mark the main entry as a React Client Component so the package works in the
-// Next.js App Router (Server Components otherwise reject hooks/browser APIs).
-// 'use client' on the entry covers everything it imports, so the adapter
-// subpaths (lazy-loaded, browser-only) don't each need it.
 const clientBanner = (chunk: { isEntry?: boolean; name?: string }) =>
   chunk.isEntry && chunk.name === 'index' ? "'use client';" : '';
 
@@ -21,14 +15,7 @@ const require = createRequire(import.meta.url);
 const PDFJS_ROOT = path.dirname(require.resolve('pdfjs-dist/package.json'));
 const PDFJS_ASSET_DIRS = ['cmaps', 'standard_fonts', 'wasm', 'iccs'];
 
-// pdf.js needs its CMaps (CID-keyed/CJK fonts), standard-font fallbacks, WASM
-// decoders, and ICC profiles at runtime. They must ship IN the published
-// package (dist/pdfjs/) - otherwise pdf.worker.ts's default asset resolution
-// (relative to its own emitted URL, see pdf.worker.ts) has nothing to load,
-// and non-embedded/CJK glyphs silently render as blank boxes for every real
-// npm consumer. Bake in the exact assets from the pdfjs-dist we built/tested
-// against, so version drift in a consumer's own pdfjs-dist install (the peer
-// dependency only requires ^6.1) can't produce mismatched cmap data.
+// pdf.js CMaps/standard-fonts/wasm/iccs must ship in the package (dist/pdfjs/) or CJK/non-embedded glyphs render blank.
 function addDeclarationExtensions(
   content: string,
   fromDir: string,
@@ -70,8 +57,6 @@ function copyPdfjsAssets(): Plugin {
 }
 
 export default defineConfig({
-  // Relative base so the bundled PDF Web Worker resolves via `import.meta.url`
-  // relative to the package - NOT the consumer's site root (which 404s).
   base: './',
   plugins: [
     react(),

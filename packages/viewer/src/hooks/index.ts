@@ -1,7 +1,3 @@
-/* ============================================================
- * Hooks barrel export
- * ============================================================ */
-
 export { useDocViewer, useViewerStore, ViewerStoreProvider } from './useDocViewer';
 export { useDocument } from './useDocument';
 export { useZoom } from './useZoom';

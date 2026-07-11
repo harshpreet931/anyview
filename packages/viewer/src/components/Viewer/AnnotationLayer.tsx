@@ -1,13 +1,3 @@
-/* ============================================================
- * AnnotationLayer - SVG overlay that renders and edits the
- * annotations for one page. Tools: highlight (drag a box), ink
- * (freehand), sticky-note (click), shapes - rectangle / ellipse /
- * line / arrow (drag), and free-text (click).
- *
- * All geometry is stored normalized (0–1) so annotations stay
- * anchored across zoom and re-render without re-rasterizing.
- * ============================================================ */
-
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type {
   Annotation,
@@ -39,9 +29,9 @@ const TOOL_DEFAULTS = {
   'free-text': { color: '#111827', opacity: 1 },
 } as const;
 
-const INK_THICKNESS = 0.004; // fraction of page width
-const SHAPE_STROKE = 0.003; // fraction of page width
-const FREE_TEXT_SIZE = 0.024; // fraction of page height
+const INK_THICKNESS = 0.004;
+const SHAPE_STROKE = 0.003;
+const FREE_TEXT_SIZE = 0.024;
 
 const SHAPE_TOOLS = ['rectangle', 'ellipse', 'line', 'arrow'] as const;
 type ShapeTool = (typeof SHAPE_TOOLS)[number];
@@ -61,7 +51,6 @@ function pointsToPath(points: Point[], width: number, height: number): string {
     .join(' ');
 }
 
-/** Render a shape (rectangle/ellipse/line/arrow) from two normalized points. */
 function renderShapeGeometry(
   shape: ShapeKind,
   from: Point,
@@ -103,7 +92,6 @@ function renderShapeGeometry(
       />
     );
   }
-  // line / arrow
   const line = <line x1={x1} y1={y1} x2={x2} y2={y2} {...common} />;
   if (shape === 'line') return line;
   const angle = Math.atan2(y2 - y1, x2 - x1);
@@ -294,7 +282,6 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
         />
       ))}
 
-      {/* In-progress draft */}
       {draftBox && activeTool === 'highlight' && (
         <rect
           x={Math.min(draftBox.from.x, draftBox.to.x) * width}
@@ -351,8 +338,6 @@ function AnnotationShape({
     onSelect();
   };
 
-  // Highlight and ink lie over document text; keeping them non-interactive lets
-  // users select the text beneath. Shapes, notes, and free-text are clickable.
   const isTextOverlay =
     annotation.type === 'highlight' || annotation.type === 'ink';
   const bodyInteractive = interactive && !isTextOverlay;
@@ -399,7 +384,6 @@ function AnnotationShape({
     const y1 = from.y * height;
     const x2 = to.x * width;
     const y2 = to.y * height;
-    // A wide transparent hit target makes thin/unfilled shapes easy to select.
     const hit =
       shape === 'line' || shape === 'arrow' ? (
         <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={14} />

@@ -1,7 +1,3 @@
-/* ============================================================
- * ErrorDialog - error display with retry
- * ============================================================ */
-
 import { useRef } from 'react';
 import type { ViewerError } from '../../core/errors';
 import { Button } from '../common/Button';

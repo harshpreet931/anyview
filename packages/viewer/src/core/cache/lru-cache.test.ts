@@ -12,7 +12,7 @@ describe('LRUCache', () => {
   it('evicts by byte budget', () => {
     const c = new LRUCache<string, number>(100, 1000);
     c.set('a', 1, 60);
-    c.set('b', 2, 60); // total would be 120 > 100 → evict 'a'
+    c.set('b', 2, 60);
     expect(c.get('a')).toBeNull();
     expect(c.get('b')).toBe(2);
     expect(c.bytes).toBe(60);
@@ -22,7 +22,7 @@ describe('LRUCache', () => {
     const c = new LRUCache<string, number>(1e9, 2);
     c.set('a', 1, 1);
     c.set('b', 2, 1);
-    c.set('c', 3, 1); // exceeds 2 entries → evict oldest 'a'
+    c.set('c', 3, 1);
     expect(c.get('a')).toBeNull();
     expect(c.size).toBe(2);
   });
@@ -31,8 +31,8 @@ describe('LRUCache', () => {
     const c = new LRUCache<string, number>(1e9, 2);
     c.set('a', 1, 1);
     c.set('b', 2, 1);
-    c.get('a'); // 'a' now most-recent
-    c.set('c', 3, 1); // evicts least-recent → 'b'
+    c.get('a');
+    c.set('c', 3, 1);
     expect(c.get('b')).toBeNull();
     expect(c.get('a')).toBe(1);
     expect(c.get('c')).toBe(3);

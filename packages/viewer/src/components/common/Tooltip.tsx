@@ -1,7 +1,3 @@
-/* ============================================================
- * Tooltip - accessible tooltip wrapper
- * ============================================================ */
-
 import { useId, type ReactNode } from 'react';
 
 interface TooltipProps {

@@ -1,8 +1,3 @@
-/* ============================================================
- * Text Adapter
- * Trivial plain text rendering with optional line numbers.
- * ============================================================ */
-
 import type {
   Adapter,
   AdapterManifest,

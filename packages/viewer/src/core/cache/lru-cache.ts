@@ -1,8 +1,3 @@
-/* ============================================================
- * LRU Cache
- * Generic least-recently-used cache with byte budget.
- * ============================================================ */
-
 export interface LRUEntry<K, V> {
   readonly key: K;
   readonly value: V;

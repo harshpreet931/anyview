@@ -44,7 +44,6 @@ interface SlideContent {
   html: string;
 }
 
-/** Read the `r:id` relationship reference off a `<p:sldId>` element. */
 function relationshipId(el: Element): string | null {
   const direct = el.getAttribute('r:id');
   if (direct) return direct;
@@ -122,9 +121,6 @@ export class PptxAdapter implements Adapter {
     const cssW = 960 * ctx.scale;
     const cssH = 540 * ctx.scale;
 
-    // The slide is authored at a fixed 960×540 and scaled via transform. A
-    // sized wrapper carries the scaled layout box (transform doesn't affect
-    // layout), so the page measures correctly at any zoom.
     const wrapper = document.createElement('div');
     wrapper.style.width = `${cssW}px`;
     wrapper.style.height = `${cssH}px`;
@@ -169,10 +165,7 @@ export class PptxAdapter implements Adapter {
     return { pageIndex, items };
   }
 
-  // PowerPoint stores display order in ppt/presentation.xml (<p:sldIdLst>),
-  // referencing slides by relationship id - NOT by their slideN.xml filename,
-  // which can be reordered independently. Resolve the real order via the rels
-  // map, falling back to numeric filename order when those parts are missing.
+  // Slide display order comes from presentation.xml relationship ids, not slideN.xml filenames.
   private async orderedSlideFiles(zip: {
     files: Record<string, unknown>;
     file(path: string): { async(type: 'string'): Promise<string> } | null;
@@ -217,7 +210,6 @@ export class PptxAdapter implements Adapter {
       });
 
       if (ordered.length === 0) return numeric();
-      // Append any slides absent from sldIdLst in numeric order so none drop.
       const seen = new Set(ordered);
       for (const f of numeric()) if (!seen.has(f)) ordered.push(f);
       return ordered;

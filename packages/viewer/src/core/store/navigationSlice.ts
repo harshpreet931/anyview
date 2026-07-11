@@ -1,8 +1,3 @@
-/* ============================================================
- * Navigation Slice
- * Page navigation and scroll position tracking.
- * ============================================================ */
-
 import type { StateCreator } from 'zustand';
 import type { DocumentSlice } from './documentSlice';
 
@@ -82,7 +77,7 @@ export const createNavigationSlice: StateCreator<
   setVisiblePages: (pages: number[]) => {
     const prev = get().visiblePages;
     if (prev.length === pages.length && prev.every((p, i) => p === pages[i])) {
-      return; // no change - avoid churn
+      return;
     }
     set({ visiblePages: pages });
   },

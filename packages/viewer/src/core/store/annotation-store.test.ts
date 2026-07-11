@@ -37,7 +37,7 @@ describe('annotation store actions', () => {
     store.getState().onAnnotationChange((a) => seen.push(a.length));
 
     store.getState().clearAnnotations();
-    expect(seen).toEqual([]); // nothing to clear → no notify
+    expect(seen).toEqual([]);
 
     store.getState().addAnnotation(highlight('a'));
     store.getState().clearAnnotations();

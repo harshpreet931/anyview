@@ -1,8 +1,3 @@
-/* ============================================================
- * Image Adapter
- * Native browser image rendering - no worker needed.
- * ============================================================ */
-
 import type {
   Adapter,
   AdapterManifest,
@@ -93,8 +88,6 @@ export class ImageAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    // PageRenderer treats images as a canvas format, so draw the decoded
-    // image onto the provided <canvas> (appending DOM to a canvas is a no-op).
     const cssW = ctx.page.width * ctx.scale;
     const cssH = ctx.page.height * ctx.scale;
     const isSideways = ctx.rotation === 90 || ctx.rotation === 270;
@@ -118,7 +111,6 @@ export class ImageAdapter implements Adapter {
     c.imageSmoothingQuality = 'high';
     c.clearRect(0, 0, target.width, target.height);
     c.save();
-    // Rotate around the canvas centre, then draw the unrotated image centred.
     c.translate(target.width / 2, target.height / 2);
     c.rotate((ctx.rotation * Math.PI) / 180);
     const dw = cssW * dpr;

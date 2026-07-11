@@ -1,7 +1,3 @@
-/* ============================================================
- * DocViewer - main top-level component
- * ============================================================ */
-
 import {
   useEffect,
   useRef,
@@ -28,7 +24,6 @@ import { Sidebar } from './Sidebar';
 import { ViewerContainer } from './Viewer';
 import { PasswordDialog, PropertiesDialog } from './Dialogs';
 
-// Lives inside the I18nProvider so it can localize the announcement.
 function PageAnnouncer() {
   const strings = useStrings();
   const currentPage = useViewerStore((s) => s.currentPage);
@@ -95,8 +90,6 @@ function DocViewerInner(
 
   useKeyboardShortcuts();
 
-  // Free most of the rendered-page cache while the tab is backgrounded - the
-  // portable memory-pressure cue. Pages re-render lazily when it returns.
   useEffect(() => {
     const onVisibility = () => {
       if (window.document.visibilityState === 'hidden') pageCache.trim();
@@ -106,8 +99,6 @@ function DocViewerInner(
       window.document.removeEventListener('visibilitychange', onVisibility);
   }, [pageCache]);
 
-  // Register the root as the fullscreen target and keep isFullscreen in sync
-  // with the actual fullscreen state (covers Esc and browser-chrome exits).
   useEffect(() => {
     setRootElement(rootRef.current);
     const onChange = () =>
@@ -127,13 +118,11 @@ function DocViewerInner(
     setLocale(locale);
   }, [locale, setLocale]);
 
-  // Bridge internal annotation changes to the consumer callback.
   useEffect(() => {
     if (!onAnnotationChange) return;
     return onAnnotationChangeSub(onAnnotationChange);
   }, [onAnnotationChange, onAnnotationChangeSub]);
 
-  // Bridge store state to consumer callbacks via selector subscriptions.
   useEffect(() => {
     if (!onPageChange) return;
     return store.subscribe(
@@ -167,14 +156,10 @@ function DocViewerInner(
     );
   }, [onVisiblePagesChange, store]);
 
-  // Controlled page: driving the `page` prop navigates the viewer. Also re-apply
-  // once a document finishes loading, so a `page` set before load isn't dropped
-  // (goToPage is a no-op while there are no pages yet).
   useEffect(() => {
     if (page != null && loadState === 'loaded') store.getState().goToPage(page);
   }, [page, store, loadState]);
 
-  // Report text selections made inside the viewer.
   useEffect(() => {
     if (!onSelectionChange) return;
     const handler = () => {
@@ -255,7 +240,6 @@ function DocViewerInner(
           </div>
         </div>
 
-        {/* Announces page changes to assistive tech without stealing focus. */}
         <PageAnnouncer />
 
         {passwordPending && (
@@ -280,9 +264,6 @@ function DocViewerInner(
 
 export const DocViewer = forwardRef<DocViewerRef, DocViewerProps>(
   function DocViewer(props, ref) {
-    // Lazy initializer: React guarantees this runs exactly once per mount,
-    // giving each <DocViewer> its own store without reading/writing a ref
-    // during render.
     const [store] = useState(() => {
       const s = createViewerStore(
         props.persistKey ? { persistKey: props.persistKey } : undefined,

@@ -81,8 +81,6 @@ describe('IpynbAdapter', () => {
       signal: new AbortController().signal,
     });
 
-    // The quote was stripped, so no event-handler attribute could be injected
-    // and the value stays inside the data: URI.
     expect(target.querySelector('[onerror]')).toBeNull();
     const img = target.querySelector('img.dv-ipynb-img');
     expect(img).not.toBeNull();

@@ -65,7 +65,6 @@ export class XlsxAdapter implements Adapter {
       for (const name of this.sheetNames) {
         const sheet = workbook.Sheets[name];
         const html = XLSX.utils.sheet_to_html(sheet, { id: `sheet-${name}` });
-        // Sanitize and style the sheet once here, not on every render.
         this.sheetHtmls.push(buildSheetHtml(html, DOMPurify));
 
         const csv = XLSX.utils.sheet_to_csv(sheet);
@@ -145,8 +144,6 @@ export class XlsxAdapter implements Adapter {
   }
 }
 
-// Sanitize a sheet's HTML and bake in the table/cell styling once, so renderPage
-// only has to inject the finished markup (and scale the font with the zoom).
 function buildSheetHtml(
   rawHtml: string,
   DOMPurify: { sanitize: (s: string, c?: Record<string, unknown>) => string },

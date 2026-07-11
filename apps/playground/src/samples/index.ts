@@ -1,7 +1,3 @@
-/* ============================================================
- * Sample files for the playground
- * ============================================================ */
-
 import markdownContent from './markdown-sample.md?raw';
 import textContent from './text-sample.txt?raw';
 import csvContent from './csv-sample.csv?raw';

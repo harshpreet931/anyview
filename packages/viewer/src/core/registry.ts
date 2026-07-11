@@ -1,9 +1,3 @@
-/* ============================================================
- * Adapter Registry Implementation
- * Singleton registry with synchronous manifest access
- * and lazy async adapter loading.
- * ============================================================ */
-
 import type {
   Adapter,
   AdapterConstructor,
@@ -19,9 +13,6 @@ const PROTOCOL_VERSION = 1;
 export function createRegistry(): AdapterRegistry {
   const manifests = new Map<FormatId, AdapterManifest>();
   const loaders = new Map<FormatId, AdapterLoader>();
-  // Cache the imported constructor (one dynamic import per format), but
-  // construct a NEW instance on every loadAdapter() so each document/viewer
-  // gets isolated adapter state.
   const loadedClasses = new Map<FormatId, AdapterConstructor>();
   const listeners = new Set<(manifest: AdapterManifest) => void>();
 
@@ -43,8 +34,6 @@ export function createRegistry(): AdapterRegistry {
       manifests.set(manifest.id, manifest);
       loaders.set(manifest.id, loader);
 
-      // A re-registered format may resolve to a different module; drop any
-      // cached constructor so the next load re-imports.
       loadedClasses.delete(manifest.id);
 
       for (const cb of listeners) {
@@ -98,8 +87,6 @@ export function createRegistry(): AdapterRegistry {
     },
 
     unloadAdapter(format: FormatId): void {
-      // Instances are owned by their document (disposed on close); only the
-      // cached constructor lives here, so unloading just frees the import.
       loadedClasses.delete(format);
     },
 

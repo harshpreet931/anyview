@@ -1,8 +1,3 @@
-/* ============================================================
- * UI Slice
- * Theme, sidebar, toolbar, locale, and recent files.
- * ============================================================ */
-
 import type { StateCreator } from 'zustand';
 import type { Theme, SidebarView, RecentFile } from '../types';
 

@@ -1,13 +1,4 @@
-/* ============================================================
- * react-markdown URL transform.
- *
- * react-markdown's default transform allows http(s) image URLs, so a
- * `![](http://attacker/beacon.png)` would auto-fetch on render - leaking that
- * the document was opened. Block image sources that reach the network (only
- * inline data:/fragment images load), and delegate every other URL (links) to
- * react-markdown's default sanitizer so javascript: etc. stays blocked.
- * ============================================================ */
-
+// Image srcs reaching the network auto-fetch on render, leaking that the doc was opened; allow only inline data:/# refs.
 export function makeSafeUrlTransform(
   defaultUrlTransform: (url: string) => string,
 ): (url: string, key: string) => string {

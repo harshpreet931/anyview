@@ -1,10 +1,3 @@
-/* ============================================================
- * Viewer Store - Zustand store composed of slices.
- *
- * Uses subscribeWithSelector middleware (required for
- * selector-based transient subscriptions in Zustand v5).
- * ============================================================ */
-
 import { create } from 'zustand';
 import {
   createJSONStorage,
@@ -36,8 +29,6 @@ export type ViewerStore = DocumentSlice &
   AnnotationSlice &
   UiSlice;
 
-// Fall back to a no-op store on the server so persist doesn't touch
-// localStorage during SSR (Next.js, Remix). On the client it uses localStorage.
 const noopStorage = {
   getItem: () => null,
   setItem: () => {},
@@ -48,12 +39,7 @@ const safeStorage = createJSONStorage(() =>
 );
 
 export interface CreateViewerStoreOptions {
-  /**
-   * localStorage key for persisted preferences (zoom, theme, sidebar…).
-   * Every store defaults to the same key, so multiple <DocViewer>s on one
-   * page would share - and overwrite - each other's prefs. Pass a distinct
-   * `persistKey` per viewer to isolate them.
-   */
+  /** localStorage key for persisted preferences; pass a distinct key per viewer to isolate them. */
   persistKey?: string;
 }
 

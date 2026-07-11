@@ -1,7 +1,3 @@
-/* ============================================================
- * PasswordDialog - password prompt for encrypted documents
- * ============================================================ */
-
 import { useState, useCallback, useRef } from 'react';
 import { Button } from '../common/Button';
 import { Icon } from '../common/Icon';
@@ -10,7 +6,6 @@ import { useStrings, formatString } from '../../i18n/I18nProvider';
 
 interface PasswordDialogProps {
   fileName: string;
-  /** True when a prior attempt was rejected - shows a "wrong password" hint. */
   incorrect?: boolean;
   onSubmit: (password: string) => void;
   onCancel: () => void;

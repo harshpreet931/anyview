@@ -1,7 +1,3 @@
-/* ============================================================
- * useVirtualizer - wraps @tanstack/react-virtual with store state
- * ============================================================ */
-
 import { type RefObject } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useViewerStore } from './useDocViewer';
