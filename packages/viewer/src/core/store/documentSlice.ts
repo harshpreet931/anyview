@@ -87,6 +87,7 @@ export const createDocumentSlice: StateCreator<
 
   openDocument: async (source: FileSource) => {
     get()._loadController?.abort();
+    get()._searchController?.abort();
     // Tear down the previously loaded document before opening another: dispose
     // its adapter (frees the PDF worker / ImageBitmaps) and clear the page
     // cache, whose key isn't document-scoped - otherwise a new same-format
@@ -113,6 +114,7 @@ export const createDocumentSlice: StateCreator<
       loadError: null,
       adapter: null,
       _loadController: controller,
+      _searchController: null,
       _pendingPassword: null,
     });
 
@@ -231,6 +233,7 @@ export const createDocumentSlice: StateCreator<
 
   closeDocument: () => {
     get()._loadController?.abort();
+    get()._searchController?.abort();
     const { adapter, pageCache, _pendingPassword } = get();
     adapter?.dispose?.();
     _pendingPassword?.adapter.dispose?.();
@@ -243,6 +246,7 @@ export const createDocumentSlice: StateCreator<
       loadState: 'idle',
       loadError: null,
       _loadController: null,
+      _searchController: null,
       _source: null,
       _pendingPassword: null,
       ...PER_DOCUMENT_RESET,
