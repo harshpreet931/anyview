@@ -204,6 +204,7 @@ export const createDocumentSlice: StateCreator<
   submitPassword: async (password: string) => {
     const pending = get()._pendingPassword;
     if (!pending) return;
+    if (get().loadState === 'loading') return;
     get()._loadController?.abort();
     const controller = new AbortController();
     set({ loadState: 'loading', loadError: null, _loadController: controller });
@@ -217,9 +218,15 @@ export const createDocumentSlice: StateCreator<
   },
 
   cancelPassword: () => {
+    get()._loadController?.abort();
     const pending = get()._pendingPassword;
     pending?.adapter.dispose?.();
-    set({ _pendingPassword: null, loadState: 'idle', loadError: null });
+    set({
+      _pendingPassword: null,
+      loadState: 'idle',
+      loadError: null,
+      _loadController: null,
+    });
   },
 
   closeDocument: () => {
