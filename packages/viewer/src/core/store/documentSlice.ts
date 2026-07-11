@@ -164,7 +164,10 @@ export const createDocumentSlice: StateCreator<
         controller.signal,
         password !== undefined ? { password } : undefined,
       );
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        adapter.dispose?.();
+        return;
+      }
 
       get()._resetAnnotations();
       set({
@@ -177,7 +180,10 @@ export const createDocumentSlice: StateCreator<
         ...PER_DOCUMENT_RESET,
       });
     } catch (cause) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        adapter.dispose?.();
+        return;
+      }
 
       const { ViewerError, isViewerError } = await import('../errors');
       const error = isViewerError(cause)
