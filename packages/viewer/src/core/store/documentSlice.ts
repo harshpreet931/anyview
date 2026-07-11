@@ -95,16 +95,21 @@ export const createDocumentSlice: StateCreator<
     get().adapter?.dispose?.();
     get()._pendingPassword?.adapter.dispose?.();
     get().pageCache.clear();
+    get()._resetAnnotations();
     const controller = new AbortController();
 
     const registry = get().registry;
     if (!registry) {
       set({
+        document: null,
+        adapter: null,
         loadState: 'error',
         loadError: new (await import('../errors')).ViewerError(
           'UNSUPPORTED_FORMAT',
           'No adapter registry configured.',
         ),
+        _source: null,
+        ...PER_DOCUMENT_RESET,
       });
       return;
     }
@@ -112,10 +117,13 @@ export const createDocumentSlice: StateCreator<
     set({
       loadState: 'loading',
       loadError: null,
+      document: null,
       adapter: null,
       _loadController: controller,
       _searchController: null,
+      _source: null,
       _pendingPassword: null,
+      ...PER_DOCUMENT_RESET,
     });
 
     try {
