@@ -20,3 +20,17 @@ export function totalRotation(intrinsic: Rotation, applied: Rotation): Rotation 
 export function isSidewaysRotation(rotation: Rotation): boolean {
   return rotation === 90 || rotation === 270;
 }
+
+export function displayedPageSize(
+  width: number,
+  height: number,
+  intrinsic: Rotation,
+  applied: Rotation,
+  scale: number,
+): { width: number; height: number } {
+  const sideways = isSidewaysRotation(totalRotation(intrinsic, applied));
+  return {
+    width: (sideways ? height : width) * scale,
+    height: (sideways ? width : height) * scale,
+  };
+}

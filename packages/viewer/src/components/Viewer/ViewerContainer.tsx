@@ -12,7 +12,12 @@ import {
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useViewerStore } from '../../hooks/useDocViewer';
-import { totalRotation, isSidewaysRotation, type Rotation } from '../../core/rotation';
+import {
+  totalRotation,
+  isSidewaysRotation,
+  displayedPageSize,
+  type Rotation,
+} from '../../core/rotation';
 import { PageRenderer } from './PageRenderer';
 import { EmptyState, LoadingState, ErrorState } from '../States';
 
@@ -169,13 +174,15 @@ export function ViewerContainer() {
       for (const p of row) {
         const page = document!.pages[p];
         if (!page) continue;
-        // Each page's own intrinsic rotation composes with the interactive
-        // one, so a per-page check (not one shared for the whole row).
-        const isSideways = isSidewaysRotation(
-          totalRotation(page.rotation as Rotation, rotation as Rotation),
+        const size = displayedPageSize(
+          page.width,
+          page.height,
+          page.rotation as Rotation,
+          rotation as Rotation,
+          zoom,
         );
-        const m = (isSideways ? page.width : page.height) * zoom;
-        if (m > main) main = m; // a row is as tall as its tallest page
+        const m = isHorizontal ? size.width : size.height;
+        if (m > main) main = m;
       }
       return (main || 400) + gap;
     },

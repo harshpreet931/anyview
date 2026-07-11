@@ -5,7 +5,7 @@
 import { type RefObject } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useViewerStore } from './useDocViewer';
-import { totalRotation, isSidewaysRotation, type Rotation } from '../core/rotation';
+import { displayedPageSize, type Rotation } from '../core/rotation';
 
 export function useVirtualizerHook(
   scrollRef: RefObject<HTMLDivElement | null>,
@@ -24,11 +24,14 @@ export function useVirtualizerHook(
       if (!document) return 400;
       const page = document.pages[index];
       if (!page) return 400;
-      const isSideways = isSidewaysRotation(
-        totalRotation(page.rotation as Rotation, rotation as Rotation),
+      const size = displayedPageSize(
+        page.width,
+        page.height,
+        page.rotation as Rotation,
+        rotation as Rotation,
+        zoom,
       );
-      const dim = isSideways ? page.width : page.height;
-      return dim * zoom;
+      return scrollMode === 'horizontal' ? size.width : size.height;
     },
     overscan: 2,
     horizontal: scrollMode === 'horizontal',
