@@ -21,6 +21,12 @@ describe('detectFormat', () => {
     expect(detectFormat('thing.pdf', 'text/plain')).toBe('pdf');
   });
 
+  it('detects MIME types that carry parameters', () => {
+    expect(detectFormat('download', 'text/plain; charset=utf-8')).toBe('text');
+    expect(detectFormat('download', 'application/pdf;charset=binary')).toBe('pdf');
+    expect(detectFormat('blob', 'TEXT/HTML; charset=UTF-8')).toBe('html');
+  });
+
   it('returns null for unknown formats', () => {
     expect(detectFormat('mystery.xyz')).toBeNull();
     expect(detectFormat('noext')).toBeNull();

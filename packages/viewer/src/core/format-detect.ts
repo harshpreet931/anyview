@@ -140,7 +140,8 @@ export function detectFormat(
   }
 
   if (mimeType) {
-    const byMime = MIME_MAP.get(mimeType.toLowerCase());
+    const bareMime = mimeType.split(';')[0]!.trim().toLowerCase();
+    const byMime = MIME_MAP.get(bareMime);
     if (byMime) return byMime;
   }
 
