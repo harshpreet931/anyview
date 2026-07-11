@@ -55,7 +55,11 @@ export class TextAdapter implements Adapter {
 
     const charWidth = 8;
     const lineHeight = 20;
-    const maxWidth = Math.max(...this.lines.map((l) => l.length)) * charWidth;
+    let maxLineLength = 0;
+    for (const line of this.lines) {
+      if (line.length > maxLineLength) maxLineLength = line.length;
+    }
+    const maxWidth = maxLineLength * charWidth;
     const totalHeight = this.lines.length * lineHeight;
 
     const page: PageRef = {
