@@ -29,6 +29,29 @@ const PDFJS_ASSET_DIRS = ['cmaps', 'standard_fonts', 'wasm', 'iccs'];
 // npm consumer. Bake in the exact assets from the pdfjs-dist we built/tested
 // against, so version drift in a consumer's own pdfjs-dist install (the peer
 // dependency only requires ^6.1) can't produce mismatched cmap data.
+function addDeclarationExtensions(
+  content: string,
+  fromDir: string,
+  emitted: Set<string>,
+): string {
+  const rewrite = (spec: string): string => {
+    const isRelative =
+      spec === '.' ||
+      spec === '..' ||
+      spec.startsWith('./') ||
+      spec.startsWith('../');
+    if (!isRelative) return spec;
+    if (/\.(m?js|c?js|json|css|node)$/.test(spec)) return spec;
+    const abs = path.resolve(fromDir, spec);
+    if (emitted.has(path.resolve(`${abs}.d.ts`))) return `${spec}.js`;
+    if (emitted.has(path.resolve(path.join(abs, 'index.d.ts')))) return `${spec}/index.js`;
+    return spec;
+  };
+  return content
+    .replace(/(\bfrom\s*['"])(\.[^'"]*)(['"])/g, (_m, a, s, b) => a + rewrite(s) + b)
+    .replace(/(\bimport\s*\(\s*['"])(\.[^'"]*)(['"]\s*\))/g, (_m, a, s, b) => a + rewrite(s) + b);
+}
+
 function copyPdfjsAssets(): Plugin {
   return {
     name: 'copy-pdfjs-assets',
@@ -52,7 +75,27 @@ export default defineConfig({
   base: './',
   plugins: [
     react(),
-    dts({ include: ['src'], exclude: ['**/*.test.*', 'apps/**'] }),
+    dts({
+      include: ['src'],
+      exclude: ['**/*.test.*', 'apps/**'],
+      afterBuild: async (emittedFiles: Map<string, string>) => {
+        const emitted = new Set(
+          [...emittedFiles.keys()].map((p) => path.resolve(p)),
+        );
+        await Promise.all(
+          [...emittedFiles.entries()].map(async ([filePath, content]) => {
+            if (!filePath.endsWith('.d.ts')) return;
+            const abs = path.resolve(filePath);
+            const next = addDeclarationExtensions(
+              content,
+              path.dirname(abs),
+              emitted,
+            );
+            if (next !== content) await fs.promises.writeFile(abs, next);
+          }),
+        );
+      },
+    }),
     copyPdfjsAssets(),
   ],
   worker: {
