@@ -5,7 +5,7 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
-## [0.2.2]
+## [0.2.3]
 
 ### Fixed
 - **Real-world PDFs no longer render as empty boxes.** Government/CID-font PDFs (e.g. Indian ITR, electoral rolls, Indic scripts) and PDFs with non-embedded standard fonts showed every glyph as a `.notdef` box because pdf.js was never given its CMap, standard-font, WASM, and ICC data. These are now bundled and served, and the worker is configured to fetch them.
