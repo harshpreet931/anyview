@@ -7,6 +7,29 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [0.2.3]
 
+### Added
+- **`PdfAdapter.configureAssets(baseUrl)`**: point the PDF worker at a custom location for pdf.js's CMap, standard-font, WASM, and ICC data, for hosts that serve those assets from somewhere other than the package's own `dist/pdfjs/`.
+
+### Fixed
+- **PDFs render correctly when installed from npm.** 0.2.2 fixed the missing pdf.js CMap/standard-font/WASM/ICC data for the demo app, but the published package never shipped those files, so real installs still drew CID-keyed and non-embedded glyphs as `.notdef` boxes. The assets now ship inside the package and the worker resolves them relative to its own URL, with `PdfAdapter.configureAssets()` as an override.
+- **TypeScript `NodeNext` consumers compile again.** The generated declarations used extension-less relative imports, which `moduleResolution: node16`/`nodenext` rejects (`TS2834`); a minimal consumer failed with 51 errors. Declaration imports now carry explicit `.js` specifiers.
+- **Pages with their own `/Rotate` display upright.** A PDF's intrinsic rotation (scanned or phone-captured pages) was replacing rather than composing with the toolbar rotation, so such pages rendered sideways and rotating appeared to snap them back. The canvas, text layer, search coordinates, and page sizing now all compose intrinsic and applied rotation.
+- **Cancelling the password prompt no longer leaves a broken viewer.** Cancelling while an attempt was in flight let the stale parse finish and mark the viewer `loaded` against an already-disposed adapter; rapid double-submits could also start two parses on one adapter.
+- **Stale search results can't reappear.** Closing or replacing a document left an in-flight search running, which then repopulated its results onto the empty (or newly opened) document.
+- **Horizontal scroll mode spaces pages correctly.** The virtualizer measured each page along the wrong axis, leaving a gap at 0° and overlapping pages at 90°, and corrupting the total scroll width and page navigation.
+- **Large plain-text files open.** An ordinary ~300 KB file (150k lines) threw a `RangeError` while measuring its longest line.
+- **Cancelled loads no longer leak.** Closing a document before its parse finished left the in-flight adapter, and its PDF worker, undisposed.
+- **A failed document swap no longer exposes the previous document.** Opening an invalid file over a loaded one entered the error state but kept the old document, source, and annotations reachable through `getDocument()`, download, the annotation API, and the Properties dialog.
+- **Heading navigation works in HTML and DOCX.** Outline offsets were read from a detached parse tree that never lays out, so every heading reported an offset of 0 and clicking it did nothing.
+- **Uppercase `.TSV` files parse as tab-separated** instead of collapsing each row into a single cell.
+- **MIME types carrying parameters are detected**, so an extensionless URL response of `text/plain; charset=utf-8` resolves instead of being reported as unsupported.
+
+### Changed
+- Runtime dependency minimums raised within their existing majors (`@tanstack/react-virtual` ^3.14.5, `comlink` ^4.4.2, `zustand` ^5.0.14). No peer dependency ranges changed.
+- Internal toolchain upgraded to TypeScript 6, Vite 8, ESLint 10, and Vitest 4; the library build now uses Vite's native `oxc` minifier instead of the deprecated esbuild path.
+
+## [0.2.2]
+
 ### Fixed
 - **Real-world PDFs no longer render as empty boxes.** Government/CID-font PDFs (e.g. Indian ITR, electoral rolls, Indic scripts) and PDFs with non-embedded standard fonts showed every glyph as a `.notdef` box because pdf.js was never given its CMap, standard-font, WASM, and ICC data. These are now bundled and served, and the worker is configured to fetch them.
 - **Rotating a PDF no longer blanks or fails to rotate.** Two bugs: cached pages repainted through a `2d` context on a canvas already bound to `bitmaprenderer` (which returns `null`), blanking the page on any cache re-hit (e.g. rotating a full cycle); and pdf.js 6's default DOM canvas factory needs `document`, which doesn't exist in the worker, so rotated/complex renders silently failed. The worker now paints via `2d` throughout and uses an `OffscreenCanvas` factory.
