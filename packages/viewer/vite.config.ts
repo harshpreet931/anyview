@@ -135,7 +135,7 @@ export default defineConfig({
       ],
     },
     target: 'es2022',
-    minify: 'esbuild',
+    minify: 'oxc',
     outDir: 'dist',
     emptyOutDir: true,
   },
