@@ -239,16 +239,19 @@ export class PdfAdapter implements Adapter {
 
   private matchText(text: string, query: SearchQuery): boolean {
     const flags = query.caseSensitive ? 'g' : 'gi';
+    // query.regex is the caller opting into raw regex syntax, so their text is the pattern;
+    // every other path escapes it. Matches how HtmlAdapter picks its pattern.
+    const pattern = query.regex ? query.text : escapeRegex(query.text);
     if (query.regex) {
       try {
-        const re = new RegExp(query.text, flags);
+        const re = new RegExp(pattern, flags);
         return re.test(text);
       } catch {
         return false;
       }
     }
     if (query.wholeWord) {
-      const re = new RegExp(`\\b${escapeRegex(query.text)}\\b`, flags);
+      const re = new RegExp(`\\b${pattern}\\b`, flags);
       return re.test(text);
     }
     return text.toLowerCase().includes(query.text.toLowerCase());
