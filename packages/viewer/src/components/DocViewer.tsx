@@ -68,7 +68,6 @@ function DocViewerInner(
   const onAnnotationChangeSub = useViewerStore((s) => s.onAnnotationChange);
   const document = useViewerStore((s) => s.document);
   const loadState = useViewerStore((s) => s.loadState);
-  const loadError = useViewerStore((s) => s.loadError);
   const adapter = useViewerStore((s) => s.adapter);
 
   const submitPassword = useViewerStore((s) => s.submitPassword);
@@ -195,17 +194,27 @@ function DocViewerInner(
     };
   }, [source, openDocument, closeDocument]);
 
+  // Both fire on the store transition, not on rendered state: an inline callback prop would
+  // otherwise change identity every render and re-announce a load that already happened.
   useEffect(() => {
-    if (loadState === 'loaded' && document && onDocumentLoad) {
-      onDocumentLoad(document);
-    }
-  }, [loadState, document, onDocumentLoad]);
+    if (!onDocumentLoad) return;
+    return store.subscribe(
+      (s) => (s.loadState === 'loaded' ? s.document : null),
+      (model) => {
+        if (model) onDocumentLoad(model);
+      },
+    );
+  }, [onDocumentLoad, store]);
 
   useEffect(() => {
-    if (loadState === 'error' && loadError && onError) {
-      onError(loadError);
-    }
-  }, [loadState, loadError, onError]);
+    if (!onError) return;
+    return store.subscribe(
+      (s) => (s.loadState === 'error' ? s.loadError : null),
+      (error) => {
+        if (error) onError(error);
+      },
+    );
+  }, [onError, store]);
 
   const features = adapter?.manifest.features;
   const rootClassName = useMemo(() => {
