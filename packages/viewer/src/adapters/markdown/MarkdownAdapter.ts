@@ -52,10 +52,17 @@ export class MarkdownAdapter implements Adapter {
 
     this.markdownText = new TextDecoder('utf-8').decode(buffer);
 
-    const React = await import('react');
-    const { renderToStaticMarkup } = await import('react-dom/server');
-    const { default: ReactMarkdown, defaultUrlTransform } = await import('react-markdown');
-    const remarkGfm = (await import('remark-gfm')).default;
+    const [
+      React,
+      { renderToStaticMarkup },
+      { default: ReactMarkdown, defaultUrlTransform },
+      { default: remarkGfm },
+    ] = await Promise.all([
+      import('react'),
+      import('react-dom/server'),
+      import('react-markdown'),
+      import('remark-gfm'),
+    ]);
 
     const element = React.createElement(
       ReactMarkdown,

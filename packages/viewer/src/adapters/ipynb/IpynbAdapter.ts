@@ -134,11 +134,19 @@ export class IpynbAdapter implements Adapter {
   }
 
   private async buildHtml(cells: NbCell[]): Promise<SafeHtml> {
-    const React = await import('react');
-    const { renderToStaticMarkup } = await import('react-dom/server');
-    const { default: ReactMarkdown, defaultUrlTransform } = await import('react-markdown');
-    const remarkGfm = (await import('remark-gfm')).default;
-    const DOMPurify = await loadSanitizer();
+    const [
+      React,
+      { renderToStaticMarkup },
+      { default: ReactMarkdown, defaultUrlTransform },
+      { default: remarkGfm },
+      DOMPurify,
+    ] = await Promise.all([
+      import('react'),
+      import('react-dom/server'),
+      import('react-markdown'),
+      import('remark-gfm'),
+      loadSanitizer(),
+    ]);
     const urlTransform = makeSafeUrlTransform(defaultUrlTransform);
 
     let codeToHtml: ((src: string) => string) | null = null;
