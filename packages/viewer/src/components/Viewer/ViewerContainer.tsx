@@ -49,7 +49,11 @@ export function ViewerContainer() {
   const [marquee, setMarquee] = useState<{ left: number; top: number; w: number; h: number } | null>(null);
   const isProgrammaticScroll = useRef(false);
   const zoomRef = useRef(zoom);
-  zoomRef.current = zoom;
+  // Synced in a layout effect rather than during render: the gesture handlers read this to seed
+  // a pinch, and a layout effect commits before the browser can dispatch the next pointer event.
+  useLayoutEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
 
   const gesture = useRef<{
     base: number;
