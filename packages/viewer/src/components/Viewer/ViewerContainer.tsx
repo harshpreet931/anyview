@@ -259,7 +259,11 @@ export function ViewerContainer() {
       settleTimer.current = setTimeout(commitGesture, 90);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      // A gesture settling when the viewer unmounts would otherwise commit 90ms later, into a store the component no longer owns.
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    };
   }, [applyLiveScale, commitGesture]);
 
   useEffect(() => {
