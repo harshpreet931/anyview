@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
-import type { SidebarView, PageRef, Adapter, FormatId } from '../../core/types';
+import type {
+  SidebarView,
+  PageRef,
+  Adapter,
+  FormatId,
+  OutlineNode,
+  PageDestination,
+} from '../../core/types';
 
 const SIDEBAR_MIN_WIDTH = 140;
 const SIDEBAR_MAX_WIDTH = 400;
@@ -178,7 +185,7 @@ function ThumbnailList({
     <div className="dv-thumbnail-list" role="list">
       {pages.map((page, index) => (
         <Thumbnail
-          key={index}
+          key={page.index}
           page={page}
           index={index}
           format={format}
@@ -303,12 +310,30 @@ function Thumbnail({
   );
 }
 
+// Outline nodes carry no id, so identity comes from title + destination. Repeats of that pair
+// (a document really can have two "Introduction" headings on one page) get an occurrence suffix.
+function keyOutlineNodes(
+  nodes: ReadonlyArray<OutlineNode>,
+): ReadonlyArray<{ node: OutlineNode; key: string }> {
+  const seen = new Map<string, number>();
+  return nodes.map((node) => {
+    const dest =
+      typeof node.dest === 'object' && node.dest !== null && 'pageIndex' in node.dest
+        ? String((node.dest as PageDestination).pageIndex)
+        : String(node.dest);
+    const base = `${node.title} ${dest}`;
+    const seenBefore = seen.get(base) ?? 0;
+    seen.set(base, seenBefore + 1);
+    return { node, key: seenBefore === 0 ? base : `${base} ${seenBefore}` };
+  });
+}
+
 function OutlineList({
   nodes,
   onNavigate,
   depth = 0,
 }: {
-  nodes: ReadonlyArray<import('../../core/types').OutlineNode>;
+  nodes: ReadonlyArray<OutlineNode>;
   onNavigate: (pageIndex: number, scrollOffset?: number) => void;
   depth?: number;
 }) {
@@ -318,8 +343,8 @@ function OutlineList({
       role={depth === 0 ? 'tree' : 'group'}
       style={{ paddingLeft: `${depth * 16}px` }}
     >
-      {nodes.map((node, i) => (
-        <li key={i} role="treeitem">
+      {keyOutlineNodes(nodes).map(({ node, key }) => (
+        <li key={key} role="treeitem">
           <button
             className="dv-outline-item"
             onClick={() => {
