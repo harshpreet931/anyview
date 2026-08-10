@@ -16,6 +16,7 @@ import type {
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
 import { loadSanitizer } from '../../core/sanitizer';
+import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 import { assertTransformSize } from '../../core/limits';
 import { headingScrollOffset } from '../../core/reflow-outline';
 
@@ -46,7 +47,7 @@ export const docxManifest: AdapterManifest = {
 
 export class DocxAdapter implements Adapter {
   readonly manifest = docxManifest;
-  private htmlContent = '';
+  private htmlContent: SafeHtml = EMPTY_HTML;
   private textContent = '';
 
   async parse(
@@ -61,7 +62,7 @@ export class DocxAdapter implements Adapter {
       const mammoth = await loadParser('mammoth', () => import('mammoth'));
       const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
       const DOMPurify = await loadSanitizer();
-      this.htmlContent = DOMPurify.sanitize(result.value, {
+      this.htmlContent = markSanitized(DOMPurify.sanitize(result.value, {
         ALLOWED_TAGS: [
           'p', 'br', 'strong', 'em', 'b', 'i', 'u', 's', 'a', 'ul', 'ol',
           'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead',
@@ -70,7 +71,7 @@ export class DocxAdapter implements Adapter {
         ],
         ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'colspan', 'rowspan', 'style', 'class', 'id', 'width', 'height'],
         ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data:image):|#)/i,
-      });
+      }));
     } catch (cause) {
       if (isViewerError(cause)) throw cause;
       throw new ViewerError('PARSE_ERROR', 'Failed to parse DOCX.', { cause });
@@ -114,7 +115,7 @@ export class DocxAdapter implements Adapter {
     container.style.lineHeight = '1.6';
     container.style.color = 'var(--dv-page-ink)';
     container.style.background = 'var(--dv-page-bg)';
-    container.innerHTML = this.htmlContent;
+    setSafeHtml(container, this.htmlContent);
 
     const tables = container.querySelectorAll('table');
     tables.forEach((t) => {
@@ -198,7 +199,7 @@ export class DocxAdapter implements Adapter {
   }
 
   dispose(): void {
-    this.htmlContent = '';
+    this.htmlContent = EMPTY_HTML;
     this.textContent = '';
   }
 }

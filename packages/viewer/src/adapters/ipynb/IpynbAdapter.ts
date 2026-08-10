@@ -12,6 +12,7 @@ import type {
 } from '../../core/types';
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadSanitizer } from '../../core/sanitizer';
+import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 import { makeSafeUrlTransform } from '../../core/markdown-url';
 import { assertTransformSize } from '../../core/limits';
 
@@ -74,7 +75,7 @@ const ANSI = new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g");
 
 export class IpynbAdapter implements Adapter {
   readonly manifest = ipynbManifest;
-  private htmlContent = '';
+  private htmlContent: SafeHtml = EMPTY_HTML;
   private textContent = '';
   private language = 'python';
 
@@ -132,7 +133,7 @@ export class IpynbAdapter implements Adapter {
     };
   }
 
-  private async buildHtml(cells: NbCell[]): Promise<string> {
+  private async buildHtml(cells: NbCell[]): Promise<SafeHtml> {
     const React = await import('react');
     const { renderToStaticMarkup } = await import('react-dom/server');
     const { default: ReactMarkdown, defaultUrlTransform } = await import('react-markdown');
@@ -190,7 +191,7 @@ export class IpynbAdapter implements Adapter {
       }
     }
     html += '</div>';
-    return html;
+    return markSanitized(html);
   }
 
   private renderOutput(
@@ -261,7 +262,7 @@ export class IpynbAdapter implements Adapter {
     container.style.lineHeight = '1.6';
     container.style.color = 'var(--dv-page-ink)';
     container.style.background = 'var(--dv-page-bg)';
-    container.innerHTML = this.htmlContent;
+    setSafeHtml(container, this.htmlContent);
 
     target.appendChild(container);
 
@@ -282,7 +283,7 @@ export class IpynbAdapter implements Adapter {
   }
 
   dispose(): void {
-    this.htmlContent = '';
+    this.htmlContent = EMPTY_HTML;
     this.textContent = '';
   }
 }

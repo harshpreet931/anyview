@@ -13,6 +13,7 @@ import type {
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
 import { loadSanitizer } from '../../core/sanitizer';
+import { markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 
 export const xlsxManifest: AdapterManifest = {
   id: 'xlsx',
@@ -42,7 +43,7 @@ export const xlsxManifest: AdapterManifest = {
 
 export class XlsxAdapter implements Adapter {
   readonly manifest = xlsxManifest;
-  private sheetHtmls: string[] = [];
+  private sheetHtmls: SafeHtml[] = [];
   private sheetNames: string[] = [];
   private sheetTexts: string[] = [];
 
@@ -109,7 +110,7 @@ export class XlsxAdapter implements Adapter {
     container.style.padding = '16px';
     container.style.overflow = 'auto';
     container.style.fontSize = `${14 * ctx.scale}px`;
-    container.innerHTML = html;
+    setSafeHtml(container, html);
 
     target.appendChild(container);
 
@@ -147,7 +148,7 @@ export class XlsxAdapter implements Adapter {
 function buildSheetHtml(
   rawHtml: string,
   DOMPurify: { sanitize: (s: string, c?: Record<string, unknown>) => string },
-): string {
+): SafeHtml {
   const sanitized = DOMPurify.sanitize(rawHtml, {
     ALLOWED_TAGS: [
       'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'col',
@@ -169,5 +170,5 @@ function buildSheetHtml(
       c.style.whiteSpace = 'nowrap';
     });
   }
-  return doc.body.innerHTML;
+  return markSanitized(doc.body.innerHTML);
 }

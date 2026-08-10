@@ -14,6 +14,7 @@ import type {
 } from '../../core/types';
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
+import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 
 export const csvManifest: AdapterManifest = {
   id: 'csv',
@@ -42,7 +43,7 @@ export class CsvAdapter implements Adapter {
   readonly manifest = csvManifest;
   private rows: string[][] = [];
   private headers: string[] = [];
-  private htmlContent = '';
+  private htmlContent: SafeHtml = EMPTY_HTML;
 
   async parse(
     source: FileSourceReader,
@@ -95,7 +96,7 @@ export class CsvAdapter implements Adapter {
     container.style.padding = '16px';
     container.style.overflow = 'auto';
     container.style.fontSize = `${14 * ctx.scale}px`;
-    container.innerHTML = this.htmlContent;
+    setSafeHtml(container, this.htmlContent);
 
     target.appendChild(container);
 
@@ -169,7 +170,7 @@ export class CsvAdapter implements Adapter {
     return text.toLowerCase().includes(query.text.toLowerCase());
   }
 
-  private buildHtml(): string {
+  private buildHtml(): SafeHtml {
     const escapeHtml = (s: string) => {
       const div = document.createElement('div');
       div.textContent = s;
@@ -196,12 +197,12 @@ export class CsvAdapter implements Adapter {
     }
     html += '</tbody></table>';
 
-    return html;
+    return markSanitized(html);
   }
 
   dispose(): void {
     this.rows = [];
     this.headers = [];
-    this.htmlContent = '';
+    this.htmlContent = EMPTY_HTML;
   }
 }

@@ -15,6 +15,7 @@ import type {
 } from '../../core/types';
 import { ViewerError } from '../../core/errors';
 import { loadSanitizer } from '../../core/sanitizer';
+import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 import { assertTransformSize } from '../../core/limits';
 import { headingScrollOffset } from '../../core/reflow-outline';
 
@@ -43,7 +44,7 @@ export const htmlManifest: AdapterManifest = {
 
 export class HtmlAdapter implements Adapter {
   readonly manifest = htmlManifest;
-  private htmlContent = '';
+  private htmlContent: SafeHtml = EMPTY_HTML;
   private textContent = '';
 
   async parse(
@@ -58,7 +59,7 @@ export class HtmlAdapter implements Adapter {
 
     try {
       const DOMPurify = await loadSanitizer();
-      this.htmlContent = DOMPurify.sanitize(rawHtml, {
+      this.htmlContent = markSanitized(DOMPurify.sanitize(rawHtml, {
         ALLOWED_TAGS: [
           'a', 'abbr', 'address', 'article', 'aside', 'b', 'bdi', 'bdo',
           'blockquote', 'br', 'caption', 'cite', 'code', 'col', 'colgroup',
@@ -75,7 +76,7 @@ export class HtmlAdapter implements Adapter {
           'height', 'colspan', 'rowspan', 'target', 'rel', 'data-*',
         ],
         ALLOW_DATA_ATTR: true,
-      });
+      }));
     } catch (cause) {
       throw new ViewerError('PARSE_ERROR', 'Failed to sanitize HTML.', { cause });
     }
@@ -118,7 +119,7 @@ export class HtmlAdapter implements Adapter {
     container.style.lineHeight = '1.6';
     container.style.color = 'var(--dv-page-ink)';
     container.style.background = 'var(--dv-page-bg)';
-    container.innerHTML = this.htmlContent;
+    setSafeHtml(container, this.htmlContent);
 
     target.appendChild(container);
 
@@ -191,7 +192,7 @@ export class HtmlAdapter implements Adapter {
   }
 
   dispose(): void {
-    this.htmlContent = '';
+    this.htmlContent = EMPTY_HTML;
     this.textContent = '';
   }
 }

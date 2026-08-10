@@ -12,6 +12,7 @@ import type {
 } from '../../core/types';
 import { makeSafeUrlTransform } from '../../core/markdown-url';
 import { assertTransformSize } from '../../core/limits';
+import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 
 export const markdownManifest: AdapterManifest = {
   id: 'markdown',
@@ -39,7 +40,7 @@ export const markdownManifest: AdapterManifest = {
 export class MarkdownAdapter implements Adapter {
   readonly manifest = markdownManifest;
   private markdownText = '';
-  private htmlContent = '';
+  private htmlContent: SafeHtml = EMPTY_HTML;
 
   async parse(
     source: FileSourceReader,
@@ -65,7 +66,8 @@ export class MarkdownAdapter implements Adapter {
       this.markdownText,
     );
 
-    this.htmlContent = renderToStaticMarkup(element);
+    // react-markdown has no rehype-raw, so the serializer escapes every span of document text.
+    this.htmlContent = markSanitized(renderToStaticMarkup(element));
 
     const charCount = this.markdownText.length;
     const estimatedHeight = Math.ceil(charCount / 80) * 24 + 200;
@@ -102,7 +104,7 @@ export class MarkdownAdapter implements Adapter {
     container.style.lineHeight = '1.6';
     container.style.color = 'var(--dv-page-ink)';
     container.style.background = 'var(--dv-page-bg)';
-    container.innerHTML = this.htmlContent;
+    setSafeHtml(container, this.htmlContent);
 
     target.appendChild(container);
 
@@ -158,6 +160,6 @@ export class MarkdownAdapter implements Adapter {
 
   dispose(): void {
     this.markdownText = '';
-    this.htmlContent = '';
+    this.htmlContent = EMPTY_HTML;
   }
 }
