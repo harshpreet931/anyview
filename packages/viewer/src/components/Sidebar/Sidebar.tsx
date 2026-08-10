@@ -376,15 +376,20 @@ function AttachmentList({
         <li key={att.id}>
           <button
             className="dv-attachment-item"
-            onClick={() => {
-              att.getData().then((blob) => {
-                const url = URL.createObjectURL(blob);
+            onClick={async () => {
+              let url: string | undefined;
+              try {
+                const blob = await att.getData();
+                url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = att.name;
                 a.click();
-                URL.revokeObjectURL(url);
-              });
+              } catch {
+                // A failed attachment read has nowhere to surface; the viewer keeps off console.
+              } finally {
+                if (url) URL.revokeObjectURL(url);
+              }
             }}
           >
             {att.name}
