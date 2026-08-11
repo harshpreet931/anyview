@@ -25,6 +25,12 @@ import { ViewerContainer } from './Viewer/ViewerContainer';
 import { PasswordDialog } from './Dialogs/PasswordDialog';
 import { PropertiesDialog } from './Dialogs/PropertiesDialog';
 
+const ROOT_STYLE: CSSProperties = {
+  position: 'relative',
+  width: '100%',
+  height: '100%',
+};
+
 function PageAnnouncer() {
   const strings = useStrings();
   const currentPage = useViewerStore((s) => s.currentPage);
@@ -224,15 +230,9 @@ function DocViewerInner(
     return classes.join(' ');
   }, [theme, className]);
 
-  const rootStyle: CSSProperties = {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
-  };
-
   return (
     <I18nProvider locale={locale}>
-      <div ref={rootRef} className={rootClassName} style={rootStyle} aria-label="Document viewer">
+      <div ref={rootRef} className={rootClassName} style={ROOT_STYLE} aria-label="Document viewer">
         <div className="dv-main-container">
           {showToolbar && <Toolbar {...(features ? { features } : {})} />}
           <progress
