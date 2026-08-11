@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useFileInput } from '../../hooks/useFileInput';
-import { useStrings, formatString } from '../../i18n/I18nProvider';
+import { useStrings } from '../../i18n/I18nProvider';
 
 function StateContainer({
   icon,
@@ -101,24 +101,5 @@ export function ErrorState({
         </button>
       )}
     </StateContainer>
-  );
-}
-
-export function UnsupportedState({ format }: { format?: string }) {
-  const strings = useStrings();
-  return (
-    <StateContainer
-      icon={
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 12l24 24M36 12L12 36" strokeLinecap="round" />
-        </svg>
-      }
-      title={strings.states.unsupported}
-      description={
-        format
-          ? formatString(strings.states.unsupportedFormat, format)
-          : strings.states.unsupportedDescription
-      }
-    />
   );
 }
