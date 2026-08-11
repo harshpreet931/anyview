@@ -74,13 +74,8 @@ export { LRUCache } from './core/cache/lru-cache';
 export { serializeAnnotations, parseAnnotations } from './core/annotations';
 export type { SerializedAnnotations } from './core/annotations';
 
-export {
-  I18nProvider,
-  useStrings,
-  registerStrings,
-  resolveStrings,
-  formatString,
-} from './i18n/I18nProvider';
+export { I18nProvider, useStrings } from './i18n/I18nProvider';
+export { registerStrings, resolveStrings, formatString } from './i18n/strings';
 
 export { useDocViewer, useViewerStore, ViewerStoreProvider } from './hooks/useDocViewer';
 export { useDocument } from './hooks/useDocument';

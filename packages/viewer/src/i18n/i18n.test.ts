@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatString, resolveStrings, registerStrings } from './I18nProvider';
+import { formatString, resolveStrings, registerStrings } from './strings';
 import { en } from './en';
 
 describe('i18n', () => {

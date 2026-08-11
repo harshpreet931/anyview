@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
-import { useStrings, formatString } from '../../i18n/I18nProvider';
+import { useStrings } from '../../i18n/I18nProvider';
+import { formatString } from '../../i18n/strings';
 import type { AdapterFeatures, AnnotationTool, SpreadMode } from '../../core/types';
 
 interface ToolbarProps {

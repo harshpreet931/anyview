@@ -2,7 +2,8 @@ import { useState, useCallback, useRef } from 'react';
 import { Button } from '../common/Button';
 import { Icon } from '../common/Icon';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { useStrings, formatString } from '../../i18n/I18nProvider';
+import { useStrings } from '../../i18n/I18nProvider';
+import { formatString } from '../../i18n/strings';
 
 interface PasswordDialogProps {
   fileName: string;
