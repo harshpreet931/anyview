@@ -182,10 +182,10 @@ export class PdfAdapter implements Adapter {
 
   async getTextLayer(
     pageIndex: number,
-    _signal?: AbortSignal,
+    signal?: AbortSignal,
     rotation = 0,
   ): Promise<TextLayer> {
-    if (!this.remote || this.docId == null) {
+    if (!this.remote || this.docId == null || signal?.aborted) {
       return { pageIndex, items: [] };
     }
 
@@ -215,15 +215,20 @@ export class PdfAdapter implements Adapter {
       return { query, matches: [], totalMatches: 0 };
     }
 
+    const textLayers = await Promise.all(
+      Array.from({ length: this.parsedPdf.pageCount }, (_, pageIdx) =>
+        this.getTextLayer(pageIdx, signal, rotation),
+      ),
+    );
+    if (signal.aborted) return { query, matches: [], totalMatches: 0 };
+
     const matches: SearchMatch[] = [];
 
-    for (let pageIdx = 0; pageIdx < this.parsedPdf.pageCount; pageIdx++) {
-      if (signal.aborted) break;
-      const textLayer = await this.getTextLayer(pageIdx, signal, rotation);
+    for (const textLayer of textLayers) {
       for (const item of textLayer.items) {
         if (this.matchText(item.str, query)) {
           matches.push({
-            pageIndex: pageIdx,
+            pageIndex: textLayer.pageIndex,
             text: item.str,
             x: item.x,
             y: item.y,
