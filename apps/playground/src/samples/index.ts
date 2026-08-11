@@ -3,6 +3,7 @@ import textContent from './text-sample.txt?raw';
 import csvContent from './csv-sample.csv?raw';
 import htmlContent from './html-sample.html?raw';
 import codeContent from './code-sample.ts?raw';
+import svgContent from './image-sample.svg?raw';
 
 export interface SampleFile {
   label: string;
@@ -10,22 +11,6 @@ export interface SampleFile {
   mimeType: string;
   content: string;
 }
-
-const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#667eea"/>
-      <stop offset="0.5" stop-color="#764ba2"/>
-      <stop offset="1" stop-color="#f093fb"/>
-    </linearGradient>
-  </defs>
-  <rect width="800" height="600" fill="url(#bg)"/>
-  <circle cx="200" cy="180" r="80" fill="white" fill-opacity="0.12"/>
-  <circle cx="620" cy="420" r="120" fill="white" fill-opacity="0.08"/>
-  <circle cx="400" cy="300" r="180" fill="white" fill-opacity="0.05"/>
-  <text x="400" y="280" font-size="48" fill="white" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700">Anyview</text>
-  <text x="400" y="325" font-size="20" fill="white" fill-opacity="0.7" text-anchor="middle" font-family="system-ui, sans-serif">Image Rendering Sample</text>
-</svg>`;
 
 const pdfStream1 = `BT
 /F2 34 Tf

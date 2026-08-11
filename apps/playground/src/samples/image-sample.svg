@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="800" viewBox="0 0 1200 800" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <defs>
+    <!-- Stroke gradient for the rosette. -->
+    <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#67E8F9"/>
+      <stop offset="0.5" stop-color="#A5B4FC"/>
+      <stop offset="1" stop-color="#FDA4AF"/>
+    </linearGradient>
+
+    <!-- Soft bloom behind the rosette. A radial gradient, not a blur filter:
+         this image is re-rasterized on every zoom step, and a large filter
+         region would make zooming crawl. -->
+    <radialGradient id="bloom" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#6366F1" stop-opacity="0.13"/>
+      <stop offset="0.45" stop-color="#6366F1" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#6366F1" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="vignette" cx="50%" cy="44%" r="74%">
+      <stop offset="0" stop-color="#0A0D12" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.82"/>
+    </radialGradient>
+
+    <!-- 40-unit graph paper. Hairlines are the honest test of a vector
+         renderer: they must stay exactly one device pixel at any zoom. -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+
+    <!-- The rosette overshoots this disc and is cut to a clean edge. -->
+    <clipPath id="disc">
+      <circle cx="600" cy="360" r="272"/>
+    </clipPath>
+
+    <!-- Top arc that the caption is set along. -->
+    <path id="capArc" d="M 282 360 A 318 318 0 0 1 918 360" fill="none"/>
+
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="800" fill="#0A0D12"/>
+  <rect width="1200" height="800" fill="url(#grid)"/>
+  <circle cx="600" cy="360" r="320" fill="url(#bloom)"/>
+
+  <!-- 24 ellipses, each rotated 7.5° further. Symmetry closes the ring at
+       172.5°, so a half turn draws the whole figure. -->
+  <g clip-path="url(#disc)" fill="none" stroke="url(#arc)" stroke-width="1" stroke-opacity="0.45">
+    <ellipse cx="600" cy="360" rx="300" ry="92"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(7.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(15 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(22.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(30 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(37.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(45 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(52.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(60 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(67.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(75 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(82.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(90 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(97.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(105 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(112.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(120 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(127.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(135 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(142.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(150 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(157.5 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(165 600 360)"/>
+    <ellipse cx="600" cy="360" rx="300" ry="92" transform="rotate(172.5 600 360)"/>
+  </g>
+
+  <circle cx="600" cy="360" r="272" fill="none" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1"/>
+  <circle cx="600" cy="360" r="286" fill="none" stroke="#A5B4FC" stroke-opacity="0.5" stroke-width="1" stroke-dasharray="2 9"/>
+  <circle cx="600" cy="360" r="3" fill="#FCD34D"/>
+
+  <text font-size="12.5" letter-spacing="5.5" fill="#8B949E" text-anchor="middle">
+    <textPath href="#capArc" xlink:href="#capArc" startOffset="50%">ONE COMPONENT · EVERY FORMAT · ZERO IFRAMES</textPath>
+  </text>
+
+  <g filter="url(#lift)">
+    <text x="72" y="702" font-size="46" font-weight="600" fill="#E6EDF3" letter-spacing="-0.5">Anyview</text>
+  </g>
+  <path d="M72 722H330" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="1"/>
+  <text x="72" y="744" font-size="14.5" fill="#8B949E">Scalable Vector Graphics, rendered natively</text>
+
+  <g font-family="SF Mono, Menlo, Consolas, monospace" font-size="12.5" fill="#6E7681" text-anchor="end">
+    <text x="1128" y="676">linearGradient · radialGradient · pattern</text>
+    <text x="1128" y="698">clipPath · filter · textPath</text>
+    <text x="1128" y="720">stroke-dasharray · transform · symmetry</text>
+    <text x="1128" y="744" fill="#8B949E">24 ellipses, one rotation each</text>
+  </g>
+
+  <g stroke="#8B949E" stroke-opacity="0.35" stroke-width="1" fill="none">
+    <path d="M40 68V40h28"/>
+    <path d="M1132 40h28v28"/>
+    <path d="M40 732v28h28"/>
+    <path d="M1160 732v28h-28"/>
+  </g>
+
+  <text x="600" y="788" font-size="5.5" letter-spacing="0.6" fill="#6E7681" text-anchor="middle">Nothing here is a bitmap — zoom to 500% and every hairline, curve and letterform stays exactly this sharp.</text>
+</svg>
