@@ -158,14 +158,31 @@
 /* ---------- Loading Bar ---------- */
 
 .dv-loading-bar {
+  /* <progress> for native semantics; the UA widget is stripped so the element
+     box itself carries the colour and the sweep animation below. */
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  display: block;
   position: absolute;
   top: var(--dv-toolbar-height);
   left: 0;
   right: 0;
+  width: auto;
   height: var(--dv-loading-bar-height);
   background-color: transparent;
   z-index: var(--dv-z-loading-bar);
   overflow: hidden;
+}
+
+/* The UA track and value bars would paint over the element background. */
+.dv-loading-bar::-webkit-progress-bar,
+.dv-loading-bar::-webkit-progress-value {
+  background-color: transparent;
+}
+
+.dv-loading-bar::-moz-progress-bar {
+  background-color: transparent;
 }
 
 .dv-loading-bar[data-active="true"] {
@@ -470,6 +487,9 @@
 /* ---------- Thumbnails ---------- */
 
 .dv-thumbnail-list {
+  /* <ul> for real list semantics, so the UA margin and markers need clearing. */
+  margin: 0;
+  list-style: none;
   padding: var(--dv-spacing-sm);
   display: flex;
   flex-direction: column;

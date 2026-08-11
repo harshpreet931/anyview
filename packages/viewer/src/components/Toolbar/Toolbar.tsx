@@ -427,7 +427,7 @@ export function Toolbar({ features }: ToolbarProps) {
       </div>
 
       {searchOpen && features?.search && (
-        <div className="dv-search-bar" role="search">
+        <search className="dv-search-bar">
           <input
             ref={searchInputRef}
             type="text"
@@ -482,7 +482,7 @@ export function Toolbar({ features }: ToolbarProps) {
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" fill="none" />
             </svg>
           </button>
-        </div>
+        </search>
       )}
     </>
   );

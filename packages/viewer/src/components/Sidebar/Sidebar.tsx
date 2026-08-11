@@ -100,10 +100,9 @@ export function Sidebar() {
   const panelId = `${instanceId}-sidebar-panel`;
 
   return (
-    <div
+    <aside
       className="dv-sidebar"
       data-open={sidebarOpen}
-      role="complementary"
       aria-label={strings.sidebar.region}
       style={{ width: `${sidebarWidth}px` }}
     >
@@ -164,7 +163,7 @@ export function Sidebar() {
         onPointerDown={startResize}
         onKeyDown={onResizeKey}
       />
-    </div>
+    </aside>
   );
 }
 
@@ -182,19 +181,20 @@ function ThumbnailList({
   onThumbnailClick: (index: number) => void;
 }) {
   return (
-    <div className="dv-thumbnail-list" role="list">
+    <ul className="dv-thumbnail-list">
       {pages.map((page, index) => (
-        <Thumbnail
-          key={page.index}
-          page={page}
-          index={index}
-          format={format}
-          adapter={adapter}
-          current={currentPage === index}
-          onClick={() => onThumbnailClick(index)}
-        />
+        <li key={page.index}>
+          <Thumbnail
+            page={page}
+            index={index}
+            format={format}
+            adapter={adapter}
+            current={currentPage === index}
+            onClick={() => onThumbnailClick(index)}
+          />
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 

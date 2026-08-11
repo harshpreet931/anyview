@@ -235,10 +235,9 @@ function DocViewerInner(
       <div ref={rootRef} className={rootClassName} style={rootStyle} aria-label="Document viewer">
         <div className="dv-main-container">
           {showToolbar && <Toolbar {...(features ? { features } : {})} />}
-          <div
+          <progress
             className="dv-loading-bar"
             data-active={loadState === 'loading'}
-            role="progressbar"
             aria-label="Loading document"
             aria-hidden={loadState !== 'loading'}
           />
