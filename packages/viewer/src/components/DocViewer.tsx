@@ -19,10 +19,11 @@ import { createViewerStore } from '../core/store';
 import { ViewerStoreProvider, useViewerStore } from '../hooks/useDocViewer';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { I18nProvider, useStrings, formatString } from '../i18n/I18nProvider';
-import { Toolbar } from './Toolbar';
-import { Sidebar } from './Sidebar';
-import { ViewerContainer } from './Viewer';
-import { PasswordDialog, PropertiesDialog } from './Dialogs';
+import { Toolbar } from './Toolbar/Toolbar';
+import { Sidebar } from './Sidebar/Sidebar';
+import { ViewerContainer } from './Viewer/ViewerContainer';
+import { PasswordDialog } from './Dialogs/PasswordDialog';
+import { PropertiesDialog } from './Dialogs/PropertiesDialog';
 
 function PageAnnouncer() {
   const strings = useStrings();
