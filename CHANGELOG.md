@@ -5,6 +5,29 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.2.4]
+
+### Fixed
+- **`onDocumentLoad` and `onError` fire once per load, not once per render.** Both were driven by effects that listed the callback prop in their dependencies, so passing an inline arrow (`onDocumentLoad={(m) => …}` - the common case) re-ran the effect on every parent render and re-announced a document that had already loaded. They now fire from the store transition itself.
+- **A failed attachment download no longer becomes an uncaught promise rejection.** Clicking an attachment whose data could not be read rejected with nothing attached to catch it, which no React error boundary can intercept. The object URL is now also released if the download click throws.
+- **Pinch-to-zoom no longer writes to a closed viewer.** Unmounting within 90 ms of a ctrl+wheel gesture left the settle timer armed, so the deferred commit ran afterwards and pushed a zoom into a store the component no longer owned.
+- **Thumbnails and outline rows keep their identity when the list changes.** Both were keyed by array position, so a filtered or reordered list could hand one row's render state to another. Thumbnails key on the page's own index; outline nodes, which carry no id, derive one from title plus destination.
+- **Marquee zoom state can't leak from an uncommitted render.** The live zoom value was written to a ref during render, which React is free to replay or discard.
+
+### Performance
+- **PDFs open faster.** Reading page dimensions walked `getPage()` one page at a time, and the outline resolved each bookmark destination serially (recursing into children serially on top of that). Both now resolve in parallel, so open time no longer scales with a round trip per page.
+- **PDF text search scans pages in parallel** instead of one page per await. Note the trade-off: a search superseded by the next keystroke previously stopped mid-scan, and now runs to completion in the worker before its result is discarded. The 180 ms input debounce bounds how often that happens.
+- **PPTX decks parse faster** - slide XML is unzipped and parsed for all slides at once rather than one slide per await.
+- **Markdown and Jupyter files render sooner on first open.** Their renderer dependencies (`react`, `react-dom/server`, `react-markdown`, `remark-gfm`) were awaited one at a time, waterfalling four chunk fetches that share no data.
+- **Toolbar updates touch less of the tree.** It is now five components that each subscribe only to what they render, so changing the zoom no longer re-renders the page input or the annotation tools.
+
+### Accessibility
+- **Native elements replace ARIA roles on generic containers**: the sidebar is an `<aside>`, the search bar a `<search>`, the loading indicator a `<progress>`, and the thumbnail list a `<ul>`. The thumbnail list was the substantive fix - it declared `role="list"` over bare `<button>` children with no list items in between, so its list semantics were already broken for screen readers.
+
+### Security
+- **`pdfjs-dist` upgraded to `^6.2.108`** (from `^6.1.200`), which scores 99/100 on Socket's supply-chain axis against 31/100 for the previous build. This raises the optional peer dependency floor: consumers pinned to pdf.js 6.1 need to update. Note that pdf.js 6.2 declares `engines: ">=22.13.0 || >=24"`, so Node 18/20 installs may warn.
+- **Document HTML reaches the DOM through a single checked sink.** Every reflowable adapter (CSV, DOCX, HTML, Jupyter, Markdown, XLSX) assigned `innerHTML` from a field sanitized several methods away. Markup is now typed `SafeHtml`, which only an escape or `DOMPurify.sanitize()` can produce, and is parsed into an inert `<template>` before its nodes are adopted. This is defence in depth and a compile-time guarantee - all six values were already sanitized, so no live XSS is fixed here.
+
 ## [0.2.3]
 
 ### Added
