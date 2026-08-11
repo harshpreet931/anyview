@@ -75,13 +75,14 @@ export class PptxAdapter implements Adapter {
 
       const slideFiles = await this.orderedSlideFiles(zip);
 
+      // Cleared first so a mid-parse failure can't leave the previous deck's slides behind.
       this.slides = [];
-
-      for (const slideFile of slideFiles) {
-        const xml = await zip.file(slideFile)!.async('string');
-        const content = this.parseSlideXml(xml);
-        this.slides.push(content);
-      }
+      this.slides = await Promise.all(
+        slideFiles.map(async (slideFile) => {
+          const xml = await zip.file(slideFile)!.async('string');
+          return this.parseSlideXml(xml);
+        }),
+      );
     } catch (cause) {
       if (isViewerError(cause)) throw cause;
       throw new ViewerError('PARSE_ERROR', 'Failed to parse PPTX.', { cause });

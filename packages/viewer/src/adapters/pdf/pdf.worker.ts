@@ -90,18 +90,19 @@ async function mapOutline(
   doc: PDFDocumentProxy,
   items: readonly RawOutlineItem[],
 ): Promise<PdfOutlineItem[]> {
-  const out: PdfOutlineItem[] = [];
-  for (const item of items) {
-    const pageIndex = await destToPageIndex(doc, item.dest);
-    out.push({
-      title: item.title,
-      dest: { pageIndex: pageIndex ?? 0 },
-      ...(item.items && item.items.length
-        ? { items: await mapOutline(doc, item.items) }
-        : {}),
-    });
-  }
-  return out;
+  return Promise.all(
+    items.map(async (item) => {
+      const [pageIndex, children] = await Promise.all([
+        destToPageIndex(doc, item.dest),
+        item.items && item.items.length ? mapOutline(doc, item.items) : null,
+      ]);
+      return {
+        title: item.title,
+        dest: { pageIndex: pageIndex ?? 0 },
+        ...(children ? { items: children } : {}),
+      };
+    }),
+  );
 }
 
 const api: PdfWorkerApi = {
@@ -124,19 +125,20 @@ const api: PdfWorkerApi = {
       throw err;
     }
     const pageCount = doc.numPages;
-    const pages = [];
 
-    for (let i = 1; i <= pageCount; i++) {
-      const page = await doc.getPage(i);
-      // Explicit rotation:0 gives canonical dims - pdf.js only applies the page's /Rotate when rotation is omitted.
-      const viewport = page.getViewport({ scale: 1, rotation: 0 });
-      pages.push({
-        index: i - 1,
-        width: viewport.width,
-        height: viewport.height,
-        rotation: page.rotate as Rotation,
-      });
-    }
+    const pages = await Promise.all(
+      Array.from({ length: pageCount }, async (_, i) => {
+        const page = await doc.getPage(i + 1);
+        // Explicit rotation:0 gives canonical dims - pdf.js only applies the page's /Rotate when rotation is omitted.
+        const viewport = page.getViewport({ scale: 1, rotation: 0 });
+        return {
+          index: i,
+          width: viewport.width,
+          height: viewport.height,
+          rotation: page.rotate as Rotation,
+        };
+      }),
+    );
 
     const docId = nextDocId++;
     docs.set(docId, doc);
