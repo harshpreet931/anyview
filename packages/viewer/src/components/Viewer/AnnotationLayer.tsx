@@ -120,8 +120,32 @@ type Rect = { x: number; y: number; width: number; height: number };
 
 const LINE_HIGHLIGHT_HEIGHT = 0.016;
 
+type QuarterTurn = 0 | 90 | 180 | 270;
+
+/** Stored geometry is in the unrotated page; these map it to and from what is on screen. */
+function toPage(p: Point, turn: QuarterTurn): Point {
+  if (turn === 90) return { x: p.y, y: 1 - p.x };
+  if (turn === 180) return { x: 1 - p.x, y: 1 - p.y };
+  if (turn === 270) return { x: 1 - p.y, y: p.x };
+  return p;
+}
+
+function toScreen(p: Point, turn: QuarterTurn): Point {
+  if (turn === 90) return { x: 1 - p.y, y: p.x };
+  if (turn === 180) return { x: 1 - p.x, y: 1 - p.y };
+  if (turn === 270) return { x: p.y, y: 1 - p.x };
+  return p;
+}
+
+function rotateTransform(turn: QuarterTurn, width: number, height: number): string | undefined {
+  if (turn === 90) return `translate(${width} 0) rotate(90)`;
+  if (turn === 180) return `translate(${width} ${height}) rotate(180)`;
+  if (turn === 270) return `translate(0 ${height}) rotate(270)`;
+  return undefined;
+}
+
 /** Turns a near-horizontal drag into highlight rects that cover the text it crossed. */
-function lineHighlightRects(svg: SVGSVGElement, from: Point, to: Point): Rect[] {
+function lineHighlightRects(svg: SVGSVGElement, from: Point, to: Point, turn: QuarterTurn): Rect[] {
   const page = svg.getBoundingClientRect();
   const left = Math.min(from.x, to.x);
   const right = Math.max(from.x, to.x);
@@ -131,11 +155,13 @@ function lineHighlightRects(svg: SVGSVGElement, from: Point, to: Point): Rect[] 
   for (const span of spans) {
     const b = span.getBoundingClientRect();
     if (!b.width || !b.height || !page.width || !page.height) continue;
+    const a = toPage({ x: (b.left - page.left) / page.width, y: (b.top - page.top) / page.height }, turn);
+    const c = toPage({ x: (b.right - page.left) / page.width, y: (b.bottom - page.top) / page.height }, turn);
     const r = {
-      x: (b.left - page.left) / page.width,
-      y: (b.top - page.top) / page.height,
-      width: b.width / page.width,
-      height: b.height / page.height,
+      x: Math.min(a.x, c.x),
+      y: Math.min(a.y, c.y),
+      width: Math.abs(c.x - a.x),
+      height: Math.abs(c.y - a.y),
     };
     if (y < r.y || y > r.y + r.height || r.x > right || r.x + r.width < left) continue;
     const x = Math.max(r.x, left);
@@ -172,6 +198,11 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
   }, [editor]);
 
   const isDrawingTool = activeTool !== null;
+  const rotation = useViewerStore((s) => s.rotation);
+  const turn = (((rotation % 360) + 360) % 360) as QuarterTurn;
+  const sideways = turn === 90 || turn === 270;
+  const pageW = sideways ? height : width;
+  const pageH = sideways ? width : height;
 
   const cancelDraft = () => {
     drawingRef.current = false;
@@ -213,10 +244,13 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
 
   const toPoint = (e: ReactPointerEvent): Point => {
     const rect = svgRef.current!.getBoundingClientRect();
-    return {
-      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
-      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
-    };
+    return toPage(
+      {
+        x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+        y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
+      },
+      turn,
+    );
   };
 
   const handlePointerDown = (e: ReactPointerEvent) => {
@@ -304,7 +338,7 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
           opacity: TOOL_DEFAULTS.highlight.opacity,
           createdAt: Date.now(),
           updatedAt: Date.now(),
-          data: { rects: lineHighlightRects(svgRef.current, from, to) },
+          data: { rects: lineHighlightRects(svgRef.current, from, to, turn) },
         };
         addAnnotation(hl);
       } else if (activeTool === 'highlight' && dx > 0.002 && dy > 0.002) {
@@ -349,12 +383,13 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerEnd}
     >
+      <g transform={rotateTransform(turn, width, height)}>
       {pageAnnotations.map((a) => (
         <AnnotationShape
           key={a.id}
           annotation={a}
-          width={width}
-          height={height}
+          width={pageW}
+          height={pageH}
           selected={a.id === selectedId}
           interactive={!isDrawingTool}
           onSelect={() => selectAnnotation(a.id)}
@@ -364,10 +399,10 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
 
       {draftBox && activeTool === 'highlight' && (
         <rect
-          x={Math.min(draftBox.from.x, draftBox.to.x) * width}
-          y={Math.min(draftBox.from.y, draftBox.to.y) * height}
-          width={Math.abs(draftBox.to.x - draftBox.from.x) * width}
-          height={Math.abs(draftBox.to.y - draftBox.from.y) * height}
+          x={Math.min(draftBox.from.x, draftBox.to.x) * pageW}
+          y={Math.min(draftBox.from.y, draftBox.to.y) * pageH}
+          width={Math.abs(draftBox.to.x - draftBox.from.x) * pageW}
+          height={Math.abs(draftBox.to.y - draftBox.from.y) * pageH}
           fill={TOOL_DEFAULTS.highlight.color}
           opacity={TOOL_DEFAULTS.highlight.opacity}
         />
@@ -378,23 +413,24 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
           draftBox.from,
           draftBox.to,
           TOOL_DEFAULTS.shape.color,
-          width,
-          height,
+          pageW,
+          pageH,
         )}
       {draftPath.length > 1 && (
         <path
-          d={pointsToPath(draftPath, width, height)}
+          d={pointsToPath(draftPath, pageW, pageH)}
           fill="none"
           stroke={TOOL_DEFAULTS.ink.color}
-          strokeWidth={INK_THICKNESS * width}
+          strokeWidth={INK_THICKNESS * pageW}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       )}
+      </g>
       {editor && (
         <foreignObject
-          x={Math.min(editor.at.x * width, Math.max(0, width - EDITOR_W))}
-          y={Math.min(editor.at.y * height, Math.max(0, height - EDITOR_H))}
+          x={Math.min(toScreen(editor.at, turn).x * width, Math.max(0, width - EDITOR_W))}
+          y={Math.min(toScreen(editor.at, turn).y * height, Math.max(0, height - EDITOR_H))}
           width={EDITOR_W}
           height={EDITOR_H}
           style={{ pointerEvents: 'auto' }}
