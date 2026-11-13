@@ -3,7 +3,6 @@ import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { DocViewer } from './DocViewer';
 
-// jsdom lacks these; the viewer only needs them to exist.
 beforeAll(() => {
   (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   globalThis.ResizeObserver ??= class {
@@ -38,8 +37,6 @@ describe('DocViewer source identity', () => {
     const onDocumentLoad = vi.fn();
     let bump: () => void = () => {};
 
-    // The README pattern: an inline `source={{...}}` object and parent state
-    // that changes while the document is open (e.g. from onPageChange).
     function Host() {
       const [n, setN] = useState(0);
       bump = () => setN((v) => v + 1);

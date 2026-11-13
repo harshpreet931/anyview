@@ -1,12 +1,6 @@
 import type { FileSource, FileSourceReader } from './types';
 import { ViewerError } from './errors';
 
-/**
- * Whether two sources refer to the same document. Compares what identifies the
- * content (URL + filename, or the same File / handle / buffer object) rather
- * than the wrapper object, so an inline `source={{ kind: 'url', url }}` that is
- * recreated on every render is not treated as a new document.
- */
 export function isSameSource(a: FileSource | undefined, b: FileSource | undefined): boolean {
   if (a === b) return true;
   if (!a || !b || a.kind !== b.kind) return false;

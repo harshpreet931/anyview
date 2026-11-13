@@ -331,9 +331,6 @@ test.describe('PDF - viewport controls', () => {
     await expect(page.locator('.dv-page-input')).toHaveValue('2');
   });
 
-  // The page input updating is not enough: the viewport must actually move.
-  // Regression: pages inside the virtualizer's overscan were treated as
-  // "visible", so Next/Prev/thumbnail clicks within 2 rows never scrolled.
   const pageTop = (page: Page, idx: number) =>
     page.evaluate((i) => {
       const sc = document.querySelector('.dv-viewer-container')!.getBoundingClientRect();
@@ -381,7 +378,6 @@ test.describe('PDF - viewport controls', () => {
       return Math.round(sc.scrollTop);
     });
     await expect(page.locator('.dv-page-input')).toHaveValue('2');
-    // The scroll position the user chose is kept (no snap to the page start).
     await page.waitForTimeout(300);
     const now = await page.locator('.dv-viewer-container').evaluate((el) => Math.round(el.scrollTop));
     expect(Math.abs(now - target)).toBeLessThan(3);

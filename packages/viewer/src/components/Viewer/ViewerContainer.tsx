@@ -14,7 +14,6 @@ import { EmptyState, LoadingState, ErrorState } from '../States';
 const PAGE_VERTICAL_GAP = 48;
 const PAGE_SPREAD_GAP = 16;
 
-/** The row whose start is at or above the scroll offset (the top-most row in view). */
 function rowAtOffset(items: { index: number; start: number }[], offset: number): number {
   let row = items.length > 0 ? items[0].index : 0;
   for (const it of items) {
@@ -101,12 +100,6 @@ export function ViewerContainer() {
     horizontal: isHorizontal,
   });
 
-  // Bring the current page to the top whenever it changes for a reason other
-  // than the user scrolling. "Already there" uses the same rule as the scroll
-  // listener below (the row at the top edge of the viewport), so a page change
-  // that came from scrolling never triggers a programmatic scroll. Using
-  // getVirtualItems() for this was wrong: it includes overscan rows that are
-  // rendered but off-screen, so Next/Prev within two rows never moved.
   useEffect(() => {
     if (currentPage < 0 || currentPage >= pageCount) return;
     const el = scrollRef.current;

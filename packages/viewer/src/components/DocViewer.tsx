@@ -69,10 +69,6 @@ function DocViewerInner(
     store,
   } = props;
 
-  // Keep the previous source object while the new one refers to the same
-  // document, so `source={{ kind: 'url', url }}` written inline (as in the
-  // README) doesn't reload the document on every parent render. This is the
-  // "adjust state while rendering" pattern: it re-renders once, synchronously.
   const [source, setStableSource] = useState(sourceProp);
   if (!isSameSource(source, sourceProp)) {
     setStableSource(sourceProp);
