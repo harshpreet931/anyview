@@ -116,7 +116,7 @@ function DocViewerInner(
   // document on first paint, so start it closed there.
   useEffect(() => {
     const width = rootRef.current?.clientWidth ?? 0;
-    if (width > 0 && width < NARROW_VIEWER_WIDTH) store.getState().setSidebarOpen(false);
+    if (width > 0 && width < NARROW_VIEWER_WIDTH) store.getState().closeSidebarTransiently();
   }, [store]);
 
   useEffect(() => {

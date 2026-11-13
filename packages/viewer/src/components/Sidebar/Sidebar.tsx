@@ -27,7 +27,7 @@ export function Sidebar() {
   const adapter = useViewerStore((s) => s.adapter);
   const currentPage = useViewerStore((s) => s.currentPage);
   const goToPageInStore = useViewerStore((s) => s.goToPage);
-  const setSidebarOpen = useViewerStore((s) => s.setSidebarOpen);
+  const closeSidebarTransiently = useViewerStore((s) => s.closeSidebarTransiently);
   const asideRef = useRef<HTMLElement>(null);
   const setScrollOffset = useViewerStore((s) => s.setScrollOffset);
   const strings = useStrings();
@@ -37,9 +37,9 @@ export function Sidebar() {
     (pageIndex: number) => {
       goToPageInStore(pageIndex);
       const host = asideRef.current?.parentElement;
-      if (host && host.clientWidth < NARROW_VIEWER_WIDTH) setSidebarOpen(false);
+      if (host && host.clientWidth < NARROW_VIEWER_WIDTH) closeSidebarTransiently();
     },
-    [goToPageInStore, setSidebarOpen],
+    [goToPageInStore, closeSidebarTransiently],
   );
 
   const navigateToOutline = useCallback(

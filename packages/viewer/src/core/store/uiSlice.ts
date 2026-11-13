@@ -6,6 +6,7 @@ export type ToolbarDensity = 'compact' | 'default' | 'touch';
 export interface UiSlice {
   theme: Theme;
   sidebarOpen: boolean;
+  sidebarPref: boolean;
   sidebarView: SidebarView;
   sidebarWidth: number;
   searchOpen: boolean;
@@ -19,6 +20,7 @@ export interface UiSlice {
   setTheme: (theme: Theme) => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
+  closeSidebarTransiently: () => void;
   setSidebarView: (view: SidebarView) => void;
   setSidebarWidth: (width: number) => void;
   toggleSearch: () => void;
@@ -41,6 +43,7 @@ export const createUiSlice: StateCreator<
 > = (set, get) => ({
   theme: 'auto',
   sidebarOpen: true,
+  sidebarPref: true,
   sidebarView: 'thumbnails',
   sidebarWidth: 200,
   searchOpen: false,
@@ -59,9 +62,11 @@ export const createUiSlice: StateCreator<
 
   setPropertiesOpen: (open: boolean) => set({ propertiesOpen: open }),
 
-  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen, sidebarPref: !s.sidebarOpen })),
 
-  setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
+  setSidebarOpen: (open: boolean) => set({ sidebarOpen: open, sidebarPref: open }),
+
+  closeSidebarTransiently: () => set({ sidebarOpen: false }),
 
   setSidebarView: (view: SidebarView) => set({ sidebarView: view }),
 

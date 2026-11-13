@@ -60,11 +60,19 @@ export const createViewerStore = (options?: CreateViewerStoreOptions) => {
           {
             name: persistKey,
             storage: safeStorage,
+            merge: (persisted, current) => {
+              const saved = (persisted ?? {}) as Partial<ViewerStore>;
+              return {
+                ...current,
+                ...saved,
+                sidebarPref: saved.sidebarOpen ?? current.sidebarPref,
+              };
+            },
             partialize: (state) => ({
               zoom: state.zoom,
               fitMode: state.fitMode,
               theme: state.theme,
-              sidebarOpen: state.sidebarOpen,
+              sidebarOpen: state.sidebarPref,
               sidebarView: state.sidebarView,
               sidebarWidth: state.sidebarWidth,
               toolbarDensity: state.toolbarDensity,
