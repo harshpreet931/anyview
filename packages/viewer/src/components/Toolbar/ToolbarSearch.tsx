@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
 import { formatString } from '../../i18n/strings';
+import { Icon } from '../common/Icon';
 
 export function ToolbarSearch() {
   const strings = useStrings();
@@ -86,9 +87,7 @@ export function ToolbarSearch() {
         aria-label={strings.search.prevMatch}
         title={strings.search.prevMatch}
       >
-        <svg viewBox="0 0 16 16" fill="currentColor">
-          <path d="M10 4L6 8l4 4V4z" />
-        </svg>
+        <Icon name="chevron-left" />
       </button>
       <button
         className="dv-button"
@@ -97,9 +96,7 @@ export function ToolbarSearch() {
         aria-label={strings.search.nextMatch}
         title={strings.search.nextMatch}
       >
-        <svg viewBox="0 0 16 16" fill="currentColor">
-          <path d="M6 4l4 4-4 4V4z" />
-        </svg>
+        <Icon name="chevron-right" />
       </button>
       <button
         className="dv-button"
@@ -107,9 +104,7 @@ export function ToolbarSearch() {
         aria-label={strings.search.close}
         title={strings.search.close}
       >
-        <svg viewBox="0 0 16 16" fill="currentColor">
-          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" fill="none" />
-        </svg>
+        <Icon name="close" />
       </button>
     </search>
   );
