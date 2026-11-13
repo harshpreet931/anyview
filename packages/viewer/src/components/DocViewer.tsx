@@ -14,6 +14,7 @@ import type {
 } from '../core/types';
 import { createRegistry } from '../core/registry';
 import { parseAnnotations } from '../core/annotations';
+import { isSameSource } from '../core/file-source';
 import { registerBuiltInAdapters } from '../adapters';
 import { createViewerStore } from '../core/store';
 import { ViewerStoreProvider, useViewerStore } from '../hooks/useDocViewer';
@@ -49,7 +50,7 @@ function DocViewerInner(
   props: DocViewerProps & { store: ReturnType<typeof createViewerStore> },
 ) {
   const {
-    source,
+    source: sourceProp,
     onDocumentLoad,
     onError,
     onAnnotationChange,
@@ -67,6 +68,15 @@ function DocViewerInner(
     className,
     store,
   } = props;
+
+  // Keep the previous source object while the new one refers to the same
+  // document, so `source={{ kind: 'url', url }}` written inline (as in the
+  // README) doesn't reload the document on every parent render. This is the
+  // "adjust state while rendering" pattern: it re-renders once, synchronously.
+  const [source, setStableSource] = useState(sourceProp);
+  if (!isSameSource(source, sourceProp)) {
+    setStableSource(sourceProp);
+  }
 
   const openDocument = useViewerStore((s) => s.openDocument);
   const closeDocument = useViewerStore((s) => s.closeDocument);
