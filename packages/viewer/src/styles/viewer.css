@@ -395,16 +395,13 @@
   color: var(--dv-page-ink);
 }
 
-/* Prose for the reflowable formats (Markdown, HTML, DOCX, notebook text).
-   Wrapped in :where() so it has zero specificity: any style the document
-   itself carries (HTML <style>, DOCX inline styles) still wins. Sizes are in
-   em because the adapters scale the container's font-size with zoom. */
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) {
+/* Sizes are in em because the adapters scale the container's font-size with zoom. */
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) {
   overflow-wrap: break-word;
   text-wrap: pretty;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
   :where(h1, h2, h3, h4, h5, h6) {
   margin: 1.6em 0 0.5em;
   font-weight: 650;
@@ -414,62 +411,78 @@
   color: var(--dv-page-ink);
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h1) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h1) {
   font-size: 2em;
   line-height: 1.12;
   letter-spacing: -0.025em;
 }
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h2) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h2) {
   font-size: 1.5em;
   letter-spacing: -0.02em;
 }
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h3) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h3) {
   font-size: 1.25em;
 }
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h4, h5, h6) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h4, h5, h6) {
   font-size: 1em;
   letter-spacing: -0.005em;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
   > :where(:first-child) {
   margin-top: 0;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
   :where(p, ul, ol, pre, table, blockquote, figure) {
   margin: 0 0 1em;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(ul, ol) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(ul, ol) {
   padding-inline-start: 1.5em;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(li + li) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(ul) {
+  list-style-type: disc;
+}
+
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(ol) {
+  list-style-type: decimal;
+}
+
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(ul, ol) :where(ul) {
+  list-style-type: circle;
+}
+
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(ul, ol) :where(ul, ol) :where(ul) {
+  list-style-type: square;
+}
+
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(li + li) {
   margin-top: 0.25em;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(a) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(a) {
   color: #c2410c;
   text-decoration: underline;
   text-decoration-color: rgb(194 65 12 / 0.35);
   text-underline-offset: 0.18em;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
   :where(code, kbd, samp, pre) {
   font-family: var(--dv-font-mono);
   font-size: 0.875em;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
   :where(:not(pre) > code) {
   padding: 0.12em 0.36em;
   border-radius: 0.35em;
   background: #f3eee8;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(pre) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(pre) {
   padding: 1em 1.15em;
   border-radius: 0.75em;
   background: #f6f3ef;
@@ -478,17 +491,17 @@
   line-height: 1.55;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(pre code) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(pre code) {
   font-size: inherit;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(blockquote) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(blockquote) {
   padding: 0.1em 0 0.1em 1em;
   border-inline-start: 3px solid #e2d9ce;
   color: var(--dv-page-ink-soft);
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-ipynb-md) :where(table) {
+:is(.dv-markdown-content, .dv-html-content, .dv-ipynb-md) :where(table) {
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
   display: block;
@@ -496,26 +509,26 @@
   overflow-x: auto;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-ipynb-md) :where(th, td) {
+:is(.dv-markdown-content, .dv-html-content, .dv-ipynb-md) :where(th, td) {
   padding: 0.45em 0.9em;
   border-bottom: 1px solid #ebe5dd;
   text-align: start;
   vertical-align: top;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-ipynb-md) :where(th) {
+:is(.dv-markdown-content, .dv-html-content, .dv-ipynb-md) :where(th) {
   font-weight: 600;
   border-bottom-color: #d8cfc4;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(hr) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(hr) {
   height: 1px;
   margin: 2em 0;
   border: 0;
   background: #ebe5dd;
 }
 
-:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(img) {
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(img) {
   max-width: 100%;
   height: auto;
 }
