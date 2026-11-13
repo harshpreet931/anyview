@@ -1,5 +1,5 @@
-/** String literal union of all supported format identifiers. */
-export type FormatId =
+/** The formats anyview ships adapters for. */
+export type BuiltInFormatId =
   | 'pdf'
   | 'docx'
   | 'xlsx'
@@ -11,6 +11,9 @@ export type FormatId =
   | 'html'
   | 'text'
   | 'ipynb';
+
+/** A built-in format, or the id of a custom adapter registered at runtime. */
+export type FormatId = BuiltInFormatId | (string & {});
 
 /** Each FormatId maps to one or more MIME types and extensions. */
 export interface FormatSpec {
@@ -339,6 +342,8 @@ export interface DocViewerSelection {
 
 export interface DocViewerProps {
   source?: FileSource;
+  /** Rendered inside the viewer, so components here can use the viewer hooks (useNavigation, useZoom, ...). */
+  children?: import('react').ReactNode;
   onDocumentLoad?: (model: DocumentModel) => void;
   onError?: (error: import('./errors').ViewerError) => void;
   onAnnotationChange?: (annotations: Annotation[]) => void;

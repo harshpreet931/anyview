@@ -277,16 +277,22 @@ import { serializeAnnotations, parseAnnotations } from 'anyview';
 
 ### Hooks & i18n
 
+Hooks read the viewer they are rendered in, so put your components inside `<DocViewer>`:
+
 ```tsx
-import { useNavigation, I18nProvider, registerStrings } from 'anyview';
+import { DocViewer, useNavigation, registerStrings } from 'anyview';
 
 function PageIndicator() {
   const { currentPage, totalPages } = useNavigation();
-  return <span>{currentPage + 1} / {totalPages}</span>;
+  return <span className="page-indicator">{currentPage + 1} / {totalPages}</span>;
 }
 
-// Localize: register a strings table, then pass locale="fr"
-registerStrings('fr', frenchStrings);
+<DocViewer source={source}>
+  <PageIndicator />
+</DocViewer>
+
+// Localize: register a strings table (any keys you leave out stay in English), then pass locale="fr"
+registerStrings('fr', { search: { placeholder: 'Rechercher…' } });
 <DocViewer source={source} locale="fr" />
 ```
 

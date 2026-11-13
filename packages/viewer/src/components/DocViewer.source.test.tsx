@@ -106,3 +106,24 @@ describe('DocViewer localisation', () => {
     expect(host.querySelector('[aria-label="Barre"]')).not.toBeNull();
   });
 });
+
+describe('DocViewer children', () => {
+  it('renders children inside the viewer store so the hooks work', async () => {
+    const { useNavigation } = await import('../hooks/useNavigation');
+    function Indicator() {
+      const { currentPage, totalPages } = useNavigation();
+      return <span data-testid="indicator">{`${currentPage + 1} / ${totalPages}`}</span>;
+    }
+    host = document.createElement('div');
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => {
+      root!.render(
+        <DocViewer>
+          <Indicator />
+        </DocViewer>,
+      );
+    });
+    expect(host.querySelector('[data-testid="indicator"]')?.textContent).toBe('1 / 0');
+  });
+});

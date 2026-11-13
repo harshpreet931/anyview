@@ -88,3 +88,24 @@ describe('createRegistry', () => {
     expect(reg.getManifest('text')?.label).toBe('High');
   });
 });
+
+describe('custom formats', () => {
+  it('detects files for a registered custom adapter by extension and MIME type', () => {
+    const reg = createRegistry();
+    reg.register(manifest(), async () => ({ default: CountingAdapter }));
+    reg.register(
+      manifest({ id: 'epub', label: 'EPUB', extensions: ['epub'], mimeTypes: ['application/epub+zip'] }),
+      async () => ({ default: CountingAdapter }),
+    );
+    expect(reg.detectFormat('book.EPUB')).toBe('epub');
+    expect(reg.detectFormat('download', 'application/epub+zip')).toBe('epub');
+    expect(reg.detectFormat('a.txt')).toBe('text');
+  });
+
+  it('lets a custom adapter claim an extension the built-ins also know', () => {
+    const reg = createRegistry();
+    reg.register(manifest({ id: 'mdx', extensions: ['mdx'], mimeTypes: [] }), async () => ({ default: CountingAdapter }));
+    expect(reg.detectFormat('page.mdx')).toBe('mdx');
+    expect(reg.detectFormat('notes.md')).toBe('markdown');
+  });
+});

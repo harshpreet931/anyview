@@ -207,7 +207,7 @@ export function getFormatSpec(id: FormatId): FormatSpec | undefined {
   return FORMAT_SPECS.find((s) => s.id === id);
 }
 
-function extractExtension(filename: string): string | null {
+export function extractExtension(filename: string): string | null {
   const dot = filename.lastIndexOf('.');
   if (dot === -1 || dot === filename.length - 1) return null;
   return filename.slice(dot + 1).toLowerCase();

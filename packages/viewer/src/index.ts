@@ -4,6 +4,7 @@ export { DocViewer } from './components/DocViewer';
 
 export type {
   FormatId,
+  BuiltInFormatId,
   FormatSpec,
   FileSource,
   FileSourceReader,

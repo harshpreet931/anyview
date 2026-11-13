@@ -303,6 +303,8 @@ function DocViewerInner(
             onClose={() => setPropertiesOpen(false)}
           />
         )}
+
+        {props.children}
       </div>
     </I18nProvider>
   );
