@@ -71,6 +71,7 @@ export class DocxAdapter implements Adapter {
         ],
         ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'colspan', 'rowspan', 'style', 'class', 'id', 'width', 'height'],
         ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data:image):|#)/i,
+        SANITIZE_NAMED_PROPS: true,
       }));
     } catch (cause) {
       if (isViewerError(cause)) throw cause;

@@ -157,6 +157,7 @@ function buildSheetHtml(
     ],
     ALLOWED_ATTR: ['href', 'colspan', 'rowspan', 'style', 'class', 'id'],
     ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|#)/i,
+    SANITIZE_NAMED_PROPS: true,
   });
 
   const doc = new DOMParser().parseFromString(sanitized, 'text/html');

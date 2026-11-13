@@ -27,7 +27,10 @@ export const DOCUMENT_HTML_CONFIG = {
     'height', 'colspan', 'rowspan', 'target', 'rel', 'border', 'data-*',
   ],
   ALLOW_DATA_ATTR: true,
+  SANITIZE_NAMED_PROPS: true,
 };
+
+const NAMED_PROP_PREFIX = 'user-content-';
 
 let hookRegistered = false;
 
@@ -85,6 +88,16 @@ export async function loadSanitizer(): Promise<Sanitizer> {
       const el = node as MutableEl;
       const style = el.getAttribute?.('style');
       if (style && hasNetworkCss(style)) el.removeAttribute?.('style');
+      const href = el.getAttribute?.('href');
+      if (
+        el.tagName === 'A' &&
+        href &&
+        href.length > 1 &&
+        href.startsWith('#') &&
+        !href.startsWith(`#${NAMED_PROP_PREFIX}`)
+      ) {
+        el.setAttribute?.('href', `#${NAMED_PROP_PREFIX}${href.slice(1)}`);
+      }
       if (el.tagName === 'A' && el.getAttribute?.('target') === '_blank') {
         el.setAttribute?.('rel', 'noopener noreferrer');
       }
