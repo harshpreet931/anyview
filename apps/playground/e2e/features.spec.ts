@@ -15,13 +15,6 @@ async function openPdf(page: Page) {
   await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'center' }));
 }
 
-/**
- * Wait for webfonts and the site's one-shot entrance animations (hero rise,
- * demo-card rise) to finish. While they run the toolbar keeps shifting by a
- * pixel or so, Playwright sees the buttons as "not stable" and falls back to
- * scrolling the window, which throws page-relative pointer gestures off-page.
- * Infinite ambient animations (cloud drift, mascot float) are ignored.
- */
 async function settleLayout(page: Page) {
   await page.evaluate(async () => {
     await document.fonts.ready;
