@@ -126,8 +126,9 @@
   --dv-font-size-md: 13px;
   --dv-font-size-lg: 16px;
   --dv-font-size-xl: 18px;
+}
 
-  /* Font smoothing */
+.dv-root {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

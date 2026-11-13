@@ -294,6 +294,8 @@ registerStrings('fr', frenchStrings);
 }
 ```
 
+Set overrides on `.dv-root` (as above): the viewer declares its defaults there, so values set on `:root` or a wrapper element don't reach it.
+
 Four built-in themes: `light`, `dark`, `auto` (follows system), `sepia`.
 
 ## Browser Support
