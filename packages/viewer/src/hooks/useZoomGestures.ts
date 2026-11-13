@@ -14,6 +14,12 @@ const clampZoom = (z: number) => Math.max(MIN_ZOOM, Math.min(z, MAX_ZOOM));
 
 export type MarqueeRect = { left: number; top: number; w: number; h: number };
 
+/** Lets the container anchor a zoom to the page under a point, so uneven gaps and stale row sizes can't drift it. */
+export interface ZoomAnchoring<A> {
+  capture(contentX: number, contentY: number): A;
+  restore(anchor: A, ratio: number, viewX: number, viewY: number): void;
+}
+
 /**
  * Ctrl+wheel, two-finger pinch and marquee-drag zoom for the scroll container.
  *
@@ -24,10 +30,11 @@ export type MarqueeRect = { left: number; top: number; w: number; h: number };
  * `isProgrammaticScrollRef` is owned by the caller because its scroll listener has to
  * ignore the scroll positions these gestures set.
  */
-export function useZoomGestures(
+export function useZoomGestures<A>(
   scrollRef: RefObject<HTMLDivElement | null>,
   contentRef: RefObject<HTMLDivElement | null>,
   isProgrammaticScrollRef: RefObject<boolean>,
+  anchoring: ZoomAnchoring<A>,
 ): { marquee: MarqueeRect | null } {
   const zoom = useViewerStore((s) => s.zoom);
   const setZoom = useViewerStore((s) => s.setZoom);
@@ -52,7 +59,11 @@ export function useZoomGestures(
     cursorY: number;
   } | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const pendingAnchor = useRef<{ ratio: number; x: number; y: number; cx: number; cy: number } | null>(null);
+  const pendingAnchor = useRef<{ ratio: number; at: A; cx: number; cy: number } | null>(null);
+  const anchoringRef = useRef(anchoring);
+  useLayoutEffect(() => {
+    anchoringRef.current = anchoring;
+  });
 
   const applyLiveScale = useCallback(() => {
     const content = contentRef.current;
@@ -78,8 +89,7 @@ export function useZoomGestures(
     }
     pendingAnchor.current = {
       ratio: next / g.base,
-      x: g.originX,
-      y: g.originY,
+      at: anchoringRef.current.capture(g.originX, g.originY),
       cx: g.cursorX,
       cy: g.cursorY,
     };
@@ -96,12 +106,8 @@ export function useZoomGestures(
       content.style.transform = '';
       content.style.transformOrigin = '';
     }
-    const el = scrollRef.current;
-    if (el) {
-      el.scrollLeft = anchor.x * anchor.ratio - anchor.cx;
-      el.scrollTop = anchor.y * anchor.ratio - anchor.cy;
-    }
-  }, [zoom, contentRef, scrollRef]);
+    anchoringRef.current.restore(anchor.at, anchor.ratio, anchor.cx, anchor.cy);
+  }, [zoom, contentRef]);
 
   // macOS Chrome delivers a trackpad pinch as ctrl+wheel; listener stays non-passive to preventDefault the page zoom.
   useEffect(() => {
@@ -256,14 +262,12 @@ export function useZoomGestures(
       const cur = zoomRef.current;
       const next = Math.max(0.1, Math.min(cur * Math.min(cw / w, ch / h), 5));
       const ratio = next / cur;
-      const cx = left + w / 2;
-      const cy = top + h / 2;
+      const at = anchoringRef.current.capture(left + w / 2, top + h / 2);
       isProgrammaticScrollRef.current = true;
       zoomRef.current = next;
       setZoom(next);
       requestAnimationFrame(() => {
-        el.scrollLeft = cx * ratio - cw / 2;
-        el.scrollTop = cy * ratio - ch / 2;
+        anchoringRef.current.restore(at, ratio, cw / 2, ch / 2);
       });
     };
     el.addEventListener('pointerdown', onDown);

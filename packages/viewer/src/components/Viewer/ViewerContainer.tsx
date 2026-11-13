@@ -45,8 +45,6 @@ export function ViewerContainer() {
   const contentRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScrollRef = useRef(false);
 
-  const { marquee } = useZoomGestures(scrollRef, contentRef, isProgrammaticScrollRef);
-
   const isHorizontal = scrollMode === 'horizontal';
   const pageCount = document?.pages.length ?? 0;
 
@@ -98,6 +96,47 @@ export function ViewerContainer() {
     },
     overscan: 2,
     horizontal: isHorizontal,
+  });
+
+  const anchorHoldRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const holdAnchor = () => {
+    if (anchorHoldRef.current) clearTimeout(anchorHoldRef.current);
+    virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
+    anchorHoldRef.current = setTimeout(() => {
+      anchorHoldRef.current = undefined;
+      virtualizer.shouldAdjustScrollPositionOnItemSizeChange = undefined;
+    }, 500);
+  };
+  useEffect(() => () => clearTimeout(anchorHoldRef.current), []);
+
+  const { marquee } = useZoomGestures(scrollRef, contentRef, isProgrammaticScrollRef, {
+    capture: (x, y) => {
+      const main = isHorizontal ? x : y;
+      const items = virtualizer.measurementsCache;
+      const row = rowAtOffset(items, main);
+      const item = items[row];
+      return {
+        row,
+        frac: item && item.size > 0 ? (main - item.start) / item.size : 0,
+        cross: isHorizontal ? y : x,
+      };
+    },
+    restore: (at, ratio, viewX, viewY) => {
+      const el = scrollRef.current;
+      if (!el) return;
+      holdAnchor();
+      virtualizer.measure();
+      virtualizer.getVirtualItems();
+      const item = virtualizer.measurementsCache[at.row];
+      const main = item ? item.start + at.frac * item.size : 0;
+      if (isHorizontal) {
+        el.scrollLeft = main - viewX;
+        el.scrollTop = at.cross * ratio - viewY;
+      } else {
+        el.scrollTop = main - viewY;
+        el.scrollLeft = at.cross * ratio - viewX;
+      }
+    },
   });
 
   useEffect(() => {
