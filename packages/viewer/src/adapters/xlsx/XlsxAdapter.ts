@@ -65,11 +65,12 @@ export class XlsxAdapter implements Adapter {
 
       for (const name of this.sheetNames) {
         const sheet = workbook.Sheets[name];
-        const html = XLSX.utils.sheet_to_html(sheet, { id: `sheet-${name}` });
+        const hasCells = !!sheet?.['!ref'];
+        const html = hasCells
+          ? XLSX.utils.sheet_to_html(sheet, { id: `sheet-${name}` })
+          : '<table></table>';
         this.sheetHtmls.push(buildSheetHtml(html, DOMPurify));
-
-        const csv = XLSX.utils.sheet_to_csv(sheet);
-        this.sheetTexts.push(csv);
+        this.sheetTexts.push(hasCells ? XLSX.utils.sheet_to_csv(sheet) : '');
       }
     } catch (cause) {
       if (isViewerError(cause)) throw cause;
