@@ -41,11 +41,14 @@ export const xlsxManifest: AdapterManifest = {
   protocolVersion: 1,
 };
 
+const SHEET_ROW_LIMIT = 5000;
+
 export class XlsxAdapter implements Adapter {
   readonly manifest = xlsxManifest;
   private sheetHtmls: SafeHtml[] = [];
   private sheetNames: string[] = [];
   private sheetTexts: string[] = [];
+  private sheetRowTotals: (number | null)[] = [];
 
   async parse(
     source: FileSourceReader,
@@ -62,12 +65,30 @@ export class XlsxAdapter implements Adapter {
       this.sheetNames = workbook.SheetNames;
       this.sheetHtmls = [];
       this.sheetTexts = [];
+      this.sheetRowTotals = [];
 
       for (const name of this.sheetNames) {
         const sheet = workbook.Sheets[name];
         const hasCells = !!sheet?.['!ref'];
+        let shown = sheet;
+        let total: number | null = null;
+        if (hasCells) {
+          const range = XLSX.utils.decode_range(sheet['!ref']!);
+          const rows = range.e.r - range.s.r + 1;
+          if (rows > SHEET_ROW_LIMIT) {
+            total = rows;
+            shown = {
+              ...sheet,
+              '!ref': XLSX.utils.encode_range({
+                s: range.s,
+                e: { r: range.s.r + SHEET_ROW_LIMIT - 1, c: range.e.c },
+              }),
+            };
+          }
+        }
+        this.sheetRowTotals.push(total);
         const html = hasCells
-          ? XLSX.utils.sheet_to_html(sheet, { id: `sheet-${name}` })
+          ? XLSX.utils.sheet_to_html(shown, { id: `sheet-${name}` })
           : '<table></table>';
         this.sheetHtmls.push(buildSheetHtml(html, DOMPurify));
         this.sheetTexts.push(hasCells ? XLSX.utils.sheet_to_csv(sheet) : '');
@@ -112,6 +133,13 @@ export class XlsxAdapter implements Adapter {
     container.style.overflow = 'auto';
     container.style.fontSize = `${14 * ctx.scale}px`;
     setSafeHtml(container, html);
+    const total = this.sheetRowTotals[ctx.page.index];
+    if (total) {
+      const note = document.createElement('p');
+      note.className = 'dv-sheet-truncated';
+      note.textContent = `Showing the first ${SHEET_ROW_LIMIT.toLocaleString()} of ${total.toLocaleString()} rows.`;
+      container.appendChild(note);
+    }
 
     target.appendChild(container);
 
@@ -143,6 +171,7 @@ export class XlsxAdapter implements Adapter {
     this.sheetHtmls = [];
     this.sheetNames = [];
     this.sheetTexts = [];
+    this.sheetRowTotals = [];
   }
 }
 
