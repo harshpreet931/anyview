@@ -23,6 +23,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv11', 'ss01';
 }
 
 .dv-root * {
@@ -34,6 +35,11 @@
 .dv-root select {
   font-family: inherit;
   font-size: var(--dv-font-size-md);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dv-root ::selection {
+  background-color: var(--dv-accent-soft);
 }
 
 /* ---------- Main Container ---------- */
@@ -45,20 +51,26 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
+  /* The chrome adapts to the viewer's own width, not the page's: an embed in
+     a 500px column gets the compact toolbar even on a wide screen. */
+  container: dv-viewer / inline-size;
 }
 
 /* ---------- Toolbar ---------- */
 
 .dv-toolbar {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--dv-spacing-sm);
+  gap: var(--dv-spacing-md);
   height: var(--dv-toolbar-height);
-  padding: 0 var(--dv-spacing-lg);
-  background-color: color-mix(in srgb, var(--dv-toolbar-bg-color) 90%, transparent);
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
-  box-shadow: 0 1px 0 var(--dv-separator-color), var(--dv-shadow-xs);
+  flex-shrink: 0;
+  padding: 0 10px;
+  background-color: color-mix(in srgb, var(--dv-toolbar-bg-color) 88%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  /* Hairline + a soft drop instead of a border: the bar floats over the canvas. */
+  box-shadow: 0 1px 0 var(--dv-separator-color), 0 6px 16px -12px rgb(41 28 18 / 0.18);
   z-index: var(--dv-z-toolbar);
 }
 
@@ -66,14 +78,22 @@
   display: flex;
   align-items: center;
   gap: var(--dv-spacing-xs);
-  animation: dv-toolbar-enter var(--dv-transition-normal) var(--dv-ease-out) backwards;
+  animation: dv-toolbar-enter var(--dv-transition-slow) var(--dv-ease-out) backwards;
+}
+
+/* Groups with more than one control sit in a quiet capsule, like a
+   segmented control. Radius stays concentric: pill inside pill. */
+.dv-toolbar-group:has(> :nth-child(2)) {
+  padding: var(--dv-control-inset);
+  border-radius: var(--dv-radius-full);
+  background-color: var(--dv-group-bg-color);
 }
 
 .dv-toolbar-group:nth-child(1) { animation-delay: 0ms; }
-.dv-toolbar-group:nth-child(2) { animation-delay: 50ms; }
-.dv-toolbar-group:nth-child(3) { animation-delay: 100ms; }
-.dv-toolbar-group:nth-child(4) { animation-delay: 150ms; }
-.dv-toolbar-group:nth-child(5) { animation-delay: 200ms; }
+.dv-toolbar-group:nth-child(2) { animation-delay: 30ms; }
+.dv-toolbar-group:nth-child(3) { animation-delay: 60ms; }
+.dv-toolbar-group:nth-child(4) { animation-delay: 90ms; }
+.dv-toolbar-group:nth-child(5) { animation-delay: 120ms; }
 
 /* Visually hidden but exposed to assistive tech (e.g. the page-change
    live region). */
@@ -94,28 +114,42 @@
 }
 
 @keyframes dv-toolbar-enter {
-  from { opacity: 0; transform: translateY(-3px); }
+  from { opacity: 0; transform: translateY(-2px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 /* ---------- Buttons ---------- */
 
 .dv-button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: calc(var(--dv-icon-size) + 10px);
-  height: calc(var(--dv-icon-size) + 10px);
-  padding: var(--dv-spacing-xs);
+  gap: 6px;
+  min-width: var(--dv-control-size);
+  height: var(--dv-control-size);
+  padding: 0 var(--dv-spacing-md);
   border: none;
-  border-radius: var(--dv-radius-sm);
-  background: transparent;
+  border-radius: var(--dv-radius-full);
+  background-color: transparent;
   color: var(--dv-main-color);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
   cursor: pointer;
+  user-select: none;
   transition:
-    background-color var(--dv-transition-fast) var(--dv-ease),
-    box-shadow var(--dv-transition-fast) var(--dv-ease),
+    background-color var(--dv-transition-normal) var(--dv-ease),
+    color var(--dv-transition-normal) var(--dv-ease),
+    box-shadow var(--dv-transition-normal) var(--dv-ease),
+    opacity var(--dv-transition-normal) var(--dv-ease),
     transform var(--dv-transition-fast) var(--dv-ease);
+}
+
+/* Icon-only buttons are perfect circles. */
+.dv-button:has(> svg:only-child) {
+  width: var(--dv-control-size);
+  padding: 0;
 }
 
 .dv-button:hover {
@@ -123,36 +157,32 @@
 }
 
 .dv-button:active {
-  background-color: color-mix(in srgb, currentColor 15%, transparent);
-  transform: scale(0.94);
+  background-color: var(--dv-button-active-color);
+  transform: scale(var(--dv-press-scale));
 }
 
 .dv-button:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: default;
   pointer-events: none;
 }
 
+/* Active / toggled: a near-black pill, inverted in dark mode. */
 .dv-button[data-toggled="true"] {
   background-color: var(--dv-toggled-bg-color);
-  color: var(--dv-main-color);
+  color: var(--dv-toggled-fg-color);
+  box-shadow: 0 1px 2px rgb(41 28 18 / 0.18), 0 2px 6px -2px rgb(41 28 18 / 0.2);
+}
+
+.dv-button[data-toggled="true"]:hover {
+  background-color: color-mix(in srgb, var(--dv-toggled-bg-color) 88%, var(--dv-toggled-fg-color));
 }
 
 .dv-button svg {
+  flex-shrink: 0;
   width: var(--dv-icon-size);
   height: var(--dv-icon-size);
   pointer-events: none;
-  transition:
-    opacity var(--dv-transition-fast) var(--dv-ease),
-    transform var(--dv-transition-fast) var(--dv-ease);
-}
-
-.dv-button:hover svg {
-  transform: scale(1.08);
-}
-
-.dv-button:active svg {
-  transform: scale(0.92);
 }
 
 /* ---------- Loading Bar ---------- */
@@ -173,6 +203,7 @@
   background-color: transparent;
   z-index: var(--dv-z-loading-bar);
   overflow: hidden;
+  border-radius: var(--dv-radius-full);
 }
 
 /* The UA track and value bars would paint over the element background. */
@@ -187,7 +218,7 @@
 
 .dv-loading-bar[data-active="true"] {
   background-color: var(--dv-progress-bar-color, var(--dv-loading-color));
-  animation: dv-loading-indeterminate 1.4s var(--dv-ease) infinite;
+  animation: dv-loading-indeterminate 1.4s var(--dv-ease-in-out) infinite;
 }
 
 @keyframes dv-loading-indeterminate {
@@ -208,6 +239,7 @@
   /* Allow pan-scroll but let us handle two-finger pinch zoom ourselves. */
   touch-action: pan-x pan-y;
   scrollbar-width: thin;
+  scrollbar-color: var(--dv-scrollbar-color) transparent;
 }
 
 /* Marquee zoom: a crosshair drag that ignores text/annotation hit targets. */
@@ -222,38 +254,41 @@
 .dv-marquee-rect {
   pointer-events: none;
   z-index: 6;
-  border: 1px solid var(--dv-loading-color);
-  background-color: color-mix(in srgb, var(--dv-loading-color) 18%, transparent);
-  scrollbar-color: color-mix(in srgb, var(--dv-main-color) 20%, transparent) transparent;
+  border: 1.5px solid var(--dv-accent);
+  border-radius: var(--dv-radius-xs);
+  background-color: color-mix(in srgb, var(--dv-accent) 12%, transparent);
 }
 
-.dv-viewer-container::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+.dv-viewer-container::-webkit-scrollbar,
+.dv-sidebar [role="tabpanel"]::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
 
-.dv-viewer-container::-webkit-scrollbar-track {
+.dv-viewer-container::-webkit-scrollbar-track,
+.dv-sidebar [role="tabpanel"]::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.dv-viewer-container::-webkit-scrollbar-thumb {
-  background-color: color-mix(in srgb, var(--dv-main-color) 15%, transparent);
+.dv-viewer-container::-webkit-scrollbar-thumb,
+.dv-sidebar [role="tabpanel"]::-webkit-scrollbar-thumb {
+  background-color: var(--dv-scrollbar-color);
   border-radius: var(--dv-radius-full);
-  border: 2px solid transparent;
+  border: 3px solid transparent;
   background-clip: padding-box;
 }
 
-.dv-viewer-container::-webkit-scrollbar-thumb:hover {
-  background-color: color-mix(in srgb, var(--dv-main-color) 25%, transparent);
+.dv-viewer-container::-webkit-scrollbar-thumb:hover,
+.dv-sidebar [role="tabpanel"]::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--dv-ink) 30%, transparent);
 }
 
 .dv-viewer-container:focus {
   outline: none;
-  box-shadow: inset 0 0 0 2px var(--dv-loading-color);
 }
 
 .dv-viewer-container:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--dv-loading-color);
+  box-shadow: inset 0 0 0 2px var(--dv-accent);
 }
 
 /* ---------- Page ---------- */
@@ -262,7 +297,7 @@
   position: relative;
   margin: var(--dv-spacing-xl) auto;
   border-radius: var(--dv-radius-xs);
-  box-shadow: var(--dv-shadow-md);
+  box-shadow: var(--dv-shadow-page);
   /* A page is paper: fixed light surface + dark ink in every UI theme, so
      reflowable content inherits readable colors even in dark mode. */
   background: var(--dv-page-bg);
@@ -298,7 +333,7 @@
 }
 
 .dv-text-layer span::selection {
-  background: color-mix(in srgb, var(--dv-loading-color) 35%, transparent);
+  background: color-mix(in srgb, var(--dv-accent) 32%, transparent);
 }
 
 /* ---------- Search Highlights - positioned (canvas formats) ---------- */
@@ -312,26 +347,26 @@
 
 .dv-search-highlight {
   position: absolute;
-  background: rgb(255 212 0 / 0.4);
-  border-radius: 1px;
+  background: rgb(255 184 40 / 0.42);
+  border-radius: 2px;
   mix-blend-mode: multiply;
   transition: background-color var(--dv-transition-fast) var(--dv-ease);
 }
 
 .dv-search-highlight-current {
-  background: rgb(255 140 0 / 0.55);
-  outline: 1.5px solid rgb(255 140 0 / 0.95);
+  background: rgb(255 122 50 / 0.55);
+  box-shadow: 0 0 0 1.5px rgb(232 85 31 / 0.95);
 }
 
 /* ---------- Search Highlights - DOM ranges (reflowable formats) ---------- */
 
 ::highlight(dv-search) {
-  background-color: rgb(255 212 0 / 0.45);
+  background-color: rgb(255 190 60 / 0.45);
 }
 
 ::highlight(dv-search-current) {
-  background-color: rgb(255 140 0 / 0.85);
-  color: #000;
+  background-color: rgb(255 138 61 / 0.9);
+  color: #121110;
 }
 
 /* ---------- Annotation Layer (SVG overlay) ---------- */
@@ -358,6 +393,131 @@
 
 .dv-reflow-target {
   color: var(--dv-page-ink);
+}
+
+/* Prose for the reflowable formats (Markdown, HTML, DOCX, notebook text).
+   Wrapped in :where() so it has zero specificity: any style the document
+   itself carries (HTML <style>, DOCX inline styles) still wins. Sizes are in
+   em because the adapters scale the container's font-size with zoom. */
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) {
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
+  :where(h1, h2, h3, h4, h5, h6) {
+  margin: 1.6em 0 0.5em;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  color: var(--dv-page-ink);
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h1) {
+  font-size: 2em;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h2) {
+  font-size: 1.5em;
+  letter-spacing: -0.02em;
+}
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h3) {
+  font-size: 1.25em;
+}
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(h4, h5, h6) {
+  font-size: 1em;
+  letter-spacing: -0.005em;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
+  > :where(:first-child) {
+  margin-top: 0;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
+  :where(p, ul, ol, pre, table, blockquote, figure) {
+  margin: 0 0 1em;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(ul, ol) {
+  padding-inline-start: 1.5em;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(li + li) {
+  margin-top: 0.25em;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(a) {
+  color: #c2410c;
+  text-decoration: underline;
+  text-decoration-color: rgb(194 65 12 / 0.35);
+  text-underline-offset: 0.18em;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
+  :where(code, kbd, samp, pre) {
+  font-family: var(--dv-font-mono);
+  font-size: 0.875em;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
+  :where(:not(pre) > code) {
+  padding: 0.12em 0.36em;
+  border-radius: 0.35em;
+  background: #f3eee8;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(pre) {
+  padding: 1em 1.15em;
+  border-radius: 0.75em;
+  background: #f6f3ef;
+  box-shadow: inset 0 0 0 1px rgb(41 28 18 / 0.06);
+  overflow-x: auto;
+  line-height: 1.55;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(pre code) {
+  font-size: inherit;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(blockquote) {
+  padding: 0.1em 0 0.1em 1em;
+  border-inline-start: 3px solid #e2d9ce;
+  color: var(--dv-page-ink-soft);
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-ipynb-md) :where(table) {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-ipynb-md) :where(th, td) {
+  padding: 0.45em 0.9em;
+  border-bottom: 1px solid #ebe5dd;
+  text-align: start;
+  vertical-align: top;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-ipynb-md) :where(th) {
+  font-weight: 600;
+  border-bottom-color: #d8cfc4;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(hr) {
+  height: 1px;
+  margin: 2em 0;
+  border: 0;
+  background: #ebe5dd;
+}
+
+:where(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(img) {
+  max-width: 100%;
+  height: auto;
 }
 
 /* ---------- Jupyter notebook (.ipynb) ---------- */
@@ -418,16 +578,25 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: var(--dv-sidebar-width);
-  background-color: color-mix(in srgb, var(--dv-sidebar-bg-color) 95%, transparent);
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
-  box-shadow: 1px 0 0 var(--dv-separator-color);
+  background-color: var(--dv-sidebar-bg-color);
+  box-shadow: 1px 0 0 var(--dv-separator-color), 8px 0 24px -20px rgb(41 28 18 / 0.25);
   display: flex;
   flex-direction: column;
   z-index: var(--dv-z-sidebar);
+  animation: dv-sidebar-enter var(--dv-transition-slow) var(--dv-ease-out) backwards;
   transition:
     width var(--dv-sidebar-transition-duration) var(--dv-sidebar-transition-timing),
     opacity var(--dv-sidebar-transition-duration) var(--dv-ease);
+}
+
+.dv-sidebar [role="tabpanel"] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--dv-scrollbar-color) transparent;
+}
+
+.dv-sidebar [role="tabpanel"]:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--dv-accent);
 }
 
 .dv-sidebar[data-open="false"] {
@@ -437,51 +606,114 @@
   box-shadow: none;
 }
 
+@keyframes dv-sidebar-enter {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* A wide invisible grab area with a slim pill that fades in on hover. */
 .dv-sidebar-resizer {
   position: absolute;
   top: 0;
-  right: 0;
-  width: 4px;
+  right: -4px;
+  width: 8px;
   height: 100%;
   cursor: col-resize;
   background-color: transparent;
-  transition: background-color var(--dv-transition-normal) var(--dv-ease);
+  z-index: 1;
 }
 
-.dv-sidebar-resizer:hover,
-.dv-sidebar-resizer[data-active="true"] {
-  background-color: var(--dv-loading-color);
+.dv-sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 40px;
+  border-radius: var(--dv-radius-full);
+  background-color: var(--dv-accent);
+  opacity: 0;
+  transform: translate(-50%, -50%) scaleY(0.6);
+  transition:
+    opacity var(--dv-transition-normal) var(--dv-ease),
+    transform var(--dv-transition-normal) var(--dv-ease);
 }
 
-/* ---------- Sidebar Views ---------- */
+.dv-sidebar-resizer:hover::after,
+.dv-sidebar-resizer:focus-visible::after,
+.dv-sidebar-resizer[data-active="true"]::after {
+  opacity: 1;
+  transform: translate(-50%, -50%) scaleY(1);
+}
+
+.dv-sidebar-resizer:focus-visible {
+  outline: none;
+}
+
+/* ---------- Sidebar Views (segmented control) ---------- */
 
 .dv-sidebar-views {
   display: flex;
-  padding: var(--dv-spacing-sm);
+  margin: 10px 10px 4px;
+  padding: var(--dv-control-inset);
   gap: var(--dv-spacing-xs);
+  border-radius: var(--dv-radius-full);
+  background-color: var(--dv-group-bg-color);
 }
 
 .dv-sidebar-view-tab {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
   font-size: var(--dv-font-size-sm);
-  border-radius: var(--dv-radius-sm);
-  padding: var(--dv-spacing-xs) var(--dv-spacing-sm);
+  font-weight: 500;
+  border-radius: var(--dv-radius-full);
+  padding: 0 10px;
   border: none;
-  background: transparent;
-  color: var(--dv-main-color);
+  background-color: transparent;
+  color: var(--dv-muted);
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition:
-    background-color var(--dv-transition-fast) var(--dv-ease),
-    box-shadow var(--dv-transition-fast) var(--dv-ease);
+    background-color var(--dv-transition-normal) var(--dv-ease),
+    color var(--dv-transition-normal) var(--dv-ease),
+    box-shadow var(--dv-transition-normal) var(--dv-ease),
+    transform var(--dv-transition-fast) var(--dv-ease);
 }
 
 .dv-sidebar-view-tab:hover {
-  background-color: var(--dv-button-hover-color);
+  color: var(--dv-main-color);
+}
+
+.dv-sidebar-view-tab:active {
+  transform: scale(var(--dv-press-scale));
 }
 
 .dv-sidebar-view-tab[data-toggled="true"] {
   background-color: var(--dv-toggled-bg-color);
-  font-weight: 500;
+  color: var(--dv-toggled-fg-color);
+  box-shadow: 0 1px 2px rgb(41 28 18 / 0.18);
+}
+
+/* A single view needs no switcher chrome: it reads as a quiet heading. */
+.dv-sidebar-views:has(> :only-child) {
+  background-color: transparent;
+  padding: 0 2px;
+}
+
+.dv-sidebar-views > .dv-sidebar-view-tab:only-child {
+  flex: 0 1 auto;
+  padding: 0 6px;
+  background-color: transparent;
+  color: var(--dv-muted);
+  box-shadow: none;
+  font-size: var(--dv-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: default;
 }
 
 /* ---------- Thumbnails ---------- */
@@ -490,33 +722,34 @@
   /* <ul> for real list semantics, so the UA margin and markers need clearing. */
   margin: 0;
   list-style: none;
-  padding: var(--dv-spacing-sm);
+  padding: 8px 12px 16px;
   display: flex;
   flex-direction: column;
   gap: var(--dv-spacing-sm);
 }
 
+/* Concentric: card radius 14 = image radius 8 + padding 6. */
 .dv-thumbnail {
   display: block;
   width: 100%;
-  padding: var(--dv-spacing-sm);
-  border: 2px solid transparent;
-  border-radius: var(--dv-radius-md);
-  background: transparent;
+  padding: 6px 6px 4px;
+  border: none;
+  border-radius: 14px;
+  background-color: transparent;
+  color: var(--dv-main-color);
   cursor: pointer;
   transition:
-    background-color var(--dv-transition-fast) var(--dv-ease),
-    border-color var(--dv-transition-fast) var(--dv-ease),
-    box-shadow var(--dv-transition-fast) var(--dv-ease);
+    background-color var(--dv-transition-normal) var(--dv-ease),
+    box-shadow var(--dv-transition-normal) var(--dv-ease),
+    transform var(--dv-transition-fast) var(--dv-ease);
 }
 
 .dv-thumbnail:hover {
   background-color: var(--dv-button-hover-color);
 }
 
-.dv-thumbnail[data-current="true"] {
-  border-color: var(--dv-loading-color);
-  box-shadow: var(--dv-shadow-focus);
+.dv-thumbnail:active {
+  transform: scale(0.98);
 }
 
 .dv-thumbnail-image {
@@ -525,8 +758,15 @@
   aspect-ratio: var(--dv-thumb-ratio, 0.77);
   background: #fff;
   border-radius: var(--dv-radius-sm);
-  box-shadow: var(--dv-shadow-xs), inset 0 0 0 1px rgb(0 0 0 / 0.06);
+  box-shadow: var(--dv-shadow-xs);
   overflow: hidden;
+  transition: box-shadow var(--dv-transition-normal) var(--dv-ease);
+}
+
+/* Selection uses the accent ring; the page number becomes an ink pill. */
+.dv-thumbnail[data-current="true"] .dv-thumbnail-image {
+  box-shadow: 0 0 0 2px var(--dv-sidebar-bg-color), 0 0 0 4px var(--dv-accent),
+    0 6px 16px -8px rgb(232 85 31 / 0.45);
 }
 
 .dv-thumbnail-canvas {
@@ -545,17 +785,34 @@
   left: 0;
   transform-origin: top left;
   background: #fff;
-  color: #1f2328;
+  color: var(--dv-page-ink);
+  /* The thumbnail is a <button>; don't let its centring leak into the page. */
+  text-align: start;
   overflow: hidden;
   pointer-events: none;
 }
 
 .dv-thumbnail-label {
-  font-size: var(--dv-font-size-sm);
-  margin-top: var(--dv-spacing-xs);
+  display: block;
+  width: fit-content;
+  min-width: 22px;
+  margin: 6px auto 0;
+  padding: 1px 7px;
+  border-radius: var(--dv-radius-full);
+  font-size: var(--dv-font-size-xs);
+  font-weight: 500;
+  line-height: 16px;
   text-align: center;
   font-variant-numeric: tabular-nums;
-  opacity: 0.7;
+  color: var(--dv-muted);
+  transition:
+    background-color var(--dv-transition-normal) var(--dv-ease),
+    color var(--dv-transition-normal) var(--dv-ease);
+}
+
+.dv-thumbnail[data-current="true"] .dv-thumbnail-label {
+  background-color: var(--dv-toggled-bg-color);
+  color: var(--dv-toggled-fg-color);
 }
 
 /* ---------- Outline ---------- */
@@ -566,40 +823,60 @@
   margin: 0;
 }
 
+.dv-sidebar [role="tabpanel"] > .dv-outline-list {
+  margin: 8px;
+}
+
 .dv-outline-item {
+  display: flex;
+  align-items: center;
   width: 100%;
+  min-height: 32px;
   text-align: left;
   justify-content: flex-start;
-  padding: var(--dv-spacing-xs) var(--dv-spacing-md);
+  padding: 6px 12px;
+  border: none;
+  background-color: transparent;
   font-size: var(--dv-font-size-md);
-  border-radius: var(--dv-radius-sm);
-  color: var(--dv-main-color);
+  line-height: 1.35;
+  border-radius: var(--dv-radius-md);
+  color: var(--dv-ink-2);
   cursor: pointer;
+  text-wrap: pretty;
   transition:
-    background-color var(--dv-transition-fast) var(--dv-ease),
-    color var(--dv-transition-fast) var(--dv-ease);
+    background-color var(--dv-transition-normal) var(--dv-ease),
+    color var(--dv-transition-normal) var(--dv-ease);
 }
 
 .dv-outline-item:hover {
   background-color: var(--dv-button-hover-color);
-  color: var(--dv-loading-color);
+  color: var(--dv-main-color);
 }
 
 /* ---------- Attachments ---------- */
 
 .dv-attachment-list {
   list-style: none;
-  padding: var(--dv-spacing-sm);
+  padding: 8px;
   margin: 0;
 }
 
 .dv-attachment-item {
+  display: flex;
+  align-items: center;
+  gap: var(--dv-spacing-md);
   width: 100%;
+  min-height: 32px;
+  border: none;
+  background-color: transparent;
+  color: var(--dv-ink-2);
+  cursor: pointer;
+  text-align: left;
   justify-content: flex-start;
-  padding: var(--dv-spacing-xs) var(--dv-spacing-md);
-  border-radius: var(--dv-radius-sm);
+  padding: 6px 12px;
+  border-radius: var(--dv-radius-md);
   font-size: var(--dv-font-size-md);
-  transition: background-color var(--dv-transition-fast) var(--dv-ease);
+  transition: background-color var(--dv-transition-normal) var(--dv-ease);
 }
 
 .dv-attachment-item:hover {
@@ -608,7 +885,7 @@
 
 .dv-attachment-size {
   font-size: var(--dv-font-size-sm);
-  opacity: 0.5;
+  color: var(--dv-muted);
   margin-left: auto;
   font-variant-numeric: tabular-nums;
 }
@@ -624,8 +901,14 @@
   padding: var(--dv-spacing-2xl);
   text-align: center;
   color: var(--dv-main-color);
+}
+
+.dv-state-container > * {
   animation: dv-state-enter var(--dv-transition-slow) var(--dv-ease-out) backwards;
 }
+.dv-state-container > :nth-child(2) { animation-delay: 40ms; }
+.dv-state-container > :nth-child(3) { animation-delay: 80ms; }
+.dv-state-container > :nth-child(4) { animation-delay: 120ms; }
 
 /* Interactive empty state: click to browse, drop a file to open. */
 .dv-empty-dropzone {
@@ -635,151 +918,248 @@
   width: 100%;
   height: 100%;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--dv-radius-lg);
   transition:
     background-color var(--dv-transition-normal) var(--dv-ease),
     box-shadow var(--dv-transition-normal) var(--dv-ease);
 }
-.dv-empty-dropzone:hover,
 .dv-empty-dropzone:focus-visible {
   outline: none;
-  background-color: color-mix(in srgb, var(--dv-loading-color) 7%, transparent);
+  box-shadow: inset 0 0 0 2px var(--dv-accent);
 }
 .dv-empty-dropzone[data-dragging] {
-  background-color: color-mix(in srgb, var(--dv-loading-color) 14%, transparent);
-  box-shadow: inset 0 0 0 2px var(--dv-loading-color);
+  background-color: color-mix(in srgb, var(--dv-accent) 8%, transparent);
+  box-shadow: inset 0 0 0 2px var(--dv-accent);
 }
 
+/* The icon sits in a floating white squircle tile. */
 .dv-state-icon {
-  width: 48px;
-  height: 48px;
-  opacity: 0.3;
-  margin-bottom: var(--dv-spacing-lg);
-  animation: dv-state-icon-float 3s var(--dv-ease) infinite;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
+  border-radius: 20px;
+  background-color: var(--dv-surface);
+  color: var(--dv-ink-2);
+  box-shadow: var(--dv-shadow-md);
+  transition:
+    transform var(--dv-transition-normal) var(--dv-ease),
+    box-shadow var(--dv-transition-normal) var(--dv-ease),
+    color var(--dv-transition-normal) var(--dv-ease);
+}
+
+.dv-state-icon > svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* A spinner inside the tile needs no tile chrome of its own. */
+.dv-state-icon > .dv-spinner {
+  width: 26px;
+  height: 26px;
+}
+
+.dv-empty-dropzone:hover .dv-state-icon,
+.dv-empty-dropzone:focus-visible .dv-state-icon {
+  transform: translateY(-2px);
+  color: var(--dv-accent);
+  box-shadow: var(--dv-shadow-lg);
+}
+
+.dv-empty-dropzone[data-dragging] .dv-state-icon {
+  transform: translateY(-4px) scale(1.04);
+  color: var(--dv-accent);
 }
 
 .dv-state-title {
   font-size: var(--dv-font-size-lg);
   font-weight: 600;
-  margin-bottom: var(--dv-spacing-sm);
+  margin-bottom: 6px;
   text-wrap: balance;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .dv-state-description {
   font-size: var(--dv-font-size-md);
-  opacity: 0.6;
-  max-width: 340px;
+  color: var(--dv-muted);
+  max-width: 320px;
   text-wrap: pretty;
   line-height: 1.5;
 }
 
+.dv-state-action {
+  margin-top: 20px;
+}
+
 @keyframes dv-state-enter {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes dv-state-icon-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-/* ---------- Search Bar ---------- */
+/* ---------- Fields (page input, selects) ---------- */
 
 .dv-page-input {
-  width: 48px;
+  width: 40px;
+  height: calc(var(--dv-control-size) - 4px);
+  margin: 0 2px;
   text-align: center;
-  padding: var(--dv-spacing-xs) var(--dv-spacing-sm);
-  border: 1px solid var(--dv-field-border-color);
-  border-radius: var(--dv-radius-sm);
+  padding: 0 var(--dv-spacing-sm);
+  border: none;
+  border-radius: var(--dv-radius-full);
   background-color: var(--dv-field-bg-color);
+  box-shadow: var(--dv-shadow-xs);
   color: var(--dv-main-color);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-  font-size: var(--dv-font-size-sm);
-  transition:
-    border-color var(--dv-transition-fast) var(--dv-ease),
-    box-shadow var(--dv-transition-fast) var(--dv-ease);
+  font-size: var(--dv-font-size-md);
+  appearance: textfield;
+  -moz-appearance: textfield;
+  transition: box-shadow var(--dv-transition-normal) var(--dv-ease);
+}
+
+.dv-page-input::-webkit-outer-spin-button,
+.dv-page-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .dv-page-input:focus {
   outline: none;
-  border-color: var(--dv-loading-color);
-  box-shadow: var(--dv-shadow-focus);
+  box-shadow: 0 0 0 2px var(--dv-accent);
 }
 
 .dv-page-count {
-  font-size: var(--dv-font-size-sm);
-  opacity: 0.6;
+  padding-right: 4px;
+  font-size: var(--dv-font-size-md);
+  color: var(--dv-muted);
   font-variant-numeric: tabular-nums;
   user-select: none;
 }
 
 .dv-zoom-select {
-  width: 72px;
-  padding: var(--dv-spacing-xs) var(--dv-spacing-sm);
-  border: 1px solid var(--dv-field-border-color);
-  border-radius: var(--dv-radius-sm);
+  /* Size to the selected option where supported; fixed fallback otherwise. */
+  width: auto;
+  field-sizing: content;
+  min-width: 64px;
+  height: calc(var(--dv-control-size) - 4px);
+  margin: 0 2px;
+  padding: 0 26px 0 12px;
+  border: none;
+  border-radius: var(--dv-radius-full);
   background-color: var(--dv-field-bg-color);
+  /* Chevron drawn with two gradients so it inherits no fixed colour. */
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--dv-muted) 50%),
+    linear-gradient(135deg, var(--dv-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 15px) 52%,
+    calc(100% - 11px) 52%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  box-shadow: var(--dv-shadow-xs);
   color: var(--dv-main-color);
-  font-size: var(--dv-font-size-sm);
+  font-size: var(--dv-font-size-md);
+  font-weight: 500;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
   font-variant-numeric: tabular-nums;
   transition:
-    border-color var(--dv-transition-fast) var(--dv-ease),
-    box-shadow var(--dv-transition-fast) var(--dv-ease);
+    box-shadow var(--dv-transition-normal) var(--dv-ease),
+    background-color var(--dv-transition-normal) var(--dv-ease);
+}
+
+.dv-zoom-select:hover {
+  background-color: color-mix(in srgb, var(--dv-field-bg-color) 92%, var(--dv-ink));
 }
 
 .dv-zoom-select:focus {
   outline: none;
-  border-color: var(--dv-loading-color);
-  box-shadow: var(--dv-shadow-focus);
 }
 
+.dv-zoom-select:focus-visible {
+  box-shadow: 0 0 0 2px var(--dv-accent);
+}
+
+/* A select alone in a group (e.g. page layout) gets the group capsule look. */
+.dv-toolbar-group > .dv-zoom-select:only-child {
+  background-color: var(--dv-group-bg-color);
+  box-shadow: none;
+  height: var(--dv-control-size);
+}
+
+/* ---------- Search Bar ---------- */
+
 .dv-search-bar {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--dv-spacing-sm);
-  padding: var(--dv-spacing-sm) var(--dv-spacing-lg);
-  background-color: color-mix(in srgb, var(--dv-toolbar-bg-color) 90%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  gap: var(--dv-spacing-xs);
+  flex-shrink: 0;
+  padding: 8px 10px;
+  background-color: color-mix(in srgb, var(--dv-toolbar-bg-color) 88%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
   box-shadow: 0 1px 0 var(--dv-separator-color);
+  z-index: var(--dv-z-toolbar);
   animation: dv-search-enter var(--dv-transition-normal) var(--dv-ease-out);
 }
 
 .dv-search-input {
   flex: 1;
-  padding: var(--dv-spacing-sm) var(--dv-spacing-md);
-  border: 1px solid var(--dv-field-border-color);
-  border-radius: var(--dv-radius-sm);
-  background-color: var(--dv-field-bg-color);
+  min-width: 0;
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--dv-radius-full);
+  background-color: var(--dv-group-bg-color);
   color: var(--dv-main-color);
   font-variant-numeric: tabular-nums;
   transition:
-    border-color var(--dv-transition-fast) var(--dv-ease),
-    box-shadow var(--dv-transition-fast) var(--dv-ease);
+    background-color var(--dv-transition-normal) var(--dv-ease),
+    box-shadow var(--dv-transition-normal) var(--dv-ease);
+}
+
+/* In the search bar the field carries a leading magnifier. */
+.dv-search-bar > .dv-search-input {
+  margin-right: var(--dv-spacing-md);
+  padding-left: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%237c818c' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='7' cy='7' r='4.5'/%3E%3Cpath d='M10.5 10.5 14 14'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 14px 50%;
+  background-size: 15px 15px;
 }
 
 .dv-search-input::placeholder {
-  color: color-mix(in srgb, var(--dv-main-color) 40%, transparent);
+  color: var(--dv-muted);
+}
+
+.dv-search-input:hover {
+  background-color: color-mix(in srgb, var(--dv-group-bg-color) 94%, var(--dv-ink));
 }
 
 .dv-search-input:focus {
   outline: none;
-  border-color: var(--dv-loading-color);
-  box-shadow: var(--dv-shadow-focus);
+  background-color: var(--dv-field-bg-color);
+  box-shadow: 0 0 0 1px var(--dv-accent), 0 0 0 4px var(--dv-accent-soft);
 }
 
 .dv-search-count {
   font-size: var(--dv-font-size-sm);
-  opacity: 0.6;
+  font-weight: 500;
+  color: var(--dv-muted);
   min-width: 60px;
+  padding-right: var(--dv-spacing-sm);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 @keyframes dv-search-enter {
-  from { opacity: 0; transform: translateY(-100%); }
+  from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -792,34 +1172,36 @@
   align-items: center;
   justify-content: center;
   background-color: var(--dv-overlay-color);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: var(--dv-z-dialog);
   animation: dv-overlay-enter var(--dv-transition-normal) var(--dv-ease) forwards;
   padding: var(--dv-spacing-lg);
 }
 
+/* Concentric: dialog radius 24 = inner pill controls (radius ~full) + 24 padding
+   reads as nested; inner fields use 12. */
 .dv-dialog {
   border: none;
   border-radius: var(--dv-radius-lg);
-  padding: var(--dv-spacing-lg);
+  padding: var(--dv-spacing-xl);
   background-color: var(--dv-doorhanger-bg-color);
   color: var(--dv-main-color);
   max-width: 420px;
   min-width: 320px;
   box-shadow: var(--dv-shadow-lg);
-  animation: dv-dialog-enter var(--dv-transition-slow) var(--dv-ease-spring) backwards;
+  animation: dv-dialog-enter var(--dv-transition-slow) var(--dv-ease-out) backwards;
 }
 
 .dv-dialog::backdrop {
   background-color: var(--dv-overlay-color);
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
 }
 
 .dv-dialog-header {
   display: flex;
   align-items: center;
-  gap: var(--dv-spacing-sm);
+  gap: var(--dv-spacing-md);
   margin-bottom: var(--dv-spacing-md);
 }
 
@@ -829,7 +1211,7 @@
   margin: 0;
   flex: 1;
   text-wrap: balance;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .dv-dialog-body {
@@ -840,7 +1222,12 @@
   margin: 0 0 var(--dv-spacing-sm);
   line-height: 1.55;
   text-wrap: pretty;
-  opacity: 0.85;
+  color: var(--dv-ink-2);
+}
+
+.dv-dialog .dv-search-input {
+  height: 40px;
+  border-radius: var(--dv-radius-md);
 }
 
 .dv-dialog-error {
@@ -853,15 +1240,15 @@
   margin-top: var(--dv-spacing-sm);
   line-height: 1.45;
   font-size: var(--dv-font-size-sm);
-  opacity: 0.7;
+  color: var(--dv-muted);
   font-family: var(--dv-font-mono);
 }
 
 .dv-dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--dv-spacing-sm);
-  margin-top: var(--dv-spacing-lg);
+  gap: var(--dv-spacing-md);
+  margin-top: var(--dv-spacing-xl);
 }
 
 @keyframes dv-overlay-enter {
@@ -870,69 +1257,65 @@
 }
 
 @keyframes dv-dialog-enter {
-  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* ---------- Button Variants & Sizes ---------- */
 
+/* Primary: a near-black pill with white text (inverted in dark mode). */
 .dv-button-primary {
-  background-color: var(--dv-loading-color);
-  color: white;
-  padding: var(--dv-spacing-sm) var(--dv-spacing-lg);
-  border-radius: var(--dv-radius-sm);
+  background-color: var(--dv-toggled-bg-color);
+  color: var(--dv-toggled-fg-color);
+  padding: 0 18px;
   font-weight: 500;
+  box-shadow: 0 1px 2px rgb(41 28 18 / 0.16), 0 4px 10px -4px rgb(41 28 18 / 0.25);
 }
 
 .dv-button-primary:hover {
-  background-color: color-mix(in srgb, var(--dv-loading-color) 88%, black);
-  box-shadow: var(--dv-shadow-sm);
+  background-color: color-mix(in srgb, var(--dv-toggled-bg-color) 86%, var(--dv-toggled-fg-color));
 }
 
 .dv-button-primary:active {
-  transform: scale(0.96);
-  box-shadow: var(--dv-shadow-xs);
+  background-color: var(--dv-toggled-bg-color);
+  box-shadow: 0 1px 2px rgb(41 28 18 / 0.16);
 }
 
 .dv-button-ghost {
-  padding: var(--dv-spacing-xs) var(--dv-spacing-md);
-  border-radius: var(--dv-radius-sm);
+  padding: 0 16px;
+  background-color: var(--dv-group-bg-color);
 }
 
 .dv-button-ghost:hover {
-  background-color: var(--dv-button-hover-color);
+  background-color: color-mix(in srgb, var(--dv-group-bg-color) 90%, var(--dv-ink));
 }
 
 .dv-button-icon {
-  padding: 2px;
+  padding: 0;
 }
 
 .dv-button-sm {
-  height: calc(var(--dv-icon-size) + 4px);
+  height: 28px;
+  min-width: 28px;
   font-size: var(--dv-font-size-sm);
-  border-radius: var(--dv-radius-xs);
 }
 
 .dv-button-md {
-  height: calc(var(--dv-icon-size) + 10px);
+  height: 36px;
+  min-width: 36px;
   font-size: var(--dv-font-size-md);
-  border-radius: var(--dv-radius-sm);
 }
 
 .dv-button-lg {
-  height: calc(var(--dv-icon-size) + 16px);
+  height: 44px;
+  min-width: 44px;
   font-size: var(--dv-font-size-lg);
-  padding: var(--dv-spacing-xs) var(--dv-spacing-lg);
-  border-radius: var(--dv-radius-md);
+  padding: 0 22px;
 }
 
 .dv-button-icon-wrap {
   display: inline-flex;
   align-items: center;
-}
-
-.dv-button-icon-wrap + * {
-  margin-left: var(--dv-spacing-xs);
 }
 
 /* ---------- Properties Table ---------- */
@@ -944,8 +1327,9 @@
 }
 
 .dv-properties-key {
-  padding: var(--dv-spacing-sm) var(--dv-spacing-md);
-  font-weight: 600;
+  padding: 8px 12px 8px 0;
+  font-weight: 500;
+  color: var(--dv-muted);
   text-align: left;
   white-space: nowrap;
   width: 40%;
@@ -953,22 +1337,58 @@
 }
 
 .dv-properties-value {
-  padding: var(--dv-spacing-sm) var(--dv-spacing-md);
+  padding: 8px 0;
   border-bottom: 1px solid var(--dv-separator-color);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
+
+.dv-properties-table tr:last-child > * {
+  border-bottom: none;
+}
+
+/* ---------- Tooltip ---------- */
+
+.dv-tooltip {
+  top: calc(100% + 6px);
+  left: 50%;
+  translate: -50% 0;
+  white-space: nowrap;
+  font-size: var(--dv-font-size-sm);
+  font-weight: 500;
+  background-color: var(--dv-toggled-bg-color);
+  color: var(--dv-toggled-fg-color);
+  padding: 4px 10px;
+  border-radius: var(--dv-radius-full);
+  box-shadow: var(--dv-shadow-md);
+  z-index: 1000;
+  transition: opacity var(--dv-transition-normal) var(--dv-ease);
+}
+
+.dv-tooltip[data-placement="top"] { top: auto; bottom: calc(100% + 6px); }
+.dv-tooltip[data-placement="left"] { top: 50%; left: auto; right: calc(100% + 6px); translate: 0 -50%; }
+.dv-tooltip[data-placement="right"] { top: 50%; left: calc(100% + 6px); translate: 0 -50%; }
 
 /* ---------- Focus Visible ---------- */
 
 .dv-button:focus-visible,
 .dv-search-input:focus-visible,
-.dv-page-input:focus-visible,
-.dv-zoom-select:focus-visible,
 .dv-sidebar-view-tab:focus-visible,
 .dv-thumbnail:focus-visible,
-.dv-outline-item:focus-visible {
+.dv-outline-item:focus-visible,
+.dv-attachment-item:focus-visible {
   outline: none;
   box-shadow: var(--dv-shadow-focus);
+}
+
+.dv-search-input:focus-visible {
+  box-shadow: 0 0 0 1px var(--dv-accent), 0 0 0 4px var(--dv-accent-soft);
+}
+
+.dv-page-input:focus-visible,
+.dv-zoom-select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dv-accent);
 }
 
 .dv-dialog:focus-visible {
@@ -1015,39 +1435,123 @@
 .dv-spinner {
   width: 32px;
   height: 32px;
-  border: 2.5px solid color-mix(in srgb, var(--dv-loading-color) 20%, transparent);
-  border-top-color: var(--dv-loading-color);
+  border: 2.5px solid color-mix(in srgb, var(--dv-accent) 18%, transparent);
+  border-top-color: var(--dv-accent);
   border-radius: 50%;
-  animation: dv-spin 0.7s linear infinite;
+  animation: dv-spin 0.75s linear infinite;
 }
 
 @keyframes dv-spin {
   to { transform: rotate(360deg); }
 }
 
-/* ---------- Responsive Breakpoints ---------- */
+/* ---------- Toolbar overflow ("More") ---------- */
 
-@media (max-width: 840px) {
+/* Wide viewers: the secondary groups sit inline as if the wrapper were not
+   there, and the More button is hidden. */
+.dv-toolbar-overflow {
+  display: contents;
+}
+
+.dv-toolbar-more {
+  display: none;
+}
+
+@keyframes dv-popover-enter {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- Container-responsive chrome ----------
+   Breakpoints are the widths each toolbar tier needs to show everything
+   inline (measured: lg ≈ 1080px with PDF annotations, md ≈ 800px, sm ≈ 600px).
+   Below that, the view/actions/annotations groups fold into a popover. The
+   popover rules repeat per tier because container queries can't take a
+   variable width. */
+
+@container dv-viewer (max-width: 1100px) {
+  .dv-toolbar[data-tier="lg"] .dv-toolbar-more { display: inline-flex; }
+  .dv-toolbar[data-tier="lg"] .dv-toolbar-overflow[data-open="true"] { display: flex; }
+  .dv-toolbar[data-tier="lg"] .dv-toolbar-overflow:not([data-open="true"]) { display: none; }
+}
+
+@container dv-viewer (max-width: 820px) {
+  .dv-toolbar[data-tier="md"] .dv-toolbar-more { display: inline-flex; }
+  .dv-toolbar[data-tier="md"] .dv-toolbar-overflow[data-open="true"] { display: flex; }
+  .dv-toolbar[data-tier="md"] .dv-toolbar-overflow:not([data-open="true"]) { display: none; }
+}
+
+@container dv-viewer (max-width: 620px) {
+  .dv-toolbar[data-tier="sm"] .dv-toolbar-more { display: inline-flex; }
+  .dv-toolbar[data-tier="sm"] .dv-toolbar-overflow[data-open="true"] { display: flex; }
+  .dv-toolbar[data-tier="sm"] .dv-toolbar-overflow:not([data-open="true"]) { display: none; }
+}
+
+/* The popover itself. Only matches once a query above has turned the
+   wrapper into a flex box, so wide layouts never see it. */
+.dv-toolbar-overflow[data-open="true"] {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 8px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: calc(100% - 16px);
+  padding: 6px;
+  /* Concentric with the pill groups inside: 6px inset + 16px group radius. */
+  border-radius: 22px;
+  background-color: var(--dv-doorhanger-bg-color);
+  box-shadow: var(--dv-shadow-lg);
+  transform-origin: top right;
+  animation: dv-popover-enter var(--dv-transition-normal) var(--dv-ease-out);
+}
+
+.dv-toolbar-overflow[data-open="true"] > .dv-toolbar-group {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  border-radius: 16px;
+  animation: none;
+}
+
+/* Lift the bar above the sidebar while its popover is open. */
+.dv-toolbar:has(> .dv-toolbar-overflow[data-open="true"]) {
+  z-index: calc(var(--dv-z-sidebar) + 1);
+}
+
+/* Nothing to fold away (e.g. the empty state): no More button. */
+.dv-toolbar-more:has(+ .dv-toolbar-overflow:empty) {
+  display: none !important;
+}
+
+/* Wide viewers: the sidebar takes its own column so it never covers the
+   page (the fit modes re-measure via the container's ResizeObserver).
+   Narrow viewers keep it as an overlay drawer. */
+@container dv-viewer (min-width: 641px) {
   .dv-sidebar {
-    position: absolute;
-    inset: 0 auto 0 0;
-    z-index: var(--dv-z-sidebar);
-    box-shadow: var(--dv-shadow-lg);
+    position: relative;
+    inset: auto;
+    flex-shrink: 0;
   }
 }
 
-@media (max-width: 750px) {
-  .dv-toolbar-print,
-  .dv-toolbar-download { display: none; }
+@container dv-viewer (max-width: 640px) {
+  .dv-sidebar {
+    box-shadow: var(--dv-shadow-lg);
+  }
+  .dv-toolbar {
+    gap: var(--dv-spacing-sm);
+    padding: 0 var(--dv-spacing-md);
+  }
 }
 
-@media (max-width: 690px) {
-  .dv-toolbar-page-nav { display: none; }
+/* Phone-width viewers: keep the essentials (pages, search, zoom level). */
+@container dv-viewer (max-width: 520px) {
+  .dv-toolbar-zoom-step,
+  .dv-toolbar-marquee { display: none; }
 }
 
-@media (max-width: 560px) {
-  .dv-zoom-select { display: none; }
-  .dv-toolbar { padding: 0 var(--dv-spacing-md); }
+@container dv-viewer (max-width: 400px) {
+  .dv-toolbar-page-nav > .dv-button { display: none; }
 }
 
 /* ---------- Forced Colors & Reduced Motion ---------- */
@@ -1060,6 +1564,18 @@
   .dv-button {
     background: ButtonFace;
     color: ButtonText;
+    border: 1px solid ButtonText;
+  }
+  .dv-button[data-toggled="true"],
+  .dv-sidebar-view-tab[data-toggled="true"] {
+    background: Highlight;
+    color: HighlightText;
+  }
+  .dv-button:focus-visible,
+  .dv-thumbnail:focus-visible,
+  .dv-search-input:focus,
+  .dv-page-input:focus {
+    outline: 2px solid Highlight;
   }
 }
 
@@ -1070,5 +1586,17 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  .dv-state-icon { animation: none !important; }
+  /* Keep feedback, drop movement. */
+  .dv-root .dv-button:active,
+  .dv-root .dv-sidebar-view-tab:active,
+  .dv-root .dv-thumbnail:active,
+  .dv-root .dv-empty-dropzone:hover .dv-state-icon,
+  .dv-root .dv-empty-dropzone[data-dragging] .dv-state-icon {
+    transform: none;
+  }
+  /* The spinner is a progress indicator, so it keeps turning, just slower. */
+  .dv-root .dv-spinner {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
