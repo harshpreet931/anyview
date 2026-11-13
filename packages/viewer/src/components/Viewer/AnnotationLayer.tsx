@@ -25,8 +25,8 @@ const TOOL_DEFAULTS = {
   highlight: { color: '#ffd400', opacity: 0.4 },
   ink: { color: '#ef4444', opacity: 1 },
   'sticky-note': { color: '#fbbf24', opacity: 1 },
-  shape: { color: '#2563eb', opacity: 1 },
-  'free-text': { color: '#111827', opacity: 1 },
+  shape: { color: '#e8551f', opacity: 1 },
+  'free-text': { color: '#121110', opacity: 1 },
 } as const;
 
 const INK_THICKNESS = 0.004;
