@@ -87,6 +87,22 @@ export function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!isDragging) return;
+    const clear = () => setIsDragging(false);
+    const onLeave = (e: globalThis.DragEvent) => {
+      if (!e.relatedTarget) clear();
+    };
+    window.addEventListener('drop', clear, true);
+    window.addEventListener('dragend', clear, true);
+    window.addEventListener('dragleave', onLeave, true);
+    return () => {
+      window.removeEventListener('drop', clear, true);
+      window.removeEventListener('dragend', clear, true);
+      window.removeEventListener('dragleave', onLeave, true);
+    };
+  }, [isDragging]);
+
   const loadSample = useCallback((index: number) => {
     const sample = SAMPLE_FILES[index];
     if (sample) {
@@ -104,7 +120,6 @@ export function App() {
       className="pg-root"
       onDrop={handleDrop}
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-      onDragLeave={(e) => { if (e.currentTarget === e.target) setIsDragging(false); }}
     >
       <div className="pg-sky" aria-hidden="true">
         <span className="pg-cloud pg-cloud-1" />
