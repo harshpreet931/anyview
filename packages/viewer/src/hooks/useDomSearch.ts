@@ -1,6 +1,7 @@
 import { useEffect, useId, type RefObject } from 'react';
 import type { SearchMatch, SearchQuery } from '../core/types';
 import { useViewerStore } from './useDocViewer';
+import { revealMatch } from '../core/reveal-match';
 
 interface CustomHighlightCtor {
   new (...ranges: Range[]): unknown;
@@ -263,6 +264,6 @@ export function useDomSearch(
     const el =
       current?.startContainer.parentElement ??
       (current?.startContainer as HTMLElement | null);
-    el?.scrollIntoView({ block: 'center' });
+    revealMatch(el, matchNonce);
   }, [enabled, currentMatchIndex, matchNonce, ownerId, instanceId]);
 }

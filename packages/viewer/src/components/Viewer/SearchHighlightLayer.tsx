@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
+import { revealMatch } from '../../core/reveal-match';
 
 export interface SearchHighlightLayerProps {
   pageIndex: number;
@@ -18,8 +19,8 @@ export function SearchHighlightLayer({
   const currentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    currentRef.current?.scrollIntoView({ block: 'center', inline: 'center' });
-  }, [matchNonce, currentMatchIndex, width, height]);
+    revealMatch(currentRef.current, matchNonce);
+  }, [matchNonce, currentMatchIndex]);
 
   if (!searchResult || searchResult.matches.length === 0) return null;
 

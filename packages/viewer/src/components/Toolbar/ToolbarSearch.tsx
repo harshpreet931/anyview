@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
 import { formatString } from '../../i18n/strings';
@@ -14,6 +14,11 @@ export function ToolbarSearch() {
   const searchResult = useViewerStore((s) => s.searchResult);
   const currentMatchIndex = useViewerStore((s) => s.currentMatchIndex);
   const setSearchOpen = useViewerStore((s) => s.setSearchOpen);
+  const rootElement = useViewerStore((s) => s._rootElement);
+  const rootRef = useRef(rootElement);
+  useEffect(() => {
+    rootRef.current = rootElement;
+  }, [rootElement]);
 
   const [searchText, setSearchText] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -22,32 +27,63 @@ export function ToolbarSearch() {
   // This only mounts while the bar is open, so open/close is mount/unmount:
   // focus on the way in, drop the pending query and its results on the way out.
   useEffect(() => {
-    searchInputRef.current?.focus();
+    const input = searchInputRef.current;
+    input?.focus();
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
       clearSearch();
+      const active = document.activeElement;
+      if (!active || active === document.body || active === input || !active.isConnected) {
+        rootRef.current
+          ?.querySelector<HTMLElement>('.dv-viewer-container')
+          ?.focus({ preventScroll: true });
+      }
     };
   }, [clearSearch]);
+
+  const runSearch = useCallback(
+    (text: string) =>
+      search({
+        text,
+        caseSensitive: false,
+        wholeWord: false,
+        regex: false,
+        diacritics: false,
+      }),
+    [search],
+  );
 
   const handleSearch = useCallback(
     (text: string) => {
       setSearchText(text);
       if (searchTimer.current) clearTimeout(searchTimer.current);
+      searchTimer.current = undefined;
       if (text.trim()) {
         searchTimer.current = setTimeout(() => {
-          search({
-            text,
-            caseSensitive: false,
-            wholeWord: false,
-            regex: false,
-            diacritics: false,
-          });
+          searchTimer.current = undefined;
+          runSearch(text);
         }, 180);
       } else {
         clearSearch();
       }
     },
-    [search, clearSearch],
+    [runSearch, clearSearch],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+      e.preventDefault();
+      if (searchTimer.current) {
+        clearTimeout(searchTimer.current);
+        searchTimer.current = undefined;
+        if (searchText.trim()) runSearch(searchText);
+        return;
+      }
+      if (e.shiftKey) prevMatch();
+      else nextMatch();
+    },
+    [searchText, runSearch, nextMatch, prevMatch],
   );
 
   const handleCloseSearch = useCallback(() => {
@@ -65,6 +101,7 @@ export function ToolbarSearch() {
         placeholder={strings.search.placeholder}
         value={searchText}
         onChange={(e) => handleSearch(e.target.value)}
+        onKeyDown={handleKeyDown}
         aria-label={strings.search.placeholder}
       />
       <span className="dv-search-count" aria-live="polite">
