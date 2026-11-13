@@ -56,13 +56,13 @@ export function ToolbarZoom({ features }: { features?: AdapterFeatures }) {
             className="dv-zoom-select"
             value={zoomValue}
             onChange={(e) => handleZoomSelect(e.target.value)}
-            aria-label="Zoom level"
+            aria-label={strings.toolbar.zoomLevel}
           >
             {zoomValue === 'live' && <option value="live">{zoomPct}%</option>}
-            <optgroup label="Fit">
-              <option value="fit-page">Fit page</option>
-              <option value="fit-width">Fit width</option>
-              <option value="actual">Actual size</option>
+            <optgroup label={strings.toolbar.fitGroup}>
+              <option value="fit-page">{strings.toolbar.fitPage}</option>
+              <option value="fit-width">{strings.toolbar.fitWidth}</option>
+              <option value="actual">{strings.toolbar.actualSize}</option>
             </optgroup>
             <option value="0.5">50%</option>
             <option value="0.75">75%</option>
@@ -88,8 +88,8 @@ export function ToolbarZoom({ features }: { features?: AdapterFeatures }) {
             }
             aria-pressed={cursorMode === 'marquee'}
             data-toggled={cursorMode === 'marquee'}
-            aria-label="Marquee zoom"
-            title="Marquee zoom - drag a box to zoom in"
+            aria-label={strings.toolbar.marqueeZoom}
+            title={strings.toolbar.marqueeZoomHint}
           >
             <Icon name="marquee" />
           </button>
@@ -138,12 +138,12 @@ export function ToolbarView({ features }: { features?: AdapterFeatures }) {
           className="dv-zoom-select"
           value={spreadMode}
           onChange={(e) => setSpreadMode(e.target.value as SpreadMode)}
-          aria-label="Page layout"
-          title="Page layout"
+          aria-label={strings.toolbar.pageLayout}
+          title={strings.toolbar.pageLayout}
         >
-          <option value="none">Single page</option>
-          <option value="even">Two pages</option>
-          <option value="odd">Two pages (cover)</option>
+          <option value="none">{strings.toolbar.singlePage}</option>
+          <option value="even">{strings.toolbar.twoPages}</option>
+          <option value="odd">{strings.toolbar.twoPagesCover}</option>
         </select>
       )}
     </div>

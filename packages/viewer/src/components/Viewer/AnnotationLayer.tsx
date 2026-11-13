@@ -15,6 +15,8 @@ import type {
   FreeTextAnnotation,
 } from '../../core/types';
 import { useViewerStore } from '../../hooks/useDocViewer';
+import { useStrings } from '../../i18n/I18nProvider';
+import type { ViewerStrings } from '../../i18n/types';
 
 export interface AnnotationLayerProps {
   pageIndex: number;
@@ -144,11 +146,11 @@ function lineHighlightRects(svg: SVGSVGElement, from: Point, to: Point): Rect[] 
 }
 
 type TextTool = 'sticky-note' | 'free-text';
-const EDITOR_LABEL: Record<TextTool, string> = { 'sticky-note': 'Note', 'free-text': 'Text' };
 const EDITOR_W = 220;
 const EDITOR_H = 84;
 
 export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerProps) {
+  const strings = useStrings();
   const annotations = useViewerStore((s) => s.annotations);
   const activeTool = useViewerStore((s) => s.activeAnnotationTool);
   const selectedId = useViewerStore((s) => s.selectedAnnotationId);
@@ -400,7 +402,7 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
           <textarea
             className="dv-annotation-editor"
             ref={editorRef}
-            aria-label={EDITOR_LABEL[editor.tool]}
+            aria-label={editor.tool === 'sticky-note' ? strings.annotations.note : strings.annotations.freeText}
             onPointerDown={(e) => e.stopPropagation()}
             onBlur={(e) => commitEditor(e.currentTarget.value)}
             onKeyDown={(e) => {
@@ -420,12 +422,12 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
   );
 }
 
-const ANNOTATION_LABEL: Record<Annotation['type'], string> = {
-  highlight: 'Highlight annotation',
-  ink: 'Drawing annotation',
-  'sticky-note': 'Note annotation',
-  shape: 'Shape annotation',
-  'free-text': 'Text annotation',
+const ANNOTATION_LABEL: Record<Annotation['type'], keyof ViewerStrings['annotations']> = {
+  highlight: 'highlightItem',
+  ink: 'inkItem',
+  'sticky-note': 'noteItem',
+  shape: 'shapeItem',
+  'free-text': 'freeTextItem',
 };
 
 function AnnotationShape({
@@ -445,6 +447,7 @@ function AnnotationShape({
   onSelect: () => void;
   onDelete: () => void;
 }) {
+  const strings = useStrings();
   const handleClick = (e: ReactPointerEvent) => {
     if (!interactive) return;
     e.stopPropagation();
@@ -574,7 +577,7 @@ function AnnotationShape({
       data-selected={selected || undefined}
       tabIndex={interactive ? 0 : -1}
       role="button"
-      aria-label={ANNOTATION_LABEL[annotation.type]}
+      aria-label={strings.annotations[ANNOTATION_LABEL[annotation.type]]}
       aria-pressed={selected}
       onFocus={interactive ? onSelect : undefined}
       onKeyDown={interactive ? handleKeyDown : undefined}

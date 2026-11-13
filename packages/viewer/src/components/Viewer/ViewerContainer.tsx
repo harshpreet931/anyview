@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useViewerStore } from '../../hooks/useDocViewer';
+import { useStrings } from '../../i18n/I18nProvider';
 import { useZoomGestures } from '../../hooks/useZoomGestures';
 import {
   totalRotation,
@@ -24,6 +25,7 @@ function rowAtOffset(items: { index: number; start: number }[], offset: number):
 }
 
 export function ViewerContainer() {
+  const strings = useStrings();
   const document = useViewerStore((s) => s.document);
   const loadState = useViewerStore((s) => s.loadState);
   const loadError = useViewerStore((s) => s.loadError);
@@ -247,7 +249,7 @@ export function ViewerContainer() {
       ref={scrollRef}
       tabIndex={0}
       role="region"
-      aria-label="Document content"
+      aria-label={strings.viewer.content}
       data-marquee={cursorMode === 'marquee' || undefined}
     >
       {showState ? (

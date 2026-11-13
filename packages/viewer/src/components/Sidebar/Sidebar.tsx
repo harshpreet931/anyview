@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
-import { useStrings } from '../../i18n/I18nProvider';
+import { useLocale, useStrings } from '../../i18n/I18nProvider';
+import { formatFileSize } from '../../i18n/format';
 import type {
   SidebarView,
   PageRef,
@@ -410,6 +411,7 @@ function AttachmentList({
 }: {
   attachments: ReadonlyArray<import('../../core/types').AttachmentRef>;
 }) {
+  const locale = useLocale();
   return (
     <ul className="dv-attachment-list">
       {attachments.map((att) => (
@@ -433,16 +435,10 @@ function AttachmentList({
             }}
           >
             {att.name}
-            <span className="dv-attachment-size">{formatSize(att.size)}</span>
+            <span className="dv-attachment-size">{formatFileSize(att.size, locale)}</span>
           </button>
         </li>
       ))}
     </ul>
   );
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

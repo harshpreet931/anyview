@@ -12,6 +12,39 @@ export interface ViewerStrings {
     fullscreen: string;
     properties: string;
     overflowMenu: string;
+    label: string;
+    zoomLevel: string;
+    fitGroup: string;
+    fitPage: string;
+    fitWidth: string;
+    actualSize: string;
+    marqueeZoom: string;
+    marqueeZoomHint: string;
+    pageLayout: string;
+    singlePage: string;
+    twoPages: string;
+    twoPagesCover: string;
+    annotationTools: string;
+  };
+  viewer: {
+    label: string;
+    content: string;
+    loading: string;
+  };
+  annotations: {
+    highlight: string;
+    draw: string;
+    rectangle: string;
+    ellipse: string;
+    line: string;
+    arrow: string;
+    freeText: string;
+    note: string;
+    highlightItem: string;
+    inkItem: string;
+    noteItem: string;
+    shapeItem: string;
+    freeTextItem: string;
   };
   navigation: {
     previousPage: string;
@@ -82,6 +115,10 @@ export interface ViewerStrings {
     fileSize: string;
   };
 }
+
+export type PartialViewerStrings = {
+  [K in keyof ViewerStrings]?: Partial<ViewerStrings[K]>;
+};
 
 export type LocaleKey = string;
 export type LocaleLoader = (locale: string) => Promise<ViewerStrings>;

@@ -91,3 +91,18 @@ describe('DocViewer source identity', () => {
     await vi.waitFor(() => expect(onDocumentLoad).toHaveBeenCalledTimes(2));
   });
 });
+
+describe('DocViewer localisation', () => {
+  it('uses the registered locale for its own labels', async () => {
+    const { registerStrings } = await import('../i18n/strings');
+    registerStrings('xq', { viewer: { label: 'Visionneuse' }, toolbar: { label: 'Barre' } });
+    host = document.createElement('div');
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => {
+      root!.render(<DocViewer locale="xq" />);
+    });
+    expect(host.querySelector('[aria-label="Visionneuse"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Barre"]')).not.toBeNull();
+  });
+});

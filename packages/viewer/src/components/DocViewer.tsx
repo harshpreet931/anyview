@@ -20,7 +20,7 @@ import { createViewerStore } from '../core/store';
 import { ViewerStoreProvider, useViewerStore } from '../hooks/useDocViewer';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { I18nProvider, useStrings } from '../i18n/I18nProvider';
-import { formatString } from '../i18n/strings';
+import { formatString, resolveStrings } from '../i18n/strings';
 import { Toolbar } from './Toolbar/Toolbar';
 import { Sidebar, NARROW_VIEWER_WIDTH } from './Sidebar/Sidebar';
 import { ViewerContainer } from './Viewer/ViewerContainer';
@@ -260,20 +260,22 @@ function DocViewerInner(
     return classes.join(' ');
   }, [theme, className]);
 
+  const rootStrings = useMemo(() => resolveStrings(locale), [locale]);
+
   return (
     <I18nProvider locale={locale}>
       <div
         ref={rootRef}
         className={rootClassName}
         style={collapsed ? COLLAPSED_ROOT_STYLE : ROOT_STYLE}
-        aria-label="Document viewer"
+        aria-label={rootStrings.viewer.label}
       >
         <div className="dv-main-container">
           {showToolbar && <Toolbar {...(features ? { features } : {})} />}
           <progress
             className="dv-loading-bar"
             data-active={loadState === 'loading'}
-            aria-label="Loading document"
+            aria-label={rootStrings.states.loading}
             aria-hidden={loadState !== 'loading'}
           />
           <div style={{ display: 'flex', flex: 1, position: 'relative', overflow: 'hidden' }}>

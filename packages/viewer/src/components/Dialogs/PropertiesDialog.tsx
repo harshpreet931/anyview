@@ -3,7 +3,8 @@ import type { DocumentModel } from '../../core/types';
 import { Button } from '../common/Button';
 import { Icon } from '../common/Icon';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { useStrings } from '../../i18n/I18nProvider';
+import { useLocale, useStrings } from '../../i18n/I18nProvider';
+import { formatDateTime, formatFileSize } from '../../i18n/format';
 
 interface PropertiesDialogProps {
   document: DocumentModel;
@@ -13,12 +14,13 @@ interface PropertiesDialogProps {
 export function PropertiesDialog({ document: doc, onClose }: PropertiesDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const strings = useStrings();
+  const locale = useLocale();
   useFocusTrap(dialogRef, true, onClose);
   const d = strings.dialog;
   const rows: Array<[string, string | undefined]> = [
     [d.fileName, doc.meta.name],
     [d.format, doc.format.toUpperCase()],
-    [d.fileSize, formatSize(doc.meta.size)],
+    [d.fileSize, formatFileSize(doc.meta.size, locale)],
     [d.mimeType, doc.meta.mimeType],
     [d.pages, String(doc.pageCount)],
     [d.title, doc.metadata?.title],
@@ -29,13 +31,13 @@ export function PropertiesDialog({ document: doc, onClose }: PropertiesDialogPro
     [
       d.creationDate,
       doc.metadata?.creationDate
-        ? new Date(doc.metadata.creationDate).toLocaleString()
+        ? formatDateTime(doc.metadata.creationDate, locale)
         : undefined,
     ],
     [
       d.modificationDate,
       doc.metadata?.modificationDate
-        ? new Date(doc.metadata.modificationDate).toLocaleString()
+        ? formatDateTime(doc.metadata.modificationDate, locale)
         : undefined,
     ],
   ];
@@ -71,11 +73,4 @@ export function PropertiesDialog({ document: doc, onClose }: PropertiesDialogPro
       </div>
     </div>
   );
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }

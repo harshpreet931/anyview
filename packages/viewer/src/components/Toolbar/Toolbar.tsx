@@ -79,7 +79,7 @@ export function Toolbar({ features }: ToolbarProps) {
       <div
         className="dv-toolbar"
         role="toolbar"
-        aria-label="Document viewer toolbar"
+        aria-label={strings.toolbar.label}
         data-tier={toolbarTier(features, pageCount)}
       >
         <div className="dv-toolbar-group">

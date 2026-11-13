@@ -98,4 +98,4 @@ export { PropertiesDialog } from './components/Dialogs/PropertiesDialog';
 export { ErrorDialog } from './components/Dialogs/ErrorDialog';
 
 export { en as defaultStrings } from './i18n/en';
-export type { ViewerStrings } from './i18n/types';
+export type { ViewerStrings, PartialViewerStrings } from './i18n/types';
