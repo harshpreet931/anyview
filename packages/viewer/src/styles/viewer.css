@@ -1585,11 +1585,11 @@
     background: Highlight;
     color: HighlightText;
   }
-  .dv-button:focus-visible,
-  .dv-thumbnail:focus-visible,
+  .dv-root :focus-visible,
   .dv-search-input:focus,
   .dv-page-input:focus {
-    outline: 2px solid Highlight;
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
   }
 }
 
