@@ -18,7 +18,7 @@ import { ViewerError } from '../../core/errors';
 import { loadSanitizer, DOCUMENT_HTML_CONFIG } from '../../core/sanitizer';
 import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 import { assertTransformSize } from '../../core/limits';
-import { headingScrollOffset } from '../../core/reflow-outline';
+import { headingScrollOffsets } from '../../core/reflow-outline';
 
 export const htmlManifest: AdapterManifest = {
   id: 'html',
@@ -161,18 +161,12 @@ export class HtmlAdapter implements Adapter {
     const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
     if (headings.length === 0) return undefined;
 
-    const outline: OutlineNode[] = [];
-    headings.forEach((h) => {
-      outline.push({
-        title: h.textContent ?? '',
-        dest: {
-          pageIndex: 0,
-          scrollOffset: headingScrollOffset(doc, h),
-        },
-      });
-    });
-
-    return outline;
+    const list = Array.from(headings);
+    const offsets = headingScrollOffsets(doc, list);
+    return list.map((h, i) => ({
+      title: h.textContent ?? '',
+      dest: { pageIndex: 0, scrollOffset: offsets[i]! },
+    }));
   }
 
   dispose(): void {

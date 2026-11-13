@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { headingScrollOffset } from './reflow-outline';
+import { headingScrollOffset, headingScrollOffsets } from './reflow-outline';
 
 function parse(html: string): Document {
   return new DOMParser().parseFromString(html, 'text/html');
@@ -33,5 +33,24 @@ describe('headingScrollOffset', () => {
     expect(headingScrollOffset(doc, second!)).toBeGreaterThan(
       headingScrollOffset(doc, first!),
     );
+  });
+});
+
+describe('headingScrollOffsets', () => {
+  it('matches the per-heading offsets', () => {
+    const filler = 'z'.repeat(900);
+    const doc = parse(`<h1>A</h1><p>${filler}</p><div><h2>B</h2><p>${filler}<b>${filler}</b></p></div><h3>C</h3>`);
+    const headings = Array.from(doc.querySelectorAll('h1, h2, h3'));
+    expect(headingScrollOffsets(doc, headings)).toEqual(headings.map((h) => headingScrollOffset(doc, h)));
+  });
+
+  it('stays linear for documents with tens of thousands of headings', () => {
+    const doc = parse('<h2>x</h2><p>body text</p>'.repeat(40_000));
+    const headings = Array.from(doc.querySelectorAll('h2'));
+    const t0 = performance.now();
+    const offsets = headingScrollOffsets(doc, headings);
+    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(offsets).toHaveLength(40_000);
+    expect(offsets[39_999]).toBeGreaterThan(offsets[1]!);
   });
 });
