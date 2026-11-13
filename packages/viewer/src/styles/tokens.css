@@ -1,6 +1,12 @@
 /* ============================================================
  * CSS Design Tokens
  * All customizable values as CSS custom properties.
+ *
+ * The chrome is built from a small set of brand primitives
+ * (--dv-ink, --dv-surface, --dv-canvas, --dv-accent, ...). The
+ * older semantic tokens (--dv-toolbar-bg-color, --dv-loading-color,
+ * ...) are kept and now derive from those primitives, so overriding
+ * either layer keeps working.
  * ============================================================ */
 
 :root,
@@ -10,43 +16,70 @@
   --dv-sidebar-min-width: 160px;
   --dv-sidebar-max-width: 400px;
   --dv-sidebar-transition-duration: 200ms;
-  --dv-sidebar-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
-  --dv-toolbar-height: 44px;
-  --dv-toolbar-height-compact: 36px;
-  --dv-toolbar-height-touch: 48px;
+  --dv-sidebar-transition-timing: cubic-bezier(0.23, 1, 0.32, 1);
+  --dv-toolbar-height: 52px;
+  --dv-toolbar-height-compact: 40px;
+  --dv-toolbar-height-touch: 56px;
   --dv-icon-size: 18px;
-  --dv-loading-bar-height: 3px;
+  --dv-control-size: 32px;
+  --dv-control-inset: 3px;
+  --dv-loading-bar-height: 2px;
 
-  /* Colors - using light-dark() */
-  --dv-main-color: light-dark(rgb(28 28 30), rgb(235 235 240));
-  --dv-body-bg-color: light-dark(rgb(242 242 245), rgb(30 30 34));
-  --dv-toolbar-bg-color: light-dark(rgb(255 255 255), rgb(40 40 44));
-  --dv-field-bg-color: light-dark(rgb(255 255 255), rgb(55 55 60));
-  --dv-field-border-color: light-dark(rgb(210 210 215), rgb(90 90 100));
-  --dv-sidebar-bg-color: light-dark(rgb(250 250 252), rgb(36 36 40));
-  --dv-doorhanger-bg-color: light-dark(rgb(255 255 255), rgb(50 50 56));
-  --dv-separator-color: light-dark(rgb(0 0 0 / 0.06), rgb(255 255 255 / 0.08));
-  --dv-button-hover-color: color-mix(in srgb, currentColor 10%, transparent);
-  --dv-toggled-bg-color: light-dark(rgb(230 230 235), rgb(60 60 68));
-  --dv-progress-bar-color: light-dark(rgb(10 132 255), rgb(0 96 223));
-  --dv-error-color: light-dark(rgb(199 35 35), rgb(255 90 90));
-  --dv-success-color: light-dark(rgb(34 160 90), rgb(50 205 124));
-  --dv-loading-color: light-dark(rgb(10 132 255), rgb(0 128 255));
-  --dv-overlay-color: light-dark(rgb(0 0 0 / 0.35), rgb(0 0 0 / 0.5));
+  /* ---- Brand primitives ----
+     light-dark() picks the right value for `auto`; the explicit
+     .dv-theme-* classes pin a scheme via color-scheme. */
+  --dv-ink: light-dark(#121110, #f5f1ec);
+  --dv-ink-2: light-dark(#2b2825, #d9d2ca);
+  --dv-muted: light-dark(#6b635a, #a39a90); /* 4.5:1+ on canvas and surface 1-3 */
+  --dv-on-ink: light-dark(#ffffff, #121110);
+  --dv-canvas: light-dark(#efe9e1, #12100e);
+  --dv-surface: light-dark(#ffffff, #1a1715);
+  --dv-surface-2: light-dark(#f7f3ee, #232020);
+  --dv-surface-3: light-dark(#ece5dc, #2d2926);
+  --dv-hairline: light-dark(rgb(18 17 16 / 0.08), rgb(255 245 235 / 0.08));
+  --dv-accent: light-dark(#e8551f, #ff7a45); /* 3:1+ as a ring on every surface */
+  --dv-accent-soft: light-dark(rgb(232 85 31 / 0.14), rgb(255 122 69 / 0.2));
+
+  /* ---- Semantic colors (public, override freely) ---- */
+  --dv-main-color: var(--dv-ink);
+  --dv-body-bg-color: var(--dv-canvas);
+  --dv-toolbar-bg-color: var(--dv-surface);
+  --dv-field-bg-color: var(--dv-surface);
+  --dv-field-border-color: var(--dv-hairline);
+  --dv-sidebar-bg-color: var(--dv-surface);
+  --dv-doorhanger-bg-color: var(--dv-surface);
+  --dv-separator-color: var(--dv-hairline);
+  --dv-button-hover-color: color-mix(in srgb, var(--dv-ink) 7%, transparent);
+  --dv-button-active-color: color-mix(in srgb, var(--dv-ink) 11%, transparent);
+  --dv-group-bg-color: var(--dv-surface-2);
+  --dv-toggled-bg-color: var(--dv-ink);
+  --dv-toggled-fg-color: var(--dv-on-ink);
+  --dv-progress-bar-color: var(--dv-accent);
+  --dv-error-color: light-dark(rgb(214 48 64), rgb(255 110 120));
+  --dv-success-color: light-dark(rgb(28 150 90), rgb(60 205 130));
+  --dv-loading-color: var(--dv-accent);
+  --dv-overlay-color: light-dark(rgb(28 20 14 / 0.28), rgb(6 4 2 / 0.6));
+  --dv-scrollbar-color: color-mix(in srgb, var(--dv-ink) 18%, transparent);
 
   /* Document "paper" - a rendered page is paper regardless of UI theme,
      so its surface and ink are fixed (like a white PDF page in dark mode).
      Reflowable adapters (DOCX, Markdown, code, CSV, …) render onto this. */
   --dv-page-bg: #ffffff;
-  --dv-page-ink: #1f2328;
-  --dv-page-ink-soft: #57606a;
+  --dv-page-ink: #1f1c19;
+  --dv-page-ink-soft: #5f574f;
 
-  /* Shadows - layered for depth */
-  --dv-shadow-xs: 0 1px 2px rgb(0 0 0 / 0.04);
-  --dv-shadow-sm: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
-  --dv-shadow-md: 0 4px 12px rgb(0 0 0 / 0.08), 0 2px 4px rgb(0 0 0 / 0.04);
-  --dv-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.12), 0 4px 12px rgb(0 0 0 / 0.06);
-  --dv-shadow-focus: 0 0 0 3px rgb(10 132 255 / 0.25);
+  /* Shadows - layered, low-opacity, tinted warm (umber) so they sit on
+     the sand canvas without going grey. A 1px ring replaces borders; two soft depths give lift. */
+  --dv-shadow-xs: 0 0 0 1px rgb(41 28 18 / 0.05), 0 1px 2px rgb(41 28 18 / 0.04);
+  --dv-shadow-sm: 0 0 0 1px rgb(41 28 18 / 0.05), 0 1px 2px -1px rgb(41 28 18 / 0.06),
+    0 2px 6px rgb(41 28 18 / 0.04);
+  --dv-shadow-md: 0 0 0 1px rgb(41 28 18 / 0.04), 0 2px 4px -2px rgb(41 28 18 / 0.06),
+    0 10px 28px -6px rgb(41 28 18 / 0.1);
+  --dv-shadow-lg: 0 0 0 1px rgb(41 28 18 / 0.05), 0 8px 16px -8px rgb(41 28 18 / 0.12),
+    0 28px 64px -12px rgb(41 28 18 / 0.22);
+  --dv-shadow-page: 0 0 0 1px rgb(41 28 18 / 0.04), 0 1px 2px rgb(41 28 18 / 0.04),
+    0 12px 32px -10px rgb(41 28 18 / 0.14);
+  --dv-shadow-focus: 0 0 0 2px var(--dv-surface), 0 0 0 4px var(--dv-accent);
 
   /* Spacing */
   --dv-spacing-xs: 2px;
@@ -56,21 +89,23 @@
   --dv-spacing-xl: 24px;
   --dv-spacing-2xl: 32px;
 
-  /* Radius - concentric scale */
-  --dv-radius-xs: 2px;
-  --dv-radius-sm: 4px;
-  --dv-radius-md: 6px;
-  --dv-radius-lg: 12px;
-  --dv-radius-xl: 16px;
+  /* Radius - concentric scale (outer = inner + padding) */
+  --dv-radius-xs: 3px;
+  --dv-radius-sm: 8px;
+  --dv-radius-md: 12px;
+  --dv-radius-lg: 24px;
+  --dv-radius-xl: 28px;
   --dv-radius-full: 9999px;
 
   /* Transition */
-  --dv-transition-fast: 100ms;
-  --dv-transition-normal: 150ms;
-  --dv-transition-slow: 220ms;
-  --dv-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --dv-ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --dv-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dv-transition-fast: 120ms;
+  --dv-transition-normal: 180ms;
+  --dv-transition-slow: 240ms;
+  --dv-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --dv-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --dv-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dv-ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --dv-press-scale: 0.96;
 
   /* Z-index scale */
   --dv-z-toolbar: 10;
@@ -80,12 +115,15 @@
   --dv-z-dialog: 100000;
   --dv-z-alert: 100001;
 
-  /* Font */
-  --dv-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --dv-font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono', monospace;
+  /* Font - Geist is used when the host page has loaded it; the library
+     never fetches webfonts itself, so this falls back to the system UI. */
+  --dv-font-family: 'Geist', 'Geist Variable', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+  --dv-font-mono: 'Geist Mono', ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono',
+    monospace;
   --dv-font-size-xs: 11px;
   --dv-font-size-sm: 12px;
-  --dv-font-size-md: 14px;
+  --dv-font-size-md: 13px;
   --dv-font-size-lg: 16px;
   --dv-font-size-xl: 18px;
 
