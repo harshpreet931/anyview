@@ -11,7 +11,7 @@ import type {
   TextLayerItem,
 } from '../../core/types';
 import { ViewerError, isViewerError } from '../../core/errors';
-import { loadSanitizer } from '../../core/sanitizer';
+import { loadSanitizer, DOCUMENT_HTML_CONFIG } from '../../core/sanitizer';
 import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 import { makeSafeUrlTransform } from '../../core/markdown-url';
 import { assertTransformSize } from '../../core/limits';
@@ -69,6 +69,12 @@ function escapeHtml(text: string): string {
 // Strip non-base64 chars: the value is interpolated into a data: URI src, so a quote would break out and inject markup (XSS).
 function safeBase64(s: string): string {
   return s.replace(/[^A-Za-z0-9+/=]/g, '');
+}
+
+function utf8ToBase64(s: string): string {
+  let bin = '';
+  for (const b of new TextEncoder().encode(s)) bin += String.fromCharCode(b);
+  return btoa(bin);
 }
 
 const ANSI = new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g");
@@ -228,11 +234,11 @@ export class IpynbAdapter implements Adapter {
       }
       const svg = data['image/svg+xml'];
       if (svg !== undefined) {
-        return `<div class="dv-ipynb-html">${DOMPurify.sanitize(joinSource(svg as string | string[]))}</div>`;
+        return `<img class="dv-ipynb-img" alt="output" src="data:image/svg+xml;base64,${utf8ToBase64(joinSource(svg as string | string[]))}" />`;
       }
       const htmlOut = data['text/html'];
       if (htmlOut !== undefined) {
-        return `<div class="dv-ipynb-html">${DOMPurify.sanitize(joinSource(htmlOut as string | string[]))}</div>`;
+        return `<div class="dv-ipynb-html">${DOMPurify.sanitize(joinSource(htmlOut as string | string[]), DOCUMENT_HTML_CONFIG)}</div>`;
       }
       const plain = data['text/plain'];
       if (plain !== undefined) {

@@ -14,7 +14,7 @@ import type {
   TextLayerItem,
 } from '../../core/types';
 import { ViewerError } from '../../core/errors';
-import { loadSanitizer } from '../../core/sanitizer';
+import { loadSanitizer, DOCUMENT_HTML_CONFIG } from '../../core/sanitizer';
 import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 import { assertTransformSize } from '../../core/limits';
 import { headingScrollOffset } from '../../core/reflow-outline';
@@ -59,24 +59,7 @@ export class HtmlAdapter implements Adapter {
 
     try {
       const DOMPurify = await loadSanitizer();
-      this.htmlContent = markSanitized(DOMPurify.sanitize(rawHtml, {
-        ALLOWED_TAGS: [
-          'a', 'abbr', 'address', 'article', 'aside', 'b', 'bdi', 'bdo',
-          'blockquote', 'br', 'caption', 'cite', 'code', 'col', 'colgroup',
-          'data', 'dd', 'del', 'details', 'dfn', 'div', 'dl', 'dt', 'em',
-          'figcaption', 'figure', 'footer', 'h1', 'h2', 'h3', 'h4', 'h5',
-          'h6', 'header', 'hr', 'i', 'img', 'ins', 'kbd', 'li', 'main', 'mark',
-          'nav', 'ol', 'p', 'pre', 'q', 'rp', 'rt', 'ruby', 's', 'samp',
-          'section', 'small', 'span', 'strong', 'sub', 'summary', 'sup',
-          'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u', 'ul',
-          'var', 'wbr',
-        ],
-        ALLOWED_ATTR: [
-          'href', 'src', 'alt', 'title', 'class', 'id', 'style', 'width',
-          'height', 'colspan', 'rowspan', 'target', 'rel', 'data-*',
-        ],
-        ALLOW_DATA_ATTR: true,
-      }));
+      this.htmlContent = markSanitized(DOMPurify.sanitize(rawHtml, DOCUMENT_HTML_CONFIG));
     } catch (cause) {
       throw new ViewerError('PARSE_ERROR', 'Failed to sanitize HTML.', { cause });
     }

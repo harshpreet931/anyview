@@ -1,33 +1,31 @@
 import { describe, it, expect } from 'vitest';
-import { loadSanitizer } from './sanitizer';
+import { hasNetworkCss } from './sanitizer';
 
-describe('sanitizer', () => {
-  it('strips image sources that would reach the network', async () => {
-    const DOMPurify = await loadSanitizer();
-    const out = DOMPurify.sanitize('<img src="http://attacker.example/beacon.png">', {
-      ALLOWED_TAGS: ['img'],
-      ALLOWED_ATTR: ['src'],
-    });
-    expect(out).not.toContain('http://attacker.example');
-    expect(out.toLowerCase()).not.toContain('src=');
+describe('hasNetworkCss', () => {
+  it.each([
+    'background:url(https://beacon.invalid/a.png)',
+    'background:url("https://beacon.invalid/quoted-paren)")',
+    "background:url('https://beacon.invalid/x')",
+    'background:\\75 rl(https://beacon.invalid/escaped)',
+    'background:\\55RL(https://beacon.invalid/escaped-upper)',
+    'background-image:image-set("https://beacon.invalid/set.png" 1x)',
+    'background-image:-webkit-image-set(url(https://beacon.invalid/w.png) 1x)',
+    'background:URL( //beacon.invalid/protocol-relative )',
+    '@import "https://beacon.invalid/i.css"',
+    'width:expression(alert(1))',
+    'background:url(data:image/png;base64,AAAA), url(https://beacon.invalid/second)',
+  ])('flags %s', (style) => {
+    expect(hasNetworkCss(style)).toBe(true);
   });
 
-  it('keeps inline data: images', async () => {
-    const DOMPurify = await loadSanitizer();
-    const data = 'data:image/png;base64,iVBORw0KGgo=';
-    const out = DOMPurify.sanitize(`<img src="${data}">`, {
-      ALLOWED_TAGS: ['img'],
-      ALLOWED_ATTR: ['src'],
-    });
-    expect(out).toContain(data);
-  });
-
-  it('drops style attributes carrying a network url()', async () => {
-    const DOMPurify = await loadSanitizer();
-    const out = DOMPurify.sanitize(
-      '<div style="background:url(http://attacker.example/x)">hi</div>',
-      { ALLOWED_TAGS: ['div'], ALLOWED_ATTR: ['style'] },
-    );
-    expect(out).not.toContain('attacker.example');
+  it.each([
+    'color:red;font-weight:bold',
+    'background:url(data:image/png;base64,iVBORw0KGgo=)',
+    'background:url("data:image/svg+xml;utf8,<svg></svg>")',
+    'clip-path:url(#shape)',
+    'content:"url(not-a-function)"',
+    '',
+  ])('allows %s', (style) => {
+    expect(hasNetworkCss(style)).toBe(false);
   });
 });
