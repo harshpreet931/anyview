@@ -199,10 +199,11 @@ test.describe('PDF - annotations', () => {
     await loadSample(page, 'PDF');
     await waitForCanvasRendered(page);
 
-    page.once('dialog', (d) => d.accept('A test note'));
     await page.locator('button[aria-label="Note"]').click();
     const box = await pageBox(page);
     await page.mouse.click(box.x + 150, box.y + 150);
+    await page.keyboard.type('A test note');
+    await page.keyboard.press('Enter');
 
     await expect(page.locator('.dv-annotation-layer .dv-annotation')).toHaveCount(1);
   });

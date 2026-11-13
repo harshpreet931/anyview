@@ -1,4 +1,10 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import type {
   Annotation,
   HighlightAnnotation,
@@ -108,6 +114,40 @@ function renderShapeGeometry(
   );
 }
 
+type Rect = { x: number; y: number; width: number; height: number };
+
+const LINE_HIGHLIGHT_HEIGHT = 0.016;
+
+/** Turns a near-horizontal drag into highlight rects that cover the text it crossed. */
+function lineHighlightRects(svg: SVGSVGElement, from: Point, to: Point): Rect[] {
+  const page = svg.getBoundingClientRect();
+  const left = Math.min(from.x, to.x);
+  const right = Math.max(from.x, to.x);
+  const y = (from.y + to.y) / 2;
+  const rects: Rect[] = [];
+  const spans = svg.parentElement?.querySelectorAll<HTMLElement>('.dv-text-layer span') ?? [];
+  for (const span of spans) {
+    const b = span.getBoundingClientRect();
+    if (!b.width || !b.height || !page.width || !page.height) continue;
+    const r = {
+      x: (b.left - page.left) / page.width,
+      y: (b.top - page.top) / page.height,
+      width: b.width / page.width,
+      height: b.height / page.height,
+    };
+    if (y < r.y || y > r.y + r.height || r.x > right || r.x + r.width < left) continue;
+    const x = Math.max(r.x, left);
+    rects.push({ x, y: r.y, width: Math.min(r.x + r.width, right) - x, height: r.height });
+  }
+  if (rects.length > 0) return rects;
+  return [{ x: left, y: y - LINE_HIGHLIGHT_HEIGHT / 2, width: right - left, height: LINE_HIGHLIGHT_HEIGHT }];
+}
+
+type TextTool = 'sticky-note' | 'free-text';
+const EDITOR_LABEL: Record<TextTool, string> = { 'sticky-note': 'Note', 'free-text': 'Text' };
+const EDITOR_W = 220;
+const EDITOR_H = 84;
+
 export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerProps) {
   const annotations = useViewerStore((s) => s.annotations);
   const activeTool = useViewerStore((s) => s.activeAnnotationTool);
@@ -121,8 +161,53 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
   const startRef = useRef<Point | null>(null);
   const [draftBox, setDraftBox] = useState<{ from: Point; to: Point } | null>(null);
   const [draftPath, setDraftPath] = useState<Point[]>([]);
+  const [editor, setEditor] = useState<{ tool: TextTool; at: Point } | null>(null);
+  const pointersRef = useRef(new Set<number>());
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editor) editorRef.current?.focus({ preventScroll: true });
+  }, [editor]);
 
   const isDrawingTool = activeTool !== null;
+
+  const cancelDraft = () => {
+    drawingRef.current = false;
+    startRef.current = null;
+    setDraftBox(null);
+    setDraftPath([]);
+  };
+
+  const commitEditor = (text: string) => {
+    if (!editor) return;
+    setEditor(null);
+    const value = text.trim();
+    if (!value) return;
+    const { tool, at } = editor;
+    const base = {
+      id: newId(),
+      pageIndex,
+      color: TOOL_DEFAULTS[tool].color,
+      opacity: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    if (tool === 'sticky-note') {
+      const note: StickyNoteAnnotation = {
+        ...base,
+        type: 'sticky-note',
+        data: { x: at.x, y: at.y, comment: value },
+      };
+      addAnnotation(note);
+    } else {
+      const ann: FreeTextAnnotation = {
+        ...base,
+        type: 'free-text',
+        data: { x: at.x, y: at.y, text: value, fontSize: FREE_TEXT_SIZE },
+      };
+      addAnnotation(ann);
+    }
+  };
 
   const toPoint = (e: ReactPointerEvent): Point => {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -134,46 +219,20 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
 
   const handlePointerDown = (e: ReactPointerEvent) => {
     if (!isDrawingTool) return;
+    pointersRef.current.add(e.pointerId);
+    if (pointersRef.current.size > 1) {
+      cancelDraft();
+      return;
+    }
     e.preventDefault();
     const pt = toPoint(e);
+
+    if (activeTool === 'sticky-note' || activeTool === 'free-text') {
+      if (!editor) setEditor({ tool: activeTool, at: pt });
+      return;
+    }
+
     svgRef.current?.setPointerCapture(e.pointerId);
-
-    if (activeTool === 'sticky-note') {
-      const comment = window.prompt('Note');
-      if (comment != null && comment.trim()) {
-        const note: StickyNoteAnnotation = {
-          id: newId(),
-          pageIndex,
-          type: 'sticky-note',
-          color: TOOL_DEFAULTS['sticky-note'].color,
-          opacity: 1,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          data: { x: pt.x, y: pt.y, comment: comment.trim() },
-        };
-        addAnnotation(note);
-      }
-      return;
-    }
-
-    if (activeTool === 'free-text') {
-      const text = window.prompt('Text');
-      if (text != null && text.trim()) {
-        const ann: FreeTextAnnotation = {
-          id: newId(),
-          pageIndex,
-          type: 'free-text',
-          color: TOOL_DEFAULTS['free-text'].color,
-          opacity: 1,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          data: { x: pt.x, y: pt.y, text: text.trim(), fontSize: FREE_TEXT_SIZE },
-        };
-        addAnnotation(ann);
-      }
-      return;
-    }
-
     drawingRef.current = true;
     startRef.current = pt;
     if (activeTool === 'ink') setDraftPath([pt]);
@@ -181,7 +240,7 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
   };
 
   const handlePointerMove = (e: ReactPointerEvent) => {
-    if (!drawingRef.current || !startRef.current) return;
+    if (!drawingRef.current || !startRef.current || pointersRef.current.size > 1) return;
     const pt = toPoint(e);
     if (activeTool === 'ink') {
       setDraftPath((prev) => [...prev, pt]);
@@ -190,7 +249,13 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
     }
   };
 
+  const handlePointerEnd = (e: ReactPointerEvent) => {
+    pointersRef.current.delete(e.pointerId);
+    if (drawingRef.current && e.type === 'pointercancel') cancelDraft();
+  };
+
   const handlePointerUp = (e: ReactPointerEvent) => {
+    handlePointerEnd(e);
     if (!drawingRef.current) return;
     drawingRef.current = false;
     svgRef.current?.releasePointerCapture(e.pointerId);
@@ -228,6 +293,18 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
           data: { shape: activeTool, from, to, strokeWidth: SHAPE_STROKE },
         };
         addAnnotation(shape);
+      } else if (activeTool === 'highlight' && dx > 0.01 && dy <= 0.01 && svgRef.current) {
+        const hl: HighlightAnnotation = {
+          id: newId(),
+          pageIndex,
+          type: 'highlight',
+          color: TOOL_DEFAULTS.highlight.color,
+          opacity: TOOL_DEFAULTS.highlight.opacity,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          data: { rects: lineHighlightRects(svgRef.current, from, to) },
+        };
+        addAnnotation(hl);
       } else if (activeTool === 'highlight' && dx > 0.002 && dy > 0.002) {
         const hl: HighlightAnnotation = {
           id: newId(),
@@ -268,6 +345,7 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerEnd}
     >
       {pageAnnotations.map((a) => (
         <AnnotationShape
@@ -311,9 +389,44 @@ export function AnnotationLayer({ pageIndex, width, height }: AnnotationLayerPro
           strokeLinejoin="round"
         />
       )}
+      {editor && (
+        <foreignObject
+          x={Math.min(editor.at.x * width, Math.max(0, width - EDITOR_W))}
+          y={Math.min(editor.at.y * height, Math.max(0, height - EDITOR_H))}
+          width={EDITOR_W}
+          height={EDITOR_H}
+          style={{ pointerEvents: 'auto' }}
+        >
+          <textarea
+            className="dv-annotation-editor"
+            ref={editorRef}
+            aria-label={EDITOR_LABEL[editor.tool]}
+            onPointerDown={(e) => e.stopPropagation()}
+            onBlur={(e) => commitEditor(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                setEditor(null);
+              } else if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                commitEditor(e.currentTarget.value);
+              }
+            }}
+          />
+        </foreignObject>
+      )}
     </svg>
   );
 }
+
+const ANNOTATION_LABEL: Record<Annotation['type'], string> = {
+  highlight: 'Highlight annotation',
+  ink: 'Drawing annotation',
+  'sticky-note': 'Note annotation',
+  shape: 'Shape annotation',
+  'free-text': 'Text annotation',
+};
 
 function AnnotationShape({
   annotation,
@@ -336,6 +449,17 @@ function AnnotationShape({
     if (!interactive) return;
     e.stopPropagation();
     onSelect();
+  };
+
+  const handleKeyDown = (e: ReactKeyboardEvent) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      e.stopPropagation();
+      (e.currentTarget as Element)
+        .closest<HTMLElement>('.dv-viewer-container')
+        ?.focus({ preventScroll: true });
+      onDelete();
+    }
   };
 
   const isTextOverlay =
@@ -445,8 +569,28 @@ function AnnotationShape({
   }
 
   return (
-    <g className="dv-annotation" data-selected={selected || undefined}>
+    <g
+      className="dv-annotation"
+      data-selected={selected || undefined}
+      tabIndex={interactive ? 0 : -1}
+      role="button"
+      aria-label={ANNOTATION_LABEL[annotation.type]}
+      aria-pressed={selected}
+      onFocus={interactive ? onSelect : undefined}
+      onKeyDown={interactive ? handleKeyDown : undefined}
+    >
       {body}
+      {selected && annotation.type === 'sticky-note' && (
+        <foreignObject
+          x={Math.min(anchor.x + 6, Math.max(0, width - EDITOR_W))}
+          y={anchor.y + 22}
+          width={EDITOR_W}
+          height={EDITOR_H}
+          style={{ pointerEvents: 'none' }}
+        >
+          <div className="dv-annotation-comment">{annotation.data.comment}</div>
+        </foreignObject>
+      )}
       {selected && interactive && (
         <g
           className="dv-annotation-delete"

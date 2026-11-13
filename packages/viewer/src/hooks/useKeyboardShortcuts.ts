@@ -12,6 +12,7 @@ export function useKeyboardShortcuts(
   const zoomOut = useViewerStore((s) => s.zoomOut);
   const toggleSidebar = useViewerStore((s) => s.toggleSidebar);
   const setSearchOpen = useViewerStore((s) => s.setSearchOpen);
+  const undoAnnotation = useViewerStore((s) => s.undoAnnotation);
   const rootElement = useViewerStore((s) => s._rootElement);
   const pageCount = useViewerStore((s) => s.document?.pageCount);
 
@@ -35,6 +36,11 @@ export function useKeyboardShortcuts(
 
       if (e.key === 'Escape') {
         setSearchOpen(false);
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'z' || e.key === 'Z')) {
+        if (undoAnnotation()) e.preventDefault();
         return;
       }
 
@@ -89,5 +95,5 @@ export function useKeyboardShortcuts(
 
     rootElement.addEventListener('keydown', handler);
     return () => rootElement.removeEventListener('keydown', handler);
-  }, [enabled, rootElement, nextPage, prevPage, firstPage, lastPage, zoomIn, zoomOut, toggleSidebar, setSearchOpen, pageCount]);
+  }, [enabled, rootElement, nextPage, prevPage, firstPage, lastPage, zoomIn, zoomOut, toggleSidebar, setSearchOpen, pageCount, undoAnnotation]);
 }

@@ -135,7 +135,6 @@ test.describe('format - Jupyter notebook', () => {
 
 test.describe('annotations - shapes & free-text', () => {
   test('draws rectangle, line, and free-text', async ({ page }) => {
-    page.on('dialog', (d) => d.accept('Note text'));
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'fit-page');
     await page.waitForTimeout(300);
@@ -155,6 +154,8 @@ test.describe('annotations - shapes & free-text', () => {
     await page.locator('button[aria-label="Text"]').click();
     const box = await pageBox();
     await page.mouse.click(box.x + 80, box.y + 420);
+    await page.keyboard.type('Note text');
+    await page.keyboard.press('Enter');
     await page.waitForTimeout(200);
     await expect(page.locator('g.dv-annotation')).toHaveCount(3);
     await expect(page.locator('.dv-annotation-layer text')).toHaveText('Note text');
