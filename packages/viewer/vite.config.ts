@@ -56,6 +56,69 @@ function copyPdfjsAssets(): Plugin {
   };
 }
 
+const PDF_WORKER_ENTRY = 'adapters/pdf/pdf.worker';
+const PDF_ASSET_FILES: Record<string, RegExp> = {
+  cmaps: /\.bcmap$/,
+  standard_fonts: /\.(pfb|ttf)$/,
+  wasm: /\.wasm$/,
+};
+
+function relativeFrom(chunkFile: string, target: string): string {
+  const rel = path.posix.relative(path.posix.dirname(chunkFile), target);
+  return rel.startsWith('.') ? rel : `./${rel}`;
+}
+
+function pdfWorkerForBundlers(): Plugin {
+  const assetPaths = Object.entries(PDF_ASSET_FILES).flatMap(([dir, re]) =>
+    fs
+      .readdirSync(path.join(PDFJS_ROOT, dir))
+      .filter((f) => re.test(f))
+      .map((f) => `${dir}/${f}`),
+  );
+  return {
+    name: 'pdf-worker-for-bundlers',
+    apply: 'build',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.endsWith('/adapters/pdf/PdfAdapter.ts')) return null;
+      const from = "new URL('./pdf.worker.ts', import.meta.url)";
+      if (!code.includes(from)) this.error('PdfAdapter worker URL not found');
+      return code.replace(from, 'new URL(__ANYVIEW_PDF_WORKER__, import.meta.url)');
+    },
+    generateBundle(options, bundle) {
+      const isEsm = options.format === 'es';
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== 'chunk') continue;
+        if (chunk.code.includes('__ANYVIEW_PDF_WORKER__')) {
+          const url = JSON.stringify(relativeFrom(chunk.fileName, `${PDF_WORKER_ENTRY}.js`));
+          chunk.code = isEsm
+            ? chunk.code.replaceAll('__ANYVIEW_PDF_WORKER__', url)
+            : chunk.code.replace(
+                /new URL\(__ANYVIEW_PDF_WORKER__,[^)]*\)/g,
+                `new URL(${url},typeof document>"u"?require("url").pathToFileURL(__filename).href:document.currentScript&&document.currentScript.src||document.baseURI)`,
+              );
+        }
+        if (isEsm && /new URL\("\.\.\/pdfjs\/",\s*""\s*\+\s*import\.meta\.url\)/.test(chunk.code)) {
+          const base = JSON.stringify(`${relativeFrom(chunk.fileName, 'pdfjs')}/`);
+          chunk.code = chunk.code.replace(
+            /new URL\("\.\.\/pdfjs\/",\s*""\s*\+\s*import\.meta\.url\)/g,
+            `new URL(import.meta.url.replace(/[^/]*$/, "") + ${base})`,
+          );
+        }
+        if (isEsm && chunk.code.includes('__ANYVIEW_PDF_ASSETS__')) {
+          const entries = assetPaths.map(
+            (a) =>
+              `${JSON.stringify(a)}:new URL(${JSON.stringify(relativeFrom(chunk.fileName, `pdfjs/${a}`))},import.meta.url).href`,
+          );
+          chunk.code = chunk.code
+            .replaceAll('typeof __ANYVIEW_PDF_ASSETS__', '"object"')
+            .replaceAll('__ANYVIEW_PDF_ASSETS__', `({${entries.join(',')}})`);
+        }
+      }
+    },
+  };
+}
+
 export default defineConfig({
   base: './',
   plugins: [
@@ -82,6 +145,7 @@ export default defineConfig({
       },
     }),
     copyPdfjsAssets(),
+    pdfWorkerForBundlers(),
   ],
   worker: {
     format: 'es',
@@ -91,6 +155,7 @@ export default defineConfig({
       entry: {
         index: 'src/index.ts',
         'adapters/pdf/index': 'src/adapters/pdf/index.ts',
+        [PDF_WORKER_ENTRY]: 'src/adapters/pdf/pdf.worker.ts',
         'adapters/docx/index': 'src/adapters/docx/index.ts',
         'adapters/xlsx/index': 'src/adapters/xlsx/index.ts',
         'adapters/pptx/index': 'src/adapters/pptx/index.ts',
@@ -110,7 +175,7 @@ export default defineConfig({
         /^react-dom\//,
         'comlink', '@tanstack/react-virtual', 'zustand',
         'dompurify',
-        'pdfjs-dist', 'mammoth', 'xlsx', 'papaparse',
+        'pdfjs-dist', /^pdfjs-dist\//, 'mammoth', 'xlsx', 'papaparse',
         'react-markdown', 'remark-gfm', 'shiki', 'jszip',
         /^@shikijs\//,
         /^shiki\//,

@@ -1,13 +1,27 @@
 /// <reference types="vite/client" />
 
 import * as Comlink from 'comlink';
-import * as pdfjsLib from 'pdfjs-dist';
-import PdfJsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { ParsedPdf, PdfOutlineItem, PdfMetadata, PdfWorkerApi } from './types';
 import { totalRotation, type Rotation } from '../../core/rotation';
+import { loadParser } from '../../core/load-parser';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = PdfJsWorkerUrl;
+let pdfjsPromise: Promise<typeof import('pdfjs-dist')> | null = null;
+
+function loadPdfjs() {
+  pdfjsPromise ??= loadParser('pdfjs-dist', async () => {
+    const [lib, worker] = await Promise.all([
+      import('pdfjs-dist'),
+      import('pdfjs-dist/build/pdf.worker.min.mjs'),
+    ]);
+    (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = worker;
+    return lib;
+  }).catch((err) => {
+    pdfjsPromise = null;
+    throw err;
+  });
+  return pdfjsPromise;
+}
 
 class OffscreenCanvasFactory {
   create(width: number, height: number) {
@@ -34,8 +48,41 @@ class OffscreenCanvasFactory {
   }
 }
 
+declare const __ANYVIEW_PDF_ASSETS__: Record<string, string> | undefined;
+
+const BUNDLED_ASSETS =
+  typeof __ANYVIEW_PDF_ASSETS__ === 'undefined' ? null : __ANYVIEW_PDF_ASSETS__;
+
 // Resolves relative to this worker's own emitted location, not the host app's routing base.
 const DEFAULT_ASSET_BASE = new URL('../pdfjs/', import.meta.url).href;
+
+const ASSET_DIRS = {
+  cMapUrl: 'cmaps/',
+  standardFontDataUrl: 'standard_fonts/',
+  wasmUrl: 'wasm/',
+} as const;
+
+type AssetKind = keyof typeof ASSET_DIRS;
+
+function createBinaryDataFactory(assetBase: string | undefined) {
+  return class {
+    async fetch({ kind, filename }: { kind: AssetKind; filename: string }) {
+      const dir = ASSET_DIRS[kind];
+      const url =
+        (!assetBase && BUNDLED_ASSETS?.[dir + filename]) ||
+        `${assetBase || DEFAULT_ASSET_BASE}${dir}${filename}`;
+      if (url.startsWith('data:')) {
+        const bin = atob(url.slice(url.indexOf(',') + 1));
+        return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+      }
+      const res = await fetch(url);
+      if (!res.ok || res.headers.get('content-type')?.includes('text/html')) {
+        throw new Error(`Unable to load PDF ${dir.slice(0, -1)} data at: ${url}`);
+      }
+      return new Uint8Array(await res.arrayBuffer());
+    }
+  };
+}
 
 function buildPdfAssets(assetBase: string | undefined) {
   const base = assetBase || DEFAULT_ASSET_BASE;
@@ -47,7 +94,8 @@ function buildPdfAssets(assetBase: string | undefined) {
     iccUrl: `${base}iccs/`,
     disableFontFace: true,
     useSystemFonts: false,
-    useWorkerFetch: true,
+    useWorkerFetch: false,
+    BinaryDataFactory: createBinaryDataFactory(assetBase),
     CanvasFactory: OffscreenCanvasFactory,
   } as const;
 }
@@ -111,6 +159,7 @@ const api: PdfWorkerApi = {
     password?: string,
     assetBase?: string,
   ): Promise<ParsedPdf> {
+    const pdfjsLib = await loadPdfjs();
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(data),
       password,

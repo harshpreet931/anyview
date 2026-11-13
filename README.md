@@ -82,7 +82,7 @@ npm install dompurify                   # HTML / DOCX sanitization
 
 PDF rendering runs in a Web Worker and ships its own copy of pdf.js's font/CMap/color assets (`node_modules/anyview/dist/pdfjs/`) so CJK/Indic text and non-embedded fonts render correctly out of the box - no CDN, no extra install.
 
-The worker resolves these assets relative to its own script URL, which works automatically if your bundler serves `anyview`'s files with their original relative layout intact (true for most Vite/webpack setups that don't heavily repackage dependency workers). If PDF text renders as blank boxes, your bundler moved the worker without its `pdfjs/` sibling folder - copy `node_modules/anyview/dist/pdfjs` to a path your app serves, then point the adapter at it once at startup:
+The worker and each of these assets are referenced with `new URL('…', import.meta.url)`, so Vite, webpack and Next.js (Turbopack and webpack) bundle them automatically, in dev and production, and only the files a document needs are fetched. To host them yourself instead (e.g. on a CDN), copy `node_modules/anyview/dist/pdfjs` to a path your app serves and point the adapter at it once at startup:
 
 ```ts
 import { PdfAdapter } from 'anyview/pdf';
