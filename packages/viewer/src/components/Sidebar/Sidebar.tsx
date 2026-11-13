@@ -122,7 +122,31 @@ export function Sidebar() {
       aria-label={strings.sidebar.region}
       style={{ width: `${sidebarWidth}px` }}
     >
-      <div className="dv-sidebar-views" role="tablist" aria-label={strings.sidebar.viewSwitcher}>
+      <div
+        className="dv-sidebar-views"
+        role="tablist"
+        aria-label={strings.sidebar.viewSwitcher}
+        onKeyDown={(e) => {
+          const i = views.findIndex((v) => v.id === activeView);
+          const next =
+            e.key === 'ArrowRight' || e.key === 'ArrowDown'
+              ? (i + 1) % views.length
+              : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
+                ? (i - 1 + views.length) % views.length
+                : e.key === 'Home'
+                  ? 0
+                  : e.key === 'End'
+                    ? views.length - 1
+                    : -1;
+          if (next === -1) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setSidebarView(views[next]!.id);
+          e.currentTarget
+            .querySelector<HTMLElement>(`#${CSS.escape(tabId(views[next]!.id))}`)
+            ?.focus();
+        }}
+      >
         {views.map((view) => (
           <button
             key={view.id}

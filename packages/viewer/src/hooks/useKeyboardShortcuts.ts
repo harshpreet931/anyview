@@ -13,6 +13,7 @@ export function useKeyboardShortcuts(
   const toggleSidebar = useViewerStore((s) => s.toggleSidebar);
   const setSearchOpen = useViewerStore((s) => s.setSearchOpen);
   const rootElement = useViewerStore((s) => s._rootElement);
+  const pageCount = useViewerStore((s) => s.document?.pageCount);
 
   useEffect(() => {
     if (!enabled || !rootElement) return;
@@ -52,7 +53,13 @@ export function useKeyboardShortcuts(
         return;
       }
 
-      if (!target.closest('.dv-viewer-container')) return;
+      const container = target.closest<HTMLElement>('.dv-viewer-container');
+      if (!container) return;
+
+      const isArrow = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+      if (isArrow && container.scrollWidth > container.clientWidth + 1) return;
+      const isPaging = e.key === 'PageUp' || e.key === 'PageDown' || e.key === 'Home' || e.key === 'End';
+      if (isPaging && (pageCount ?? 0) <= 1) return;
 
       switch (e.key) {
         case 'ArrowRight':
@@ -82,5 +89,5 @@ export function useKeyboardShortcuts(
 
     rootElement.addEventListener('keydown', handler);
     return () => rootElement.removeEventListener('keydown', handler);
-  }, [enabled, rootElement, nextPage, prevPage, firstPage, lastPage, zoomIn, zoomOut, toggleSidebar, setSearchOpen]);
+  }, [enabled, rootElement, nextPage, prevPage, firstPage, lastPage, zoomIn, zoomOut, toggleSidebar, setSearchOpen, pageCount]);
 }
