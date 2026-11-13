@@ -11,7 +11,7 @@ No iframes, no server round-trips, no uploads. Your files never leave the page.
 [![CI](https://img.shields.io/github/actions/workflow/status/harshpreet931/anyview/ci.yml?branch=main&labelColor=0E0F12)](https://github.com/harshpreet931/anyview/actions)
 [![stars](https://img.shields.io/github/stars/harshpreet931/anyview?style=social)](https://github.com/harshpreet931/anyview)
 
-**[Try the live demo](https://harshpreet931.github.io/anyview/)** &nbsp;·&nbsp; [Quick start](#quick-start) &nbsp;·&nbsp; [Why Anyview?](#why-anyview) &nbsp;·&nbsp; [FAQ](#faq)
+**[Try the live demo](https://anyview.harshpreet.com/)** &nbsp;·&nbsp; [Quick start](#quick-start) &nbsp;·&nbsp; [Why Anyview?](#why-anyview) &nbsp;·&nbsp; [FAQ](#faq)
 
 <br />
 
@@ -21,7 +21,7 @@ No iframes, no server round-trips, no uploads. Your files never leave the page.
 
 <img src="./assets/screenshot.png" width="900" alt="Anyview rendering a real PDF with a thumbnail rail, page navigation, zoom, rotate, and annotation tools" />
 
-<sub>A real document rendered in the <a href="https://harshpreet931.github.io/anyview/">live playground</a>, with a selectable text layer, cross-format search, thumbnails, and annotations.</sub>
+<sub>A real document rendered in the <a href="https://anyview.harshpreet.com/">live playground</a>, with a selectable text layer, cross-format search, thumbnails, and annotations.</sub>
 
 </div>
 
