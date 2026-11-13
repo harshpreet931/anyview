@@ -59,6 +59,8 @@ function detectLanguage(filename: string): string {
   return map[ext] || 'plaintext';
 }
 
+const HIGHLIGHT_MAX_CHARS = 300_000;
+
 export class CodeAdapter implements Adapter {
   readonly manifest = codeManifest;
   private codeText = '';
@@ -76,19 +78,24 @@ export class CodeAdapter implements Adapter {
     this.codeText = decodeText(buffer, source.meta.mimeType);
     this.language = detectLanguage(source.meta.name);
 
-    try {
-      const shiki = await import('shiki');
-      const highlighter = await shiki.createHighlighter({
-        themes: ['github-dark', 'github-light'],
-        langs: [this.language],
-      });
+    const plain = () => `<pre><code>${this.escapeHtml(this.codeText)}</code></pre>`;
+    if (this.codeText.length > HIGHLIGHT_MAX_CHARS) {
+      this.highlightedHtml = plain();
+    } else {
+      try {
+        const shiki = await import('shiki');
+        const highlighter = await shiki.createHighlighter({
+          themes: ['github-dark', 'github-light'],
+          langs: [this.language],
+        });
 
-      this.highlightedHtml = highlighter.codeToHtml(this.codeText, {
-        lang: this.language,
-        themes: { light: 'github-light', dark: 'github-dark' },
-      });
-    } catch {
-      this.highlightedHtml = `<pre><code>${this.escapeHtml(this.codeText)}</code></pre>`;
+        this.highlightedHtml = highlighter.codeToHtml(this.codeText, {
+          lang: this.language,
+          themes: { light: 'github-light', dark: 'github-dark' },
+        });
+      } catch {
+        this.highlightedHtml = plain();
+      }
     }
 
     const lines = this.codeText.split('\n');
