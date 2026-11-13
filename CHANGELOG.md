@@ -5,6 +5,31 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.3.0]
+
+### Changed
+- **New look.** The toolbar, sidebar, dialogs and states were restyled (pill-grouped controls, line icons, warm "Tangerine & sand" palette with matching dark and sepia themes). Some token defaults changed: toolbar height 44 → 52px, base font size 14 → 13px, and the radius scale. Every existing `--dv-*` token still works.
+- **The toolbar adapts to the viewer's own width** (container queries), folding less-used groups into a "More" menu, and the sidebar takes its own column instead of overlaying the page.
+- **PDF now uses your installed `pdfjs-dist`** (the declared peer, as the README always said) instead of a bundled copy, so you control pdf.js upgrades. If it isn't installed, opening a PDF reports `npm install pdfjs-dist` instead of failing the build.
+
+### Fixed
+- **Next/Previous, arrow keys, thumbnails and the page input scroll to the page.** Within two pages of the current one they only changed the page number.
+- **An inline `source={{ … }}` no longer reloads the document on every parent render** (the README pattern reloaded on every page change, resetting scroll, search and annotations).
+- **PDFs open in Next.js** (Turbopack and webpack, dev and production), and the pdf.js fonts, CMaps and wasm are bundled automatically by Vite, webpack and Next. CJK and non-embedded-font PDFs rendered blank in Vite production builds.
+- **PDF works under a strict `script-src 'self'` CSP** (the pdf.js worker is no longer a `data:` URL).
+- **`import 'anyview/styles'` type-checks on TypeScript 6+** (TS2882) and in `next build`.
+- **Document headings and lists survive host CSS resets** such as Tailwind's preflight.
+- **Colors work in browsers without `light-dark()`** (before Chrome 123 / Safari 17.5).
+- **Every control has a visible focus ring in forced-colors (Windows High Contrast) mode.**
+- **A narrow viewer no longer saves "sidebar closed"** as the preference for full-size viewers.
+- **The viewer no longer sets font smoothing on the host page.**
+- **A viewer in a parent with no height no longer collapses to 0px**: it falls back to `--dv-fallback-height` (70vh) and warns.
+- Notebook SVG/PNG outputs keep their natural size, and DataFrame tables keep their borders.
+
+### Security
+- **Notebook `text/html` and `image/svg+xml` outputs are sanitized with the strict document allow-list.** A notebook could inject a global `<style>` that restyled the host app, load remote trackers, and render a password form posting off-site. SVG outputs now render as images.
+- **The CSS network guard can no longer be bypassed** with `url("…)")`, CSS escapes or `image-set()`, which leaked the reader's IP from HTML, DOCX, XLSX, PPTX and notebook documents.
+
 ## [0.2.4]
 
 ### Fixed
