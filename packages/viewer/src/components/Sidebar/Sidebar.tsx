@@ -13,6 +13,10 @@ import type {
 const SIDEBAR_MIN_WIDTH = 140;
 const SIDEBAR_MAX_WIDTH = 400;
 
+/** Below this viewer width the sidebar covers the page, so it starts closed
+ *  and closes itself after a jump. Matches the 640px container query. */
+export const NARROW_VIEWER_WIDTH = 640;
+
 export function Sidebar() {
   const sidebarOpen = useViewerStore((s) => s.sidebarOpen);
   const sidebarView = useViewerStore((s) => s.sidebarView);
@@ -22,10 +26,21 @@ export function Sidebar() {
   const document = useViewerStore((s) => s.document);
   const adapter = useViewerStore((s) => s.adapter);
   const currentPage = useViewerStore((s) => s.currentPage);
-  const goToPage = useViewerStore((s) => s.goToPage);
+  const goToPageInStore = useViewerStore((s) => s.goToPage);
+  const setSidebarOpen = useViewerStore((s) => s.setSidebarOpen);
+  const asideRef = useRef<HTMLElement>(null);
   const setScrollOffset = useViewerStore((s) => s.setScrollOffset);
   const strings = useStrings();
   const instanceId = useViewerStore((s) => s.instanceId);
+
+  const goToPage = useCallback(
+    (pageIndex: number) => {
+      goToPageInStore(pageIndex);
+      const host = asideRef.current?.parentElement;
+      if (host && host.clientWidth < NARROW_VIEWER_WIDTH) setSidebarOpen(false);
+    },
+    [goToPageInStore, setSidebarOpen],
+  );
 
   const navigateToOutline = useCallback(
     (pageIndex: number, scrollOffset?: number) => {
@@ -101,6 +116,7 @@ export function Sidebar() {
 
   return (
     <aside
+      ref={asideRef}
       className="dv-sidebar"
       data-open={sidebarOpen}
       aria-label={strings.sidebar.region}

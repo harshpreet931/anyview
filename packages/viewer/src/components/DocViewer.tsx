@@ -21,7 +21,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { I18nProvider, useStrings } from '../i18n/I18nProvider';
 import { formatString } from '../i18n/strings';
 import { Toolbar } from './Toolbar/Toolbar';
-import { Sidebar } from './Sidebar/Sidebar';
+import { Sidebar, NARROW_VIEWER_WIDTH } from './Sidebar/Sidebar';
 import { ViewerContainer } from './Viewer/ViewerContainer';
 import { PasswordDialog } from './Dialogs/PasswordDialog';
 import { PropertiesDialog } from './Dialogs/PropertiesDialog';
@@ -105,6 +105,13 @@ function DocViewerInner(
     return () =>
       window.document.removeEventListener('visibilitychange', onVisibility);
   }, [pageCache]);
+
+  // The sidebar overlays the page; on a phone-width viewer it would cover the
+  // document on first paint, so start it closed there.
+  useEffect(() => {
+    const width = rootRef.current?.clientWidth ?? 0;
+    if (width > 0 && width < NARROW_VIEWER_WIDTH) store.getState().setSidebarOpen(false);
+  }, [store]);
 
   useEffect(() => {
     setRootElement(rootRef.current);
