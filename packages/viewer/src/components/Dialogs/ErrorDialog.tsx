@@ -28,7 +28,7 @@ export function ErrorDialog({ error, onRetry, onDismiss }: ErrorDialogProps) {
         <div className="dv-dialog-body">
           <p className="dv-dialog-description">{error.message}</p>
           {error.cause instanceof Error && (
-            <p className="dv-dialog-detail" style={{ fontSize: 'var(--dv-font-size-sm)', opacity: 0.7 }}>
+            <p className="dv-dialog-detail">
               {error.cause.message}
             </p>
           )}

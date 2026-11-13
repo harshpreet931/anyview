@@ -54,9 +54,10 @@ export function EmptyState({ description }: { description?: string }) {
       />
       <StateContainer
         icon={
-          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="8" y="6" width="32" height="36" rx="2" />
-            <path d="M16 18h16M16 26h16M16 34h10" />
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M14 5h14l11 11v25a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z" />
+            <path d="M28 5v8a3 3 0 0 0 3 3h8" />
+            <path d="M18 26h12M18 33h8" />
           </svg>
         }
         title={strings.states.empty}
@@ -87,8 +88,8 @@ export function ErrorState({
   return (
     <StateContainer
       icon={
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="24" cy="24" r="20" />
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <circle cx="24" cy="24" r="18" />
           <path d="M24 14v14M24 34v2" strokeLinecap="round" />
         </svg>
       }
@@ -96,7 +97,7 @@ export function ErrorState({
       {...(message ? { description: message } : {})}
     >
       {onRetry && (
-        <button className="dv-button" onClick={onRetry} style={{ marginTop: 'var(--dv-spacing-lg)' }}>
+        <button className="dv-button dv-button-primary dv-button-md dv-state-action" onClick={onRetry}>
           {strings.states.retry}
         </button>
       )}
