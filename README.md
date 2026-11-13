@@ -68,7 +68,7 @@ Anyview keeps format parsers as **optional peer dependencies** so you ship only 
 ```bash
 npm install pdfjs-dist                  # PDF
 npm install mammoth                     # DOCX
-npm install xlsx                        # XLSX
+npm install https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz   # XLSX (patched SheetJS build)
 npm install jszip                       # PPTX
 npm install papaparse                   # CSV/TSV
 npm install react-markdown remark-gfm   # Markdown
@@ -77,6 +77,8 @@ npm install dompurify                   # HTML / DOCX sanitization
 ```
 
 > Jupyter notebooks (`.ipynb`) reuse the Markdown, code, and sanitizer parsers above, so they need no extra dependency.
+
+> SheetJS stopped publishing to npm at 0.18.5, which has known vulnerabilities (CVE-2023-30533, CVE-2024-22363). Install the patched build from the SheetJS CDN as shown; any `xlsx` version from 0.18.5 up is accepted.
 
 ### PDF fonts and CMaps
 
