@@ -39,7 +39,10 @@ export function Sidebar() {
     (pageIndex: number) => {
       goToPageInStore(pageIndex);
       const host = asideRef.current?.parentElement;
-      if (host && host.clientWidth < NARROW_VIEWER_WIDTH) closeSidebarTransiently();
+      if (host && host.clientWidth < NARROW_VIEWER_WIDTH) {
+        closeSidebarTransiently();
+        host.querySelector<HTMLElement>('.dv-viewer-container')?.focus({ preventScroll: true });
+      }
     },
     [goToPageInStore, closeSidebarTransiently],
   );

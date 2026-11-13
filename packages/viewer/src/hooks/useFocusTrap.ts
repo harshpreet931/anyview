@@ -13,6 +13,7 @@ export function useFocusTrap<T extends HTMLElement>(
 
     const container = ref.current;
     const previouslyFocused = document.activeElement as HTMLElement | null;
+    const root = container.closest<HTMLElement>('.dv-root');
 
     const focusable = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
     if (focusable.length > 0) {
@@ -56,7 +57,12 @@ export function useFocusTrap<T extends HTMLElement>(
 
     return () => {
       container.removeEventListener('keydown', handleKeyDown);
-      previouslyFocused?.focus();
+      const more = root?.querySelector<HTMLElement>('.dv-toolbar-more');
+      const candidates = [previouslyFocused, more, root?.querySelector<HTMLElement>('.dv-viewer-container')];
+      const target = candidates.find(
+        (el) => el && el !== document.body && el.isConnected && el.getClientRects().length > 0,
+      );
+      target?.focus({ preventScroll: true });
     };
   }, [ref, active, onEscape]);
 }

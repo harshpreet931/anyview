@@ -46,4 +46,30 @@ test.describe('keyboard', () => {
     await expect.poll(() => container.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
     await expect(page.getByLabel('Page number')).toHaveValue('1');
   });
+
+  test('closing a dialog opened from the More menu keeps focus in the viewer', async ({ page }) => {
+    await page.setViewportSize({ width: 640, height: 800 });
+    await open(page, 'PDF');
+    await page.waitForSelector('.dv-page canvas');
+    const more = page.getByRole('button', { name: 'More options' });
+    await more.click();
+    await page.getByRole('button', { name: 'Document properties' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(await page.evaluate(() => !!document.activeElement?.closest('.dv-root'))).toBe(true);
+  });
+
+  test('picking a thumbnail in a narrow viewer moves focus to the document', async ({ page }) => {
+    await page.setViewportSize({ width: 560, height: 800 });
+    await open(page, 'PDF');
+    await page.waitForSelector('.dv-page canvas');
+    const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+    const thumb = page.getByRole('button', { name: 'Page 2' });
+    await thumb.focus();
+    await page.keyboard.press('Enter');
+    await expect(thumb).toHaveCount(0);
+    expect(await page.evaluate(() => !!document.activeElement?.closest('.dv-viewer-container'))).toBe(true);
+  });
 });
