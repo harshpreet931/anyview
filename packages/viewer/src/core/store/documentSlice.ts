@@ -315,6 +315,15 @@ export const createDocumentSlice: StateCreator<
         /* fall through to window.print() */
       }
     }
+    if (adapter && model.format !== 'pdf') {
+      try {
+        const { printInFrame } = await import('../print');
+        await printInFrame(adapter, model);
+        return;
+      } catch {
+        /* fall through to window.print() */
+      }
+    }
     window.print();
   },
 
