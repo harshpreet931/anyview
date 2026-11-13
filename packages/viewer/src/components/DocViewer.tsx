@@ -33,6 +33,11 @@ const ROOT_STYLE: CSSProperties = {
   height: '100%',
 };
 
+const COLLAPSED_ROOT_STYLE: CSSProperties = {
+  ...ROOT_STYLE,
+  height: 'var(--dv-fallback-height, 70vh)',
+};
+
 function PageAnnouncer() {
   const strings = useStrings();
   const currentPage = useViewerStore((s) => s.currentPage);
@@ -118,6 +123,17 @@ function DocViewerInner(
     const width = rootRef.current?.clientWidth ?? 0;
     if (width > 0 && width < NARROW_VIEWER_WIDTH) store.getState().closeSidebarTransiently();
   }, [store]);
+
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || el.getClientRects().length === 0 || el.clientHeight > 0) return;
+    setCollapsed(true);
+    console.warn(
+      'anyview: <DocViewer> has no height because its container has none. ' +
+        'Using a fallback height; give the parent element an explicit height (e.g. height: 600px).',
+    );
+  }, []);
 
   useEffect(() => {
     setRootElement(rootRef.current);
@@ -246,7 +262,12 @@ function DocViewerInner(
 
   return (
     <I18nProvider locale={locale}>
-      <div ref={rootRef} className={rootClassName} style={ROOT_STYLE} aria-label="Document viewer">
+      <div
+        ref={rootRef}
+        className={rootClassName}
+        style={collapsed ? COLLAPSED_ROOT_STYLE : ROOT_STYLE}
+        aria-label="Document viewer"
+      >
         <div className="dv-main-container">
           {showToolbar && <Toolbar {...(features ? { features } : {})} />}
           <progress

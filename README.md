@@ -96,16 +96,20 @@ import 'anyview/styles';
 
 function App() {
   return (
-    <DocViewer
-      source={{ kind: 'url', url: '/files/report.pdf' }}
-      theme="auto"
-      showToolbar
-      showSidebar
-      onDocumentLoad={(doc) => console.log(`${doc.pageCount} pages`)}
-    />
+    <div style={{ height: '80vh' }}>
+      <DocViewer
+        source={{ kind: 'url', url: '/files/report.pdf' }}
+        theme="auto"
+        showToolbar
+        showSidebar
+        onDocumentLoad={(doc) => console.log(`${doc.pageCount} pages`)}
+      />
+    </div>
   );
 }
 ```
+
+The viewer fills its container, so give the parent a height (if it has none, the viewer falls back to `--dv-fallback-height`, 70vh by default, and logs a warning).
 
 `source` accepts a `File`, a URL, a raw `ArrayBuffer`, or a `FileSystemFileHandle`:
 
