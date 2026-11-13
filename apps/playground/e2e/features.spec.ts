@@ -9,6 +9,9 @@ async function openPdf(page: Page) {
   await expect(page.locator('.dv-root')).toBeVisible();
   await page.locator('.pg-sample-chip', { hasText: 'PDF' }).first().click();
   await page.waitForSelector('.dv-page canvas');
+  // The live demo sits below the hero; centre it so pointer gestures at
+  // page-relative coordinates land on the document.
+  await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'center' }));
 }
 const pageWidth = (page: Page) =>
   page.locator('.dv-page').first().evaluate((el) => el.getBoundingClientRect().width);

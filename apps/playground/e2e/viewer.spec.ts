@@ -155,6 +155,9 @@ test.describe('PDF - search highlight + navigation', () => {
 
 test.describe('PDF - annotations', () => {
   async function pageBox(page: Page) {
+    // The live demo sits below the hero; centre it so pointer gestures at
+    // page-relative coordinates land on the document.
+    await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'center' }));
     const box = await page.locator('.dv-page').first().boundingBox();
     if (!box) throw new Error('no page box');
     return box;
