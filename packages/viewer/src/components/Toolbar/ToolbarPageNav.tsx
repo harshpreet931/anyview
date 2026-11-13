@@ -1,5 +1,6 @@
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
+import { Icon } from '../common/Icon';
 
 export function ToolbarPageNav() {
   const strings = useStrings();
@@ -18,9 +19,7 @@ export function ToolbarPageNav() {
         aria-label={strings.navigation.previousPage}
         title={strings.navigation.previousPage}
       >
-        <svg viewBox="0 0 16 16" fill="currentColor">
-          <path d="M10 4L6 8l4 4V4z" />
-        </svg>
+        <Icon name="chevron-left" />
       </button>
       <input
         type="number"
@@ -44,9 +43,7 @@ export function ToolbarPageNav() {
         aria-label={strings.navigation.nextPage}
         title={strings.navigation.nextPage}
       >
-        <svg viewBox="0 0 16 16" fill="currentColor">
-          <path d="M6 4l4 4-4 4V4z" />
-        </svg>
+        <Icon name="chevron-right" />
       </button>
     </div>
   );
