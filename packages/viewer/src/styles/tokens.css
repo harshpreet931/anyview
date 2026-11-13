@@ -132,3 +132,129 @@
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
+
+@supports not (color: light-dark(#000, #fff)) {
+  :root,
+  .dv-root {
+    --dv-ink: #121110;
+    --dv-ink-2: #2b2825;
+    --dv-muted: #6b635a;
+    --dv-on-ink: #ffffff;
+    --dv-canvas: #efe9e1;
+    --dv-surface: #ffffff;
+    --dv-surface-2: #f7f3ee;
+    --dv-surface-3: #ece5dc;
+    --dv-hairline: rgb(18 17 16 / 0.08);
+    --dv-accent: #e8551f;
+    --dv-accent-soft: rgb(232 85 31 / 0.14);
+    --dv-error-color: rgb(214 48 64);
+    --dv-success-color: rgb(28 150 90);
+    --dv-overlay-color: rgb(28 20 14 / 0.28);
+  }
+
+  .dv-theme-dark {
+    --dv-ink: #f5f1ec;
+    --dv-ink-2: #d9d2ca;
+    --dv-muted: #a39a90;
+    --dv-on-ink: #121110;
+    --dv-canvas: #12100e;
+    --dv-surface: #1a1715;
+    --dv-surface-2: #232020;
+    --dv-surface-3: #2d2926;
+    --dv-hairline: rgb(255 245 235 / 0.08);
+    --dv-accent: #ff7a45;
+    --dv-accent-soft: rgb(255 122 69 / 0.2);
+    --dv-error-color: rgb(255 110 120);
+    --dv-success-color: rgb(60 205 130);
+    --dv-overlay-color: rgb(6 4 2 / 0.6);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dv-theme-auto {
+      --dv-ink: #f5f1ec;
+      --dv-ink-2: #d9d2ca;
+      --dv-muted: #a39a90;
+      --dv-on-ink: #121110;
+      --dv-canvas: #12100e;
+      --dv-surface: #1a1715;
+      --dv-surface-2: #232020;
+      --dv-surface-3: #2d2926;
+      --dv-hairline: rgb(255 245 235 / 0.08);
+      --dv-accent: #ff7a45;
+      --dv-accent-soft: rgb(255 122 69 / 0.2);
+      --dv-error-color: rgb(255 110 120);
+      --dv-success-color: rgb(60 205 130);
+      --dv-overlay-color: rgb(6 4 2 / 0.6);
+    }
+  }
+
+  .dv-theme-dark .dv-page {
+    --dv-ink: #121110;
+    --dv-ink-2: #2b2825;
+    --dv-muted: #6b635a;
+    --dv-on-ink: #ffffff;
+    --dv-canvas: #efe9e1;
+    --dv-surface: #ffffff;
+    --dv-surface-2: #f7f3ee;
+    --dv-surface-3: #ece5dc;
+    --dv-hairline: rgb(18 17 16 / 0.08);
+    --dv-accent: #e8551f;
+    --dv-accent-soft: rgb(232 85 31 / 0.14);
+    --dv-error-color: rgb(214 48 64);
+    --dv-success-color: rgb(28 150 90);
+    --dv-overlay-color: rgb(28 20 14 / 0.28);
+    --dv-main-color: var(--dv-ink);
+    --dv-body-bg-color: var(--dv-canvas);
+    --dv-toolbar-bg-color: var(--dv-surface);
+    --dv-field-bg-color: var(--dv-surface);
+    --dv-field-border-color: var(--dv-hairline);
+    --dv-sidebar-bg-color: var(--dv-surface);
+    --dv-doorhanger-bg-color: var(--dv-surface);
+    --dv-separator-color: var(--dv-hairline);
+    --dv-button-hover-color: color-mix(in srgb, var(--dv-ink) 7%, transparent);
+    --dv-button-active-color: color-mix(in srgb, var(--dv-ink) 11%, transparent);
+    --dv-group-bg-color: var(--dv-surface-2);
+    --dv-toggled-bg-color: var(--dv-ink);
+    --dv-toggled-fg-color: var(--dv-on-ink);
+    --dv-progress-bar-color: var(--dv-accent);
+    --dv-loading-color: var(--dv-accent);
+    --dv-scrollbar-color: color-mix(in srgb, var(--dv-ink) 18%, transparent);
+    --dv-shadow-focus: 0 0 0 2px var(--dv-surface), 0 0 0 4px var(--dv-accent);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dv-theme-auto .dv-page {
+      --dv-ink: #121110;
+      --dv-ink-2: #2b2825;
+      --dv-muted: #6b635a;
+      --dv-on-ink: #ffffff;
+      --dv-canvas: #efe9e1;
+      --dv-surface: #ffffff;
+      --dv-surface-2: #f7f3ee;
+      --dv-surface-3: #ece5dc;
+      --dv-hairline: rgb(18 17 16 / 0.08);
+      --dv-accent: #e8551f;
+      --dv-accent-soft: rgb(232 85 31 / 0.14);
+      --dv-error-color: rgb(214 48 64);
+      --dv-success-color: rgb(28 150 90);
+      --dv-overlay-color: rgb(28 20 14 / 0.28);
+      --dv-main-color: var(--dv-ink);
+      --dv-body-bg-color: var(--dv-canvas);
+      --dv-toolbar-bg-color: var(--dv-surface);
+      --dv-field-bg-color: var(--dv-surface);
+      --dv-field-border-color: var(--dv-hairline);
+      --dv-sidebar-bg-color: var(--dv-surface);
+      --dv-doorhanger-bg-color: var(--dv-surface);
+      --dv-separator-color: var(--dv-hairline);
+      --dv-button-hover-color: color-mix(in srgb, var(--dv-ink) 7%, transparent);
+      --dv-button-active-color: color-mix(in srgb, var(--dv-ink) 11%, transparent);
+      --dv-group-bg-color: var(--dv-surface-2);
+      --dv-toggled-bg-color: var(--dv-ink);
+      --dv-toggled-fg-color: var(--dv-on-ink);
+      --dv-progress-bar-color: var(--dv-accent);
+      --dv-loading-color: var(--dv-accent);
+      --dv-scrollbar-color: color-mix(in srgb, var(--dv-ink) 18%, transparent);
+      --dv-shadow-focus: 0 0 0 2px var(--dv-surface), 0 0 0 4px var(--dv-accent);
+    }
+  }
+}
