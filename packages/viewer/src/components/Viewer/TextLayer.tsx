@@ -46,9 +46,9 @@ export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
       span.style.transform = '';
       const target = parseFloat(span.dataset.tw ?? '0');
       const natural = span.offsetWidth;
-      if (target > 0 && natural > 0) {
-        span.style.transform = `scaleX(${target / natural})`;
-      }
+      const rotate = span.dataset.angle ? `rotate(${span.dataset.angle}deg) ` : '';
+      const scale = target > 0 && natural > 0 ? `scaleX(${target / natural})` : '';
+      span.style.transform = `${rotate}${scale}`.trim();
     });
   }, [items, width, height]);
 
@@ -66,6 +66,7 @@ export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
           <span
             key={i}
             data-tw={item.width * width}
+            data-angle={item.angle || undefined}
             style={{
               left: `${item.x * width}px`,
               top: `${item.y * height}px`,

@@ -41,7 +41,7 @@ export interface PdfWorkerApi {
     pageIndex: number,
     rotation?: number,
   ): Promise<{
-    items: Array<{ str: string; transform: readonly number[]; width: number; height: number; x: number; y: number }>;
+    items: Array<{ str: string; transform: readonly number[]; width: number; height: number; x: number; y: number; angle?: number }>;
     viewportWidth: number;
     viewportHeight: number;
   }>;

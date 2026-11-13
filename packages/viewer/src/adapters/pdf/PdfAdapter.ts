@@ -195,24 +195,47 @@ export class PdfAdapter implements Adapter {
     signal?: AbortSignal,
     rotation = 0,
   ): Promise<TextLayer> {
-    if (!this.remote || this.docId == null || signal?.aborted) {
-      return { pageIndex, items: [] };
-    }
+    return { pageIndex, items: (await this.textRuns(pageIndex, signal, rotation)).map((r) => r.item) };
+  }
 
+  private async textRuns(
+    pageIndex: number,
+    signal: AbortSignal | undefined,
+    rotation: number,
+  ): Promise<Array<{ item: TextLayerItem; box: { x: number; y: number; width: number; height: number } }>> {
+    if (!this.remote || this.docId == null || signal?.aborted) return [];
     try {
       const result = await this.remote.getTextContent(this.docId, pageIndex, rotation);
-
-      const items: TextLayerItem[] = result.items.map((item) => ({
-        str: item.str,
-        x: item.x / result.viewportWidth,
-        y: item.y / result.viewportHeight,
-        width: item.width / result.viewportWidth,
-        height: item.height / result.viewportHeight,
-      }));
-
-      return { pageIndex, items };
+      const vw = result.viewportWidth;
+      const vh = result.viewportHeight;
+      return result.items.map((run) => {
+        const angle = run.angle ?? 0;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const xs = [run.x, run.x + cos * run.width, run.x - sin * run.height, run.x + cos * run.width - sin * run.height];
+        const ys = [run.y, run.y + sin * run.width, run.y + cos * run.height, run.y + sin * run.width + cos * run.height];
+        const left = Math.min(...xs);
+        const top = Math.min(...ys);
+        const degrees = Math.round((angle * 180) / Math.PI * 100) / 100;
+        return {
+          item: {
+            str: run.str,
+            x: run.x / vw,
+            y: run.y / vh,
+            width: run.width / vw,
+            height: run.height / vh,
+            ...(degrees ? { angle: degrees } : {}),
+          },
+          box: {
+            x: left / vw,
+            y: top / vh,
+            width: (Math.max(...xs) - left) / vw,
+            height: (Math.max(...ys) - top) / vh,
+          },
+        };
+      });
     } catch {
-      return { pageIndex, items: [] };
+      return [];
     }
   }
 
@@ -225,29 +248,22 @@ export class PdfAdapter implements Adapter {
       return { query, matches: [], totalMatches: 0 };
     }
 
-    const textLayers = await Promise.all(
+    const pages = await Promise.all(
       Array.from({ length: this.parsedPdf.pageCount }, (_, pageIdx) =>
-        this.getTextLayer(pageIdx, signal, rotation),
+        this.textRuns(pageIdx, signal, rotation),
       ),
     );
     if (signal.aborted) return { query, matches: [], totalMatches: 0 };
 
     const matches: SearchMatch[] = [];
 
-    for (const textLayer of textLayers) {
-      for (const item of textLayer.items) {
+    pages.forEach((runs, pageIndex) => {
+      for (const { item, box } of runs) {
         if (this.matchText(item.str, query)) {
-          matches.push({
-            pageIndex: textLayer.pageIndex,
-            text: item.str,
-            x: item.x,
-            y: item.y,
-            width: item.width,
-            height: item.height,
-          });
+          matches.push({ pageIndex, text: item.str, ...box });
         }
       }
-    }
+    });
 
     return { query, matches, totalMatches: matches.length };
   }

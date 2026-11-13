@@ -23,6 +23,8 @@ export interface SearchSlice {
   applySearchMatches: (matches: SearchMatch[]) => void;
   _setSearchResult: (result: SearchResult) => void;
   _setSearchState: (state: SearchState) => void;
+  /** Recomputes match boxes for the current query after the page geometry changed (e.g. rotation). */
+  _refreshSearchGeometry: () => void;
   _searchController: AbortController | null;
 }
 
@@ -82,6 +84,30 @@ export const createSearchSlice: StateCreator<
       .catch(() => {
         if (controller.signal.aborted) return;
         set({ searchState: 'error', _searchController: null });
+      });
+  },
+
+  _refreshSearchGeometry: () => {
+    const { adapter, document, searchQuery } = get();
+    const format = document?.format;
+    if (!searchQuery || !adapter?.search || (format !== 'pdf' && format !== 'image')) return;
+    get()._searchController?.abort();
+    const controller = new AbortController();
+    set({ _searchController: controller });
+    adapter
+      .search(searchQuery, controller.signal, get().rotation)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        const last = Math.max(0, result.matches.length - 1);
+        set({
+          searchResult: result,
+          searchState: 'done',
+          currentMatchIndex: Math.min(get().currentMatchIndex, last),
+          _searchController: null,
+        });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) set({ _searchController: null });
       });
   },
 

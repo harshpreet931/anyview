@@ -141,6 +141,8 @@ export interface TextLayerItem {
   readonly y: number;
   readonly width: number;
   readonly height: number;
+  /** Clockwise on-screen angle of the run in degrees; (x, y) is its top-left before rotating. */
+  readonly angle?: number;
 }
 
 export interface TextLayer {

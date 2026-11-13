@@ -45,7 +45,7 @@ export interface CreateViewerStoreOptions {
 
 export const createViewerStore = (options?: CreateViewerStoreOptions) => {
   const persistKey = options?.persistKey ?? 'doc-viewer-prefs';
-  return create<ViewerStore>()(
+  const store = create<ViewerStore>()(
     subscribeWithSelector(
       devtools(
         persist(
@@ -85,4 +85,9 @@ export const createViewerStore = (options?: CreateViewerStoreOptions) => {
       ),
     ),
   );
+  store.subscribe(
+    (s) => s.rotation,
+    () => store.getState()._refreshSearchGeometry(),
+  );
+  return store;
 };

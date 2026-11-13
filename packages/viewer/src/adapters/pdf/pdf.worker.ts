@@ -244,14 +244,19 @@ const api: PdfWorkerApi = {
         const f = vt[1] * tm[4] + vt[3] * tm[5] + vt[5];
 
         const fontHeight = Math.hypot(c, d) || item.height || 10;
+        const angle = Math.atan2(
+          vt[1] * tm[0] + vt[3] * tm[1],
+          vt[0] * tm[0] + vt[2] * tm[1],
+        );
 
         return {
           str: item.str,
           transform: tm,
           width: item.width || item.str.length * fontHeight * 0.5,
           height: fontHeight,
-          x: e,
-          y: f - fontHeight,
+          x: e + fontHeight * Math.sin(angle),
+          y: f - fontHeight * Math.cos(angle),
+          angle,
         };
       });
 
