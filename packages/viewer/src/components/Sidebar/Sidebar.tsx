@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useLocale, useStrings } from '../../i18n/I18nProvider';
 import { formatFileSize } from '../../i18n/format';
+import { formatString } from '../../i18n/strings';
 import type {
   SidebarView,
   PageRef,
@@ -177,6 +178,7 @@ export function Sidebar() {
             pages={document.pages}
             format={document.format}
             adapter={adapter}
+            live={!!adapter?.manifest.features.thumbnails || document.meta.size <= LIVE_PREVIEW_MAX_BYTES}
             currentPage={currentPage}
             onThumbnailClick={goToPage}
           />
@@ -208,16 +210,20 @@ export function Sidebar() {
   );
 }
 
+const LIVE_PREVIEW_MAX_BYTES = 1_000_000;
+
 function ThumbnailList({
   pages,
   format,
   adapter,
+  live,
   currentPage,
   onThumbnailClick,
 }: {
   pages: readonly PageRef[];
   format: FormatId;
   adapter: Adapter | null;
+  live: boolean;
   currentPage: number;
   onThumbnailClick: (index: number) => void;
 }) {
@@ -229,7 +235,7 @@ function ThumbnailList({
             page={page}
             index={index}
             format={format}
-            adapter={adapter}
+            adapter={live ? adapter : null}
             current={currentPage === index}
             onClick={() => onThumbnailClick(index)}
           />
@@ -256,6 +262,7 @@ function Thumbnail({
   current: boolean;
   onClick: () => void;
 }) {
+  const strings = useStrings();
   const canvasFormat = format === 'pdf' || format === 'image';
   const buttonRef = useRef<HTMLButtonElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -333,7 +340,7 @@ function Thumbnail({
       className="dv-thumbnail"
       data-current={current}
       onClick={onClick}
-      aria-label={`Page ${index + 1}`}
+      aria-label={formatString(strings.navigation.pageLabel, index + 1)}
       aria-current={current ? 'page' : undefined}
     >
       <div

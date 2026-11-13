@@ -55,6 +55,7 @@ export interface ViewerStrings {
     pageOf: string;
     /** Live-region announcement, e.g. "Page {0} of {1}". */
     pageStatus: string;
+    pageLabel: string;
   };
   search: {
     placeholder: string;

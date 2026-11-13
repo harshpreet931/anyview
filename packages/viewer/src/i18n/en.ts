@@ -56,6 +56,7 @@ export const en: ViewerStrings = {
     pageInput: 'Page number',
     pageOf: 'of',
     pageStatus: 'Page {0} of {1}',
+    pageLabel: 'Page {0}',
   },
   search: {
     placeholder: 'Search...',

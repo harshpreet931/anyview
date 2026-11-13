@@ -15,7 +15,6 @@ import type {
 } from '../../core/types';
 import { ViewerError, isViewerError } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
-import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 
 export const csvManifest: AdapterManifest = {
   id: 'csv',
@@ -40,11 +39,12 @@ export const csvManifest: AdapterManifest = {
   protocolVersion: 1,
 };
 
+const ROW_CHUNK = 2000;
+
 export class CsvAdapter implements Adapter {
   readonly manifest = csvManifest;
   private rows: string[][] = [];
   private headers: string[] = [];
-  private htmlContent: SafeHtml = EMPTY_HTML;
 
   async parse(
     source: FileSourceReader,
@@ -65,14 +65,13 @@ export class CsvAdapter implements Adapter {
 
       this.rows = result.data;
       this.headers = this.rows.shift() ?? [];
-      this.htmlContent = this.buildHtml();
     } catch (cause) {
       if (isViewerError(cause)) throw cause;
       throw new ViewerError('PARSE_ERROR', 'Failed to parse CSV.', { cause });
     }
 
     const rowHeight = 32;
-    const height = Math.max((this.rows.length + 1) * rowHeight + 48, 400);
+    const height = Math.max((Math.min(this.rows.length, ROW_CHUNK) + 2) * rowHeight + 48, 400);
 
     const page: PageRef = {
       index: 0,
@@ -97,7 +96,46 @@ export class CsvAdapter implements Adapter {
     container.style.padding = '16px';
     container.style.overflow = 'auto';
     container.style.fontSize = `${14 * ctx.scale}px`;
-    setSafeHtml(container, this.htmlContent);
+
+    const table = document.createElement('table');
+    table.className = 'dv-csv-table';
+    if (this.headers.length > 0) {
+      const head = table.createTHead().insertRow();
+      for (const h of this.headers) {
+        const th = document.createElement('th');
+        th.textContent = h;
+        head.appendChild(th);
+      }
+    }
+    const body = table.createTBody();
+    container.appendChild(table);
+
+    const rows = this.rows;
+    let shown = 0;
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'dv-csv-more';
+    const appendChunk = () => {
+      const end = Math.min(rows.length, shown + ROW_CHUNK);
+      const frag = document.createDocumentFragment();
+      for (let i = shown; i < end; i++) {
+        const tr = document.createElement('tr');
+        for (const cell of rows[i]!) {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          tr.appendChild(td);
+        }
+        frag.appendChild(tr);
+      }
+      body.appendChild(frag);
+      shown = end;
+      const left = rows.length - shown;
+      if (left > 0) more.textContent = `Show ${Math.min(left, ROW_CHUNK).toLocaleString()} more rows (${left.toLocaleString()} remaining)`;
+      else more.remove();
+    };
+    more.addEventListener('click', appendChunk);
+    appendChunk();
+    if (shown < rows.length) container.appendChild(more);
 
     target.appendChild(container);
 
@@ -171,39 +209,8 @@ export class CsvAdapter implements Adapter {
     return text.toLowerCase().includes(query.text.toLowerCase());
   }
 
-  private buildHtml(): SafeHtml {
-    const escapeHtml = (s: string) => {
-      const div = document.createElement('div');
-      div.textContent = s;
-      return div.innerHTML;
-    };
-
-    let html = '<table style="border-collapse:collapse;width:100%;font-family:monospace;">';
-
-    if (this.headers.length > 0) {
-      html += '<thead><tr>';
-      for (const h of this.headers) {
-        html += `<th style="border:1px solid #ddd;padding:6px 10px;text-align:left;background:#f5f5f5;font-weight:600;">${escapeHtml(h)}</th>`;
-      }
-      html += '</tr></thead>';
-    }
-
-    html += '<tbody>';
-    for (const row of this.rows) {
-      html += '<tr>';
-      for (const cell of row) {
-        html += `<td style="border:1px solid #ddd;padding:4px 10px;">${escapeHtml(cell)}</td>`;
-      }
-      html += '</tr>';
-    }
-    html += '</tbody></table>';
-
-    return markSanitized(html);
-  }
-
   dispose(): void {
     this.rows = [];
     this.headers = [];
-    this.htmlContent = EMPTY_HTML;
   }
 }

@@ -426,6 +426,37 @@
 
 /* ---------- Reflowable content ---------- */
 
+.dv-csv-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--dv-font-mono);
+}
+
+.dv-csv-table th,
+.dv-csv-table td {
+  border: 1px solid #ddd;
+  padding: 4px 10px;
+  text-align: left;
+}
+
+.dv-csv-table th {
+  padding: 6px 10px;
+  background: #f5f5f5;
+  font-weight: 600;
+}
+
+.dv-csv-more {
+  margin: 12px 0 4px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.9em;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+}
+
 .dv-reflow-target {
   color: var(--dv-page-ink);
 }
