@@ -147,6 +147,10 @@ export class PdfAdapter implements Adapter {
         ctx.rotation,
         dpr,
       );
+      if (ctx.signal.aborted) {
+        bitmap.close();
+        throw new DOMException('Render cancelled', 'AbortError');
+      }
 
       const target = ctx.target as HTMLCanvasElement;
 
