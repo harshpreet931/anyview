@@ -11,7 +11,7 @@ import type { NavigationSlice } from './navigationSlice';
 import type { ViewportSlice } from './viewportSlice';
 import type { SearchSlice } from './searchSlice';
 import type { AnnotationSlice } from './annotationSlice';
-import { normalizeFileSource } from '../file-source';
+import { normalizeFileSource, readHead } from '../file-source';
 import { PageCache } from '../cache/page-cache';
 
 // Annotations are NOT reset here - _resetAnnotations() does that so change listeners fire.
@@ -121,7 +121,9 @@ export const createDocumentSlice: StateCreator<
       const reader = await normalizeFileSource(source);
       if (controller.signal.aborted) return;
 
-      const format = registry.detectFormat(reader.meta.name, reader.meta.mimeType);
+      const head = await readHead(reader).catch(() => undefined);
+      if (controller.signal.aborted) return;
+      const format = registry.detectFormat(reader.meta.name, reader.meta.mimeType, head);
 
       if (!format) {
         const { ViewerError } = await import('../errors');

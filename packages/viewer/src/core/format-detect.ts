@@ -112,26 +112,84 @@ const EXTENSIONLESS_MAP = new Map<string, FormatId>([
   ['readme', 'markdown'],
 ]);
 
+const GENERIC_MIMES = new Set(['', 'application/octet-stream', 'text/plain', 'binary/octet-stream']);
+const NAME_ONLY_FORMATS = new Set<FormatId>(['code', 'text']);
+
+const startsWith = (head: Uint8Array, sig: readonly number[], at = 0) =>
+  head.length >= at + sig.length && sig.every((b, i) => head[at + i] === b);
+
+const ascii = (s: string) => Array.from(s, (c) => c.charCodeAt(0));
+
+function includes(head: Uint8Array, needle: readonly number[]): boolean {
+  outer: for (let i = 0; i + needle.length <= head.length; i++) {
+    for (let j = 0; j < needle.length; j++) if (head[i + j] !== needle[j]) continue outer;
+    return true;
+  }
+  return false;
+}
+
+const OOXML_ENTRIES: ReadonlyArray<[number[], FormatId]> = [
+  [ascii('word/'), 'docx'],
+  [ascii('xl/'), 'xlsx'],
+  [ascii('ppt/'), 'pptx'],
+];
+
+/** Identifies a format from its leading bytes, for formats with a reliable signature. */
+export function sniffFormat(head: Uint8Array): FormatId | null {
+  if (startsWith(head, ascii('%PDF-'))) return 'pdf';
+  if (
+    startsWith(head, [0x89, 0x50, 0x4e, 0x47]) ||
+    startsWith(head, [0xff, 0xd8, 0xff]) ||
+    startsWith(head, ascii('GIF8')) ||
+    (startsWith(head, ascii('RIFF')) && startsWith(head, ascii('WEBP'), 8)) ||
+    startsWith(head, ascii('ftypavif'), 4)
+  ) {
+    return 'image';
+  }
+  if (startsWith(head, [0x50, 0x4b, 0x03, 0x04])) {
+    for (const [entry, format] of OOXML_ENTRIES) if (includes(head, entry)) return format;
+  }
+  return null;
+}
+
+function looksLikeText(head: Uint8Array): boolean {
+  const sample = head.subarray(0, 4096);
+  if (sample.length === 0) return false;
+  let control = 0;
+  for (const b of sample) {
+    if (b === 0) return false;
+    if (b < 9 || (b > 13 && b < 32)) control++;
+  }
+  return control / sample.length < 0.02;
+}
+
+/**
+ * Picks a format from the file name, MIME type and (optionally) the first bytes.
+ * A recognised byte signature wins; a specific MIME type beats a script-like or
+ * plain-text extension (e.g. `download.php` served as `application/pdf`).
+ */
 export function detectFormat(
   filename: string,
   mimeType?: string,
+  head?: Uint8Array,
 ): FormatId | null {
+  const sniffed = head ? sniffFormat(head) : null;
+  if (sniffed) return sniffed;
+
   const ext = extractExtension(filename);
-  if (ext) {
-    const byExt = EXTENSION_MAP.get(ext);
-    if (byExt) return byExt;
-  } else {
-    const base = (filename.split(/[\\/]/).pop() ?? '').toLowerCase();
-    const byName = EXTENSIONLESS_MAP.get(base);
-    if (byName) return byName;
-  }
+  const byName = ext
+    ? (EXTENSION_MAP.get(ext) ?? null)
+    : (EXTENSIONLESS_MAP.get((filename.split(/[\\/]/).pop() ?? '').toLowerCase()) ?? null);
 
-  if (mimeType) {
-    const bareMime = mimeType.split(';')[0]!.trim().toLowerCase();
-    const byMime = MIME_MAP.get(bareMime);
-    if (byMime) return byMime;
-  }
+  const bareMime = (mimeType ?? '').split(';')[0]!.trim().toLowerCase();
+  const byMime = MIME_MAP.get(bareMime) ?? null;
 
+  if (byName && byMime && byMime !== byName && NAME_ONLY_FORMATS.has(byName) && !GENERIC_MIMES.has(bareMime)) {
+    return byMime;
+  }
+  if (byName) return byName;
+  if (byMime) return byMime;
+  if (head && looksLikeText(head)) return 'text';
   return null;
 }
 

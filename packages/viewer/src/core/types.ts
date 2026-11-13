@@ -310,7 +310,7 @@ export type AdapterLoader = () => Promise<{ default: AdapterConstructor }>;
 export interface AdapterRegistry {
   register(manifest: AdapterManifest, loader: AdapterLoader): void;
   getManifests(): readonly AdapterManifest[];
-  detectFormat(filename: string, mimeType?: string): FormatId | null;
+  detectFormat(filename: string, mimeType?: string, head?: Uint8Array): FormatId | null;
   getManifest(format: FormatId): AdapterManifest | null;
   /** Load the adapter for a format and return a FRESH instance. */
   loadAdapter(format: FormatId): Promise<Adapter>;

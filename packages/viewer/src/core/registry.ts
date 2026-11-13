@@ -45,8 +45,8 @@ export function createRegistry(): AdapterRegistry {
       return Array.from(manifests.values());
     },
 
-    detectFormat(filename: string, mimeType?: string): FormatId | null {
-      return detectFormatByExt(filename, mimeType);
+    detectFormat(filename: string, mimeType?: string, head?: Uint8Array): FormatId | null {
+      return detectFormatByExt(filename, mimeType, head);
     },
 
     getManifest(format: FormatId): AdapterManifest | null {

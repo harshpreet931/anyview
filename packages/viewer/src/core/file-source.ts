@@ -119,3 +119,30 @@ function extractFilenameFromUrl(url: string): string {
   } catch {}
   return 'document';
 }
+
+/** Reads up to `limit` leading bytes, streaming when possible so large files aren't loaded twice. */
+export async function readHead(reader: FileSourceReader, limit = 65536): Promise<Uint8Array> {
+  const stream = reader.stream();
+  if (!stream) return new Uint8Array(await reader.arrayBuffer()).subarray(0, limit);
+  const r = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (size < limit) {
+      const { done, value } = await r.read();
+      if (done || !value) break;
+      chunks.push(value);
+      size += value.byteLength;
+    }
+  } finally {
+    r.cancel().catch(() => {});
+  }
+  const head = new Uint8Array(Math.min(size, limit));
+  let at = 0;
+  for (const c of chunks) {
+    if (at >= head.length) break;
+    head.set(c.subarray(0, head.length - at), at);
+    at += c.byteLength;
+  }
+  return head;
+}

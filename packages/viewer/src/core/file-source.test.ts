@@ -46,3 +46,37 @@ describe('isSameSource', () => {
     expect(isSameSource(undefined, { kind: 'url', url: '/a' })).toBe(false);
   });
 });
+
+describe('readHead', () => {
+  it('reads only the leading bytes from a stream', async () => {
+    const { readHead } = await import('./file-source');
+    const big = new Uint8Array(200_000).fill(7);
+    big[0] = 1;
+    let pulls = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(c) {
+        const at = pulls++ * 600;
+        if (at >= big.length) c.close();
+        else c.enqueue(big.subarray(at, at + 600));
+      },
+    });
+    const head = await readHead({
+      meta: { name: 'x', size: big.byteLength, mimeType: '' },
+      arrayBuffer: () => Promise.reject(new Error('should stream')),
+      stream: () => stream,
+    }, 1000);
+    expect(head.byteLength).toBe(1000);
+    expect(head[0]).toBe(1);
+    expect(pulls).toBeLessThan(5);
+  });
+
+  it('falls back to the buffer when there is no stream', async () => {
+    const { readHead } = await import('./file-source');
+    const head = await readHead({
+      meta: { name: 'x', size: 3, mimeType: '' },
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      stream: () => null,
+    });
+    expect(Array.from(head)).toEqual([1, 2, 3]);
+  });
+});
