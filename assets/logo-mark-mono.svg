@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="230 170 560 690" role="img" aria-label="Anyview" fill="currentColor">
+<defs><mask id="avy-mono-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+  <path d="M388 200C462 192 540 190 596 194C608 195 616 198 624 206L738 320C744 326 747 334 748 344C756 440 764 560 764 680C764 784 712 834 610 838C530 842 450 842 376 836C290 830 254 784 254 700C254 580 260 440 270 322C278 240 318 206 388 200Z" fill="#fff"/>
+  <path d="M616 206C620 206 624 208 628 212L736 320C744 328 744 340 732 342C706 348 668 350 640 348C614 346 602 334 600 312C598 284 598 250 602 222C603 212 608 206 616 206Z" fill="none" stroke="#000" stroke-width="22" stroke-linejoin="round"/>
+  <g transform="rotate(5 540 500)"><rect x="443" y="452" width="74" height="152" rx="37" fill="#000"/><rect x="563" y="444" width="74" height="152" rx="37" fill="#000"/></g>
+  <path d="M524 664Q551 688 578 664" fill="none" stroke="#000" stroke-width="16" stroke-linecap="round"/>
+</mask></defs>
+<rect x="0" y="0" width="1024" height="1024" mask="url(#avy-mono-mask)"/>
+</svg>
