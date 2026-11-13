@@ -13,7 +13,7 @@ import type {
   AdapterRegistry,
 } from '../core/types';
 import { createRegistry } from '../core/registry';
-import { parseAnnotations } from '../core/annotations';
+import { parseAnnotations, validAnnotations } from '../core/annotations';
 import { isSameSource } from '../core/file-source';
 import { registerBuiltInAdapters } from '../adapters';
 import { createViewerStore } from '../core/store';
@@ -350,7 +350,7 @@ export const DocViewer = forwardRef<DocViewerRef, DocViewerProps>(
       }),
       importAnnotations: (data) => {
         const annotations =
-          typeof data === 'string' ? parseAnnotations(data) : data.annotations;
+          typeof data === 'string' ? parseAnnotations(data) : validAnnotations(data?.annotations);
         store.getState().setAnnotations(annotations);
       },
     }), [store]);
