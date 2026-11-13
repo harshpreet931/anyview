@@ -1,11 +1,13 @@
-name: Deploy demo to GitHub Pages
+name: Redirect GitHub Pages to the demo
 
-# Publishes the live playground to https://harshpreet931.github.io/anyview/
-# One-time: repo Settings → Pages → Source = "GitHub Actions".
+# The live demo is at https://anyview.harshpreet.com (deployed by Vercel on
+# every push to main). This keeps old https://harshpreet931.github.io/anyview/
+# links working by redirecting them, path included.
 
 on:
   push:
     branches: [main]
+    paths: ['.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -21,30 +23,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build playground
-        run: pnpm --filter anyview-playground build
-        env:
-          PAGES_BASE: /anyview/
+      - name: Write redirect pages
+        run: |
+          mkdir -p site
+          cat > site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>anyview demo has moved</title>
+          <link rel="canonical" href="https://anyview.harshpreet.com/">
+          <meta http-equiv="refresh" content="0; url=https://anyview.harshpreet.com/">
+          <script>
+            location.replace('https://anyview.harshpreet.com' + location.pathname.replace(/^\/anyview/, '') + location.search + location.hash);
+          </script>
+          <p>The demo moved to <a href="https://anyview.harshpreet.com/">anyview.harshpreet.com</a>.</p>
+          HTML
+          cp site/index.html site/404.html
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/playground/dist
+          path: site
 
   deploy:
     needs: build

@@ -42,3 +42,4 @@ playwright-report/
 
 # Generated at publish time from the root README (see .github/workflows/release.yml)
 packages/viewer/README.md
+.vercel

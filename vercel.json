@@ -1,0 +1,11 @@
+{
+  "framework": null,
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter anyview-playground build",
+  "outputDirectory": "apps/playground/dist",
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  }
+}
