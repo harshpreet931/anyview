@@ -1,9 +1,21 @@
-/* Sepia theme overrides */
+/* Sepia theme overrides - a warm reading tint over the same structure. */
 .dv-theme-sepia {
-  --dv-body-bg-color: rgb(244 233 216);
-  --dv-main-color: rgb(90 74 50);
-  --dv-toolbar-bg-color: rgb(247 237 221);
-  --dv-sidebar-bg-color: rgb(240 228 207);
-  --dv-doorhanger-bg-color: rgb(250 240 224);
+  --dv-ink: rgb(74 58 36);
+  --dv-ink-2: rgb(98 80 54);
+  --dv-muted: rgb(116 96 68); /* 4.5:1+ on the sepia surfaces */
+  --dv-on-ink: rgb(250 242 228);
+  --dv-canvas: rgb(236 224 204);
+  --dv-surface: rgb(250 243 231);
+  --dv-surface-2: rgb(242 232 214);
+  --dv-surface-3: rgb(232 219 196);
+  --dv-hairline: rgb(74 58 36 / 0.1);
+  /* Burnt tangerine: the brand accent deepened so rings clear 3:1 on the tinted paper. */
+  --dv-accent: #c2410c;
+  --dv-accent-soft: rgb(194 65 12 / 0.14);
+  --dv-main-color: var(--dv-ink);
+  --dv-body-bg-color: var(--dv-canvas);
+  --dv-toolbar-bg-color: var(--dv-surface);
+  --dv-sidebar-bg-color: var(--dv-surface);
+  --dv-doorhanger-bg-color: var(--dv-surface);
   color-scheme: light;
 }

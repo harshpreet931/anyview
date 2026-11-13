@@ -7,9 +7,5 @@
 /* Auto (follows system) */
 .dv-theme-auto { color-scheme: light dark; }
 
-/* Sepia (reading tint) */
-.dv-theme-sepia {
-  --dv-body-bg-color: rgb(244 233 216);
-  --dv-main-color: rgb(90 74 50);
-  color-scheme: light;
-}
+/* Sepia (reading tint) - see sepia.css for the palette */
+.dv-theme-sepia { color-scheme: light; }
