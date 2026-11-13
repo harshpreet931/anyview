@@ -21,8 +21,12 @@ export interface AnnotationSlice {
   selectAnnotation: (id: string | null) => void;
   setActiveTool: (tool: AnnotationTool | null) => void;
   onAnnotationChange: (cb: AnnotationChangeListener) => () => void;
+  /** Reverts the last add, update or delete. Returns false when there is nothing to undo. */
+  undoAnnotation: () => boolean;
   _resetAnnotations: () => void;
 }
+
+const HISTORY_LIMIT = 100;
 
 export const createAnnotationSlice: StateCreator<
   AnnotationSlice,
@@ -38,12 +42,19 @@ export const createAnnotationSlice: StateCreator<
     }
   };
 
+  let history: Annotation[][] = [];
+  const remember = () => {
+    history.push(get().annotations);
+    if (history.length > HISTORY_LIMIT) history.shift();
+  };
+
   return {
     annotations: [],
     activeAnnotationTool: null,
     selectedAnnotationId: null,
 
     addAnnotation: (annotation: Annotation) => {
+      remember();
       const next = [...get().annotations, annotation];
       set({ annotations: next });
       notify(next);
@@ -53,6 +64,8 @@ export const createAnnotationSlice: StateCreator<
       id: string,
       patch: Partial<Omit<Annotation, 'id' | 'pageIndex' | 'type'>>,
     ) => {
+      if (!get().annotations.some((a) => a.id === id)) return;
+      remember();
       const next = get().annotations.map((a) =>
         a.id === id ? { ...a, ...patch, updatedAt: Date.now() } : a,
       ) as Annotation[];
@@ -61,6 +74,8 @@ export const createAnnotationSlice: StateCreator<
     },
 
     deleteAnnotation: (id: string) => {
+      if (!get().annotations.some((a) => a.id === id)) return;
+      remember();
       const next = get().annotations.filter((a) => a.id !== id);
       set({
         annotations: next,
@@ -72,6 +87,7 @@ export const createAnnotationSlice: StateCreator<
 
     setAnnotations: (annotations: Annotation[]) => {
       const next = [...annotations];
+      history = [];
       set({ annotations: next, selectedAnnotationId: null });
       notify(next);
     },
@@ -95,7 +111,20 @@ export const createAnnotationSlice: StateCreator<
       };
     },
 
+    undoAnnotation: () => {
+      const prev = history.pop();
+      if (!prev) return false;
+      const selected = get().selectedAnnotationId;
+      set({
+        annotations: prev,
+        selectedAnnotationId: prev.some((a) => a.id === selected) ? selected : null,
+      });
+      notify(prev);
+      return true;
+    },
+
     _resetAnnotations: () => {
+      history = [];
       const had = get().annotations.length > 0;
       set({
         annotations: [],

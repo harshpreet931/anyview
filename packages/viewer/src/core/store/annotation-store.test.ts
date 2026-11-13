@@ -58,3 +58,35 @@ describe('annotation store actions', () => {
     expect(store.getState().annotations[0]!.id).toBe('a');
   });
 });
+
+describe('annotation undo', () => {
+  it('undoes adds, updates and deletes in reverse order and notifies', () => {
+    const store = createViewerStore();
+    const seen: number[] = [];
+    store.getState().onAnnotationChange((a) => seen.push(a.length));
+    const s = () => store.getState();
+
+    s().addAnnotation(highlight('a'));
+    s().addAnnotation(highlight('b'));
+    s().updateAnnotation('a', { color: '#000000' });
+    s().deleteAnnotation('b');
+    expect(s().annotations.map((a) => a.id)).toEqual(['a']);
+
+    expect(s().undoAnnotation()).toBe(true);
+    expect(s().annotations.map((a) => a.id)).toEqual(['a', 'b']);
+    s().undoAnnotation();
+    expect(s().annotations[0]!.color).toBe('#ffd400');
+    s().undoAnnotation();
+    s().undoAnnotation();
+    expect(s().annotations).toEqual([]);
+    expect(s().undoAnnotation()).toBe(false);
+    expect(seen.at(-1)).toBe(0);
+  });
+
+  it('starts a fresh history for each document', () => {
+    const store = createViewerStore();
+    store.getState().addAnnotation(highlight('a'));
+    store.getState()._resetAnnotations();
+    expect(store.getState().undoAnnotation()).toBe(false);
+  });
+});
