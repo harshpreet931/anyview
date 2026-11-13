@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#fbfaf8" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)" />
-    <title>Anyview: every format, one viewer</title>
+    <meta name="theme-color" content="#f4efe7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#12100e" media="(prefers-color-scheme: dark)" />
+    <title>anyview: one component, every format, zero iframes</title>
     <meta
       name="description"
       content="The universal document viewer for React. Render PDF, DOCX, XLSX, PPTX, CSV, Markdown, code, HTML and images natively in the browser. No iframes, no server, no uploads."
@@ -31,13 +31,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400..600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap"
       rel="stylesheet"
     />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('anyview-site-theme');
+          if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.dataset.theme = t;
+          document.documentElement.style.colorScheme = t;
+        } catch (e) {}
+      })();
+    </script>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body, #root { height: 100%; width: 100%; }
-      body { font-family: system-ui, -apple-system, sans-serif; }
+      html { background: #f4efe7; }
+      html[data-theme='dark'] { background: #12100e; }
     </style>
   </head>
   <body>
