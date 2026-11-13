@@ -54,4 +54,22 @@ describe('CsvAdapter delimiter detection', () => {
     );
     expect(await columnCount(adapter)).toBe(3);
   });
+
+  it('detects semicolon-separated .csv files', async () => {
+    const adapter = new CsvAdapter();
+    await adapter.parse(
+      reader('name;age;city\nAda;36;London\n', 'data.csv', 'text/csv'),
+      new AbortController().signal,
+    );
+    expect(await columnCount(adapter)).toBe(3);
+  });
+
+  it('keeps a single-column .csv as one column', async () => {
+    const adapter = new CsvAdapter();
+    await adapter.parse(
+      reader('name\nAda\nGrace\n', 'data.csv', 'text/csv'),
+      new AbortController().signal,
+    );
+    expect(await columnCount(adapter)).toBe(1);
+  });
 });

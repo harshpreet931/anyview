@@ -1,3 +1,4 @@
+import { decodeText } from '../../core/text-decode';
 import type {
   Adapter,
   AdapterManifest,
@@ -95,7 +96,7 @@ export class IpynbAdapter implements Adapter {
 
     let nb: { cells?: NbCell[]; metadata?: Record<string, unknown> };
     try {
-      nb = JSON.parse(new TextDecoder('utf-8').decode(buffer));
+      nb = JSON.parse(decodeText(buffer, source.meta.mimeType));
     } catch (cause) {
       throw new ViewerError('PARSE_ERROR', 'Notebook is not valid JSON.', { cause });
     }

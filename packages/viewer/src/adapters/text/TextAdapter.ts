@@ -1,3 +1,4 @@
+import { decodeText } from '../../core/text-decode';
 import type {
   Adapter,
   AdapterManifest,
@@ -45,7 +46,7 @@ export class TextAdapter implements Adapter {
     const buffer = await source.arrayBuffer();
     if (signal.aborted) throw new Error('Parse cancelled');
 
-    this.text = new TextDecoder('utf-8').decode(buffer);
+    this.text = decodeText(buffer, source.meta.mimeType);
     this.lines = this.text.split('\n');
 
     const charWidth = 8;

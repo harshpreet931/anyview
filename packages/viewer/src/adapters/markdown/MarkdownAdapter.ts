@@ -1,3 +1,4 @@
+import { decodeText } from '../../core/text-decode';
 import type {
   Adapter,
   AdapterManifest,
@@ -50,7 +51,7 @@ export class MarkdownAdapter implements Adapter {
     if (signal.aborted) throw new Error('Parse cancelled');
     assertTransformSize(buffer.byteLength);
 
-    this.markdownText = new TextDecoder('utf-8').decode(buffer);
+    this.markdownText = decodeText(buffer, source.meta.mimeType);
 
     const [
       React,

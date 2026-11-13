@@ -1,3 +1,4 @@
+import { decodeText } from '../../core/text-decode';
 import type {
   Adapter,
   AdapterManifest,
@@ -52,8 +53,8 @@ export class CsvAdapter implements Adapter {
     const buffer = await source.arrayBuffer();
     if (signal.aborted) throw new Error('Parse cancelled');
 
-    const text = new TextDecoder('utf-8').decode(buffer);
-    const delimiter = source.meta.name.toLowerCase().endsWith('.tsv') ? '\t' : ',';
+    const text = decodeText(buffer, source.meta.mimeType);
+    const delimiter = source.meta.name.toLowerCase().endsWith('.tsv') ? '\t' : '';
 
     try {
       const Papa = (await loadParser('papaparse', () => import('papaparse'))).default;

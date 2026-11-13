@@ -1,3 +1,4 @@
+import { decodeText } from '../../core/text-decode';
 import type {
   Adapter,
   AdapterManifest,
@@ -72,7 +73,7 @@ export class CodeAdapter implements Adapter {
     if (signal.aborted) throw new Error('Parse cancelled');
     assertTransformSize(buffer.byteLength);
 
-    this.codeText = new TextDecoder('utf-8').decode(buffer);
+    this.codeText = decodeText(buffer, source.meta.mimeType);
     this.language = detectLanguage(source.meta.name);
 
     try {

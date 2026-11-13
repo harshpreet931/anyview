@@ -1,3 +1,4 @@
+import { decodeText } from '../../core/text-decode';
 import type {
   Adapter,
   AdapterManifest,
@@ -55,7 +56,7 @@ export class HtmlAdapter implements Adapter {
     if (signal.aborted) throw new Error('Parse cancelled');
     assertTransformSize(buffer.byteLength);
 
-    const rawHtml = new TextDecoder('utf-8').decode(buffer);
+    const rawHtml = decodeText(buffer, source.meta.mimeType);
 
     try {
       const DOMPurify = await loadSanitizer();
