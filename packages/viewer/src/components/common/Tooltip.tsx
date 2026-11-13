@@ -33,14 +33,6 @@ export function Tooltip({ label, children, placement = 'bottom' }: TooltipProps)
           position: 'absolute',
           opacity: 0,
           pointerEvents: 'none',
-          transition: 'opacity 0.15s',
-          whiteSpace: 'nowrap',
-          fontSize: 'var(--dv-font-size-sm)',
-          background: 'var(--dv-overlay-color)',
-          color: 'white',
-          padding: '2px 8px',
-          borderRadius: 'var(--dv-radius-sm)',
-          zIndex: 1000,
         }}
       >
         {label}
