@@ -19,6 +19,7 @@ const PER_DOCUMENT_RESET = {
   currentPage: 0,
   scrollOffset: 0,
   rotation: 0 as const,
+  spreadMode: 'none' as const,
   searchQuery: null,
   searchResult: null,
   searchState: 'idle' as const,
