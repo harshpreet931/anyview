@@ -11,3 +11,17 @@ export function assertTransformSize(byteLength: number): void {
     );
   }
 }
+
+export const MAX_CANVAS_AREA = 16_777_216;
+export const MAX_CANVAS_SIDE = 16_384;
+
+/** Largest backing-store ratio (≤ dpr) that keeps a canvas of this CSS size inside browser limits. */
+export function canvasPixelRatio(cssWidth: number, cssHeight: number, dpr: number): number {
+  const w = Math.max(1, cssWidth);
+  const h = Math.max(1, cssHeight);
+  return Math.min(
+    Math.max(dpr, 0.01),
+    Math.sqrt(MAX_CANVAS_AREA / (w * h)),
+    MAX_CANVAS_SIDE / Math.max(w, h),
+  );
+}

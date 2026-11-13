@@ -17,6 +17,7 @@ import type {
   ParseOptions,
 } from '../../core/types';
 import { ViewerError } from '../../core/errors';
+import { canvasPixelRatio } from '../../core/limits';
 import { totalRotation, isSidewaysRotation, type Rotation } from '../../core/rotation';
 import type { ParsedPdf, PdfWorkerApi, PdfOutlineItem } from './types';
 
@@ -134,12 +135,17 @@ export class PdfAdapter implements Adapter {
     }
 
     try {
+      const dpr = canvasPixelRatio(
+        ctx.page.width * ctx.scale,
+        ctx.page.height * ctx.scale,
+        ctx.devicePixelRatio,
+      );
       const bitmap = await this.remote.renderPage(
         this.docId,
         ctx.page.index,
         ctx.scale,
         ctx.rotation,
-        ctx.devicePixelRatio,
+        dpr,
       );
 
       const target = ctx.target as HTMLCanvasElement;
@@ -153,8 +159,8 @@ export class PdfAdapter implements Adapter {
       const outHeight = isSideways ? cssWidth : cssHeight;
 
       if (target instanceof HTMLCanvasElement) {
-        const renderWidth = cssWidth * ctx.devicePixelRatio;
-        const renderHeight = cssHeight * ctx.devicePixelRatio;
+        const renderWidth = cssWidth * dpr;
+        const renderHeight = cssHeight * dpr;
 
         target.width = isSideways ? renderHeight : renderWidth;
         target.height = isSideways ? renderWidth : renderHeight;

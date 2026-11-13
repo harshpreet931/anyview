@@ -8,6 +8,7 @@ import type {
   RenderResult,
   TextLayer,
 } from '../../core/types';
+import { canvasPixelRatio } from '../../core/limits';
 
 export const imageManifest: AdapterManifest = {
   id: 'image',
@@ -40,6 +41,17 @@ export const imageManifest: AdapterManifest = {
   protocolVersion: 1,
 };
 
+const GENERIC_MIME = /^(|application\/octet-stream|text\/plain|text\/xml|application\/xml)$/i;
+
+/** Browsers only render SVG from a blob typed image/svg+xml, so recover the type when it is missing. */
+export function imageMimeType(name: string, mimeType: string, buffer: ArrayBuffer): string {
+  const bare = mimeType.split(';')[0]!.trim();
+  if (!GENERIC_MIME.test(bare)) return mimeType;
+  const head = new TextDecoder().decode(new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 2048)));
+  if (/\.svgz?$/i.test(name) || /<svg[\s>]/i.test(head)) return 'image/svg+xml';
+  return mimeType;
+}
+
 export class ImageAdapter implements Adapter {
   readonly manifest = imageManifest;
   private objectUrl: string | null = null;
@@ -54,7 +66,7 @@ export class ImageAdapter implements Adapter {
     const buffer = await source.arrayBuffer();
     if (signal.aborted) throw new Error('Parse cancelled');
 
-    const blob = new Blob([buffer], { type: source.meta.mimeType });
+    const blob = new Blob([buffer], { type: imageMimeType(source.meta.name, source.meta.mimeType, buffer) });
     this.objectUrl = URL.createObjectURL(blob);
 
     await new Promise<void>((resolve, reject) => {
@@ -99,7 +111,7 @@ export class ImageAdapter implements Adapter {
       return { width: outW, height: outH };
     }
 
-    const dpr = ctx.devicePixelRatio || 1;
+    const dpr = canvasPixelRatio(outW, outH, ctx.devicePixelRatio || 1);
     target.width = Math.max(1, Math.round(outW * dpr));
     target.height = Math.max(1, Math.round(outH * dpr));
     target.style.width = `${outW}px`;
