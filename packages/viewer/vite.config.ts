@@ -52,6 +52,7 @@ function copyPdfjsAssets(): Plugin {
           }),
         ),
       );
+      await fs.promises.writeFile(path.join(outDir, 'styles.d.ts'), 'export {};\n');
     },
   };
 }

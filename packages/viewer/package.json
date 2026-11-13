@@ -82,7 +82,10 @@
       "import": "./dist/core/index.js",
       "require": "./dist/core/index.cjs"
     },
-    "./styles": "./dist/viewer.css"
+    "./styles": {
+      "types": "./dist/styles.d.ts",
+      "default": "./dist/viewer.css"
+    }
   },
   "scripts": {
     "build": "vite build",
