@@ -1,20 +1,18 @@
 <div align="center">
 
-<img src="./assets/banner.png" width="880" alt="Anyview: one component, every format, zero iframes." />
+<img src="./assets/banner.png" width="880" alt="anyview, with Avy the document mascot: One component. Every format. Zero iframes. npm i anyview" />
 
-# Anyview
+The document viewer for React that just opens the file.<br />
+Drop in one component and it renders **PDF, DOCX, XLSX, PPTX, CSV, Markdown, code, HTML, Jupyter notebooks and images** natively in the browser.<br />
+No iframes, no server round-trips, no uploads. Your files never leave the page.
 
-### One component. Every format. Zero iframes.
-
-The universal document viewer for React. It renders **PDF, DOCX, XLSX, PPTX, CSV, Markdown, code, HTML, Jupyter notebooks & images** natively in the browser. No iframes, no server round-trips, no uploads. Your files never leave the page.
-
-[![npm version](https://img.shields.io/npm/v/anyview?color=B8740F&labelColor=1a1813)](https://www.npmjs.com/package/anyview)
-[![license](https://img.shields.io/github/license/harshpreet931/anyview?color=B8740F&labelColor=1a1813)](./LICENSE)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/anyview?color=B8740F&labelColor=1a1813)](https://bundlephobia.com/package/anyview)
-[![CI](https://img.shields.io/github/actions/workflow/status/harshpreet931/anyview/ci.yml?branch=main&labelColor=1a1813)](https://github.com/harshpreet931/anyview/actions)
+[![npm version](https://img.shields.io/npm/v/anyview?color=E8551F&labelColor=0E0F12)](https://www.npmjs.com/package/anyview)
+[![license](https://img.shields.io/github/license/harshpreet931/anyview?color=E8551F&labelColor=0E0F12)](./LICENSE)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/anyview?color=E8551F&labelColor=0E0F12)](https://bundlephobia.com/package/anyview)
+[![CI](https://img.shields.io/github/actions/workflow/status/harshpreet931/anyview/ci.yml?branch=main&labelColor=0E0F12)](https://github.com/harshpreet931/anyview/actions)
 [![stars](https://img.shields.io/github/stars/harshpreet931/anyview?style=social)](https://github.com/harshpreet931/anyview)
 
-**[▶ Live demo](https://harshpreet931.github.io/anyview/)** &nbsp;·&nbsp; [Quick start](#quick-start) &nbsp;·&nbsp; [Why Anyview?](#why-anyview) &nbsp;·&nbsp; [FAQ](#faq)
+**[Try the live demo](https://harshpreet931.github.io/anyview/)** &nbsp;·&nbsp; [Quick start](#quick-start) &nbsp;·&nbsp; [Why Anyview?](#why-anyview) &nbsp;·&nbsp; [FAQ](#faq)
 
 <br />
 
@@ -22,7 +20,7 @@ The universal document viewer for React. It renders **PDF, DOCX, XLSX, PPTX, CSV
 
 <br /><br />
 
-<img src="./assets/screenshot.png" width="900" alt="Anyview rendering a real PDF with a thumbnail rail, search highlight, zoom, rotate, and annotation tools" />
+<img src="./assets/screenshot.png" width="900" alt="Anyview rendering a real PDF with a thumbnail rail, page navigation, zoom, rotate, and annotation tools" />
 
 <sub>A real document rendered in the <a href="https://harshpreet931.github.io/anyview/">live playground</a>, with a selectable text layer, cross-format search, thumbnails, and annotations.</sub>
 
