@@ -125,7 +125,10 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
       data-format={format}
     >
       {isCanvasFormat ? (
-        <canvas ref={targetRef as React.RefObject<HTMLCanvasElement>} />
+        <canvas
+          ref={targetRef as React.RefObject<HTMLCanvasElement>}
+          {...(format === 'image' ? { role: 'img', 'aria-label': document.meta.name } : {})}
+        />
       ) : (
         <div
           ref={(el) => {

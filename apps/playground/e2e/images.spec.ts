@@ -45,3 +45,10 @@ test.describe('images - pixels actually reach the canvas', () => {
     await expectCanvasNotBlank(page);
   });
 });
+
+test('an image document is exposed to assistive tech with its name', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.pg-sample-chip', { hasText: /^SVG$/ }).click();
+  await expectCanvasNotBlank(page);
+  await expect(page.getByRole('img', { name: 'image-sample.svg' })).toBeVisible();
+});
