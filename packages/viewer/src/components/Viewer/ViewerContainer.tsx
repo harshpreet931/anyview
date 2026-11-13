@@ -14,6 +14,16 @@ import { EmptyState, LoadingState, ErrorState } from '../States';
 const PAGE_VERTICAL_GAP = 48;
 const PAGE_SPREAD_GAP = 16;
 
+/** The row whose start is at or above the scroll offset (the top-most row in view). */
+function rowAtOffset(items: { index: number; start: number }[], offset: number): number {
+  let row = items.length > 0 ? items[0].index : 0;
+  for (const it of items) {
+    if (it.start <= offset + 1) row = it.index;
+    else break;
+  }
+  return row;
+}
+
 export function ViewerContainer() {
   const document = useViewerStore((s) => s.document);
   const loadState = useViewerStore((s) => s.loadState);
@@ -91,17 +101,23 @@ export function ViewerContainer() {
     horizontal: isHorizontal,
   });
 
+  // Bring the current page to the top whenever it changes for a reason other
+  // than the user scrolling. "Already there" uses the same rule as the scroll
+  // listener below (the row at the top edge of the viewport), so a page change
+  // that came from scrolling never triggers a programmatic scroll. Using
+  // getVirtualItems() for this was wrong: it includes overscan rows that are
+  // rendered but off-screen, so Next/Prev within two rows never moved.
   useEffect(() => {
     if (currentPage < 0 || currentPage >= pageCount) return;
+    const el = scrollRef.current;
+    if (!el) return;
     const targetRow = pageToRow[currentPage] ?? 0;
-    const virtualItems = virtualizer.getVirtualItems();
-    const firstVisible = virtualItems.length > 0 ? virtualItems[0].index : -1;
-    const lastVisible = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1].index : -1;
-    if (firstVisible < 0 || targetRow < firstVisible || targetRow > lastVisible) {
+    const offset = isHorizontal ? el.scrollLeft : el.scrollTop;
+    if (rowAtOffset(virtualizer.getVirtualItems(), offset) !== targetRow) {
       isProgrammaticScrollRef.current = true;
       virtualizer.scrollToIndex(targetRow, { align: 'start' });
     }
-  }, [currentPage, pageCount, virtualizer, pageToRow]);
+  }, [currentPage, pageCount, virtualizer, pageToRow, isHorizontal]);
 
   useEffect(() => {
     if (!isScrolling) return;
@@ -137,12 +153,7 @@ export function ViewerContainer() {
       ticking = true;
       requestAnimationFrame(() => {
         const offset = isHorizontal ? scrollEl.scrollLeft : scrollEl.scrollTop;
-        const items = virtualizer.getVirtualItems();
-        let topRow = items.length > 0 ? items[0].index : 0;
-        for (const it of items) {
-          if (it.start <= offset + 1) topRow = it.index;
-          else break;
-        }
+        const topRow = rowAtOffset(virtualizer.getVirtualItems(), offset);
         setCurrentPage(rows[topRow]?.[0] ?? 0);
         ticking = false;
       });

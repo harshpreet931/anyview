@@ -331,6 +331,62 @@ test.describe('PDF - viewport controls', () => {
     await expect(page.locator('.dv-page-input')).toHaveValue('2');
   });
 
+  // The page input updating is not enough: the viewport must actually move.
+  // Regression: pages inside the virtualizer's overscan were treated as
+  // "visible", so Next/Prev/thumbnail clicks within 2 rows never scrolled.
+  const pageTop = (page: Page, idx: number) =>
+    page.evaluate((i) => {
+      const sc = document.querySelector('.dv-viewer-container')!.getBoundingClientRect();
+      const el = document.querySelectorAll('.dv-page')[i];
+      return el ? Math.round(el.getBoundingClientRect().top - sc.top) : null;
+    }, idx);
+
+  test('Next/Previous scroll the target page into view', async ({ page }) => {
+    await gotoApp(page);
+    await loadSample(page, 'PDF');
+    await waitForCanvasRendered(page);
+    expect(await pageTop(page, 0)).toBeLessThan(60);
+
+    await page.locator('button[aria-label="Next page"]').click();
+    await expect(page.locator('.dv-page-input')).toHaveValue('2');
+    await expect.poll(() => pageTop(page, 1)).toBeLessThan(60);
+    await expect.poll(() => pageTop(page, 1)).toBeGreaterThan(-60);
+
+    await page.locator('button[aria-label="Previous page"]').click();
+    await expect(page.locator('.dv-page-input')).toHaveValue('1');
+    await expect.poll(() => pageTop(page, 0)).toBeGreaterThan(-60);
+    await expect.poll(() => pageTop(page, 0)).toBeLessThan(60);
+  });
+
+  test('clicking a thumbnail scrolls that page into view', async ({ page }) => {
+    await gotoApp(page);
+    await loadSample(page, 'PDF');
+    await waitForCanvasRendered(page);
+
+    await page.locator('.dv-thumbnail').nth(1).click();
+    await expect(page.locator('.dv-page-input')).toHaveValue('2');
+    await expect.poll(() => pageTop(page, 1)).toBeLessThan(60);
+  });
+
+  test('free scrolling still updates the page number without fighting the user', async ({ page }) => {
+    await gotoApp(page);
+    await loadSample(page, 'PDF');
+    await waitForCanvasRendered(page);
+
+    const target = await page.evaluate(() => {
+      const sc = document.querySelector('.dv-viewer-container') as HTMLElement;
+      const p2 = document.querySelectorAll('.dv-page')[1] as HTMLElement;
+      const top = p2.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
+      sc.scrollTop = top - 10;
+      return Math.round(sc.scrollTop);
+    });
+    await expect(page.locator('.dv-page-input')).toHaveValue('2');
+    // The scroll position the user chose is kept (no snap to the page start).
+    await page.waitForTimeout(300);
+    const now = await page.locator('.dv-viewer-container').evaluate((el) => Math.round(el.scrollTop));
+    expect(Math.abs(now - target)).toBeLessThan(3);
+  });
+
   test('keyboard navigation (ArrowRight) advances the page', async ({ page }) => {
     await gotoApp(page);
     await loadSample(page, 'PDF');
