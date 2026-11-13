@@ -9,9 +9,27 @@ async function openPdf(page: Page) {
   await expect(page.locator('.dv-root')).toBeVisible();
   await page.locator('.pg-sample-chip', { hasText: 'PDF' }).first().click();
   await page.waitForSelector('.dv-page canvas');
+  await settleLayout(page);
   // The live demo sits below the hero; centre it so pointer gestures at
   // page-relative coordinates land on the document.
   await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+}
+
+/**
+ * Wait for webfonts and the site's one-shot entrance animations (hero rise,
+ * demo-card rise) to finish. While they run the toolbar keeps shifting by a
+ * pixel or so, Playwright sees the buttons as "not stable" and falls back to
+ * scrolling the window, which throws page-relative pointer gestures off-page.
+ * Infinite ambient animations (cloud drift, mascot float) are ignored.
+ */
+async function settleLayout(page: Page) {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    const oneShot = document
+      .getAnimations()
+      .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity);
+    await Promise.all(oneShot.map((a) => a.finished.catch(() => undefined)));
+  });
 }
 const pageWidth = (page: Page) =>
   page.locator('.dv-page').first().evaluate((el) => el.getBoundingClientRect().width);
@@ -128,9 +146,10 @@ test.describe('annotations - shapes & free-text', () => {
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'fit-page');
     await page.waitForTimeout(300);
-    const box = (await page.locator('.dv-page').first().boundingBox())!;
+    const pageBox = async () => (await page.locator('.dv-page').first().boundingBox())!;
     const drag = async (label: string, x1: number, y1: number, x2: number, y2: number) => {
       await page.locator(`button[aria-label="${label}"]`).click();
+      const box = await pageBox();
       await page.mouse.move(box.x + x1, box.y + y1);
       await page.mouse.down();
       await page.mouse.move(box.x + (x1 + x2) / 2, box.y + (y1 + y2) / 2);
@@ -141,6 +160,7 @@ test.describe('annotations - shapes & free-text', () => {
     await drag('Rectangle', 40, 60, 200, 150);
     await drag('Line', 40, 230, 240, 330);
     await page.locator('button[aria-label="Text"]').click();
+    const box = await pageBox();
     await page.mouse.click(box.x + 80, box.y + 420);
     await page.waitForTimeout(200);
     await expect(page.locator('g.dv-annotation')).toHaveCount(3);
