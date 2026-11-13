@@ -8,7 +8,6 @@ No iframes, no server round-trips, no uploads. Your files never leave the page.
 
 [![npm version](https://img.shields.io/npm/v/anyview?color=E8551F&labelColor=0E0F12)](https://www.npmjs.com/package/anyview)
 [![license](https://img.shields.io/github/license/harshpreet931/anyview?color=E8551F&labelColor=0E0F12)](./LICENSE)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/anyview?color=E8551F&labelColor=0E0F12)](https://bundlephobia.com/package/anyview)
 [![CI](https://img.shields.io/github/actions/workflow/status/harshpreet931/anyview/ci.yml?branch=main&labelColor=0E0F12)](https://github.com/harshpreet931/anyview/actions)
 [![stars](https://img.shields.io/github/stars/harshpreet931/anyview?style=social)](https://github.com/harshpreet931/anyview)
 
