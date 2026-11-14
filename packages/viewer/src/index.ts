@@ -31,6 +31,7 @@ export type {
   SearchMatch,
   SearchResult,
   Annotation,
+  AnnotationTool,
   AnnotationType,
   AnnotationChangeListener,
   BaseAnnotation,
