@@ -181,6 +181,9 @@ export function App() {
                 <ArrowIcon width={16} height={16} />
               </a>
               <CopyCommand command="npm i anyview" />
+              <a className="pg-text-link" href={`${import.meta.env.BASE_URL}examples/`}>
+                See examples
+              </a>
             </div>
           </div>
         </section>
@@ -243,6 +246,15 @@ export function App() {
             </code>
           </pre>
         </article>
+
+        <Divider label="In real apps" />
+        <a className="pg-card pg-examples-link" data-reveal href={`${import.meta.env.BASE_URL}examples/`}>
+          <span>
+            <strong>See it inside four small apps</strong>
+            <span>Chat attachments, an upload preview, contract review with comments, and custom controls. Live, with full source.</span>
+          </span>
+          <ArrowIcon width={18} height={18} />
+        </a>
 
         <article className="pg-promo" data-reveal>
           <div className="pg-promo-head">

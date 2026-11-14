@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4efe7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#12100e" media="(prefers-color-scheme: dark)" />
+    <title>anyview examples: a document viewer in real React apps</title>
+    <meta
+      name="description"
+      content="Live examples of anyview inside real React apps: chat attachments, upload previews, document review with annotations, and custom controls. Full source for each."
+    />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="anyview examples: a document viewer in real React apps" />
+    <meta
+      property="og:description"
+      content="The universal document viewer for React. PDF, DOCX, XLSX, PPTX, CSV, Markdown, code, HTML & images, rendered natively with no iframes and no uploads."
+    />
+    <meta property="og:url" content="https://anyview.harshpreet.com/examples/" />
+    <meta property="og:image" content="https://anyview.harshpreet.com/social-preview.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="anyview examples: a document viewer in real React apps" />
+    <meta name="twitter:image" content="https://anyview.harshpreet.com/social-preview.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400..600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('anyview-site-theme');
+          if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.dataset.theme = t;
+          document.documentElement.style.colorScheme = t;
+        } catch (e) {}
+      })();
+    </script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html { background: #f4efe7; }
+      html[data-theme='dark'] { background: #12100e; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/examples/main.tsx"></script>
+  </body>
+</html>

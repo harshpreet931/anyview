@@ -54,6 +54,12 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        examples: path.resolve(__dirname, 'examples/index.html'),
+      },
+    },
   },
   worker: {
     format: 'es',
