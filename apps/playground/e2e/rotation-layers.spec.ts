@@ -5,8 +5,20 @@ async function openPdf(page: Page) {
   await page.locator('.pg-sample-chip', { hasText: /^PDF$/ }).click();
   await page.waitForSelector('.dv-page canvas');
   await page.getByLabel('Zoom level').selectOption('1');
+  await settle(page);
+}
+
+async function settle(page: Page) {
   await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
-  await page.waitForTimeout(500);
+  let last = '';
+  await expect
+    .poll(async () => {
+      const now = JSON.stringify(await page.locator('.dv-page').first().boundingBox());
+      const stable = now === last;
+      last = now;
+      return stable;
+    }, { intervals: [200] })
+    .toBe(true);
 }
 
 const span = (page: Page, text: RegExp) => page.locator('.dv-text-layer span').filter({ hasText: text }).first();
@@ -24,15 +36,17 @@ async function overlap(a: Locator, b: Locator) {
 
 async function rotate(page: Page) {
   await page.getByRole('button', { name: 'Rotate clockwise' }).click();
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(500);
+  await settle(page);
 }
 
 test.describe('rotation keeps overlays on their text', () => {
   test('an annotation follows the page when it is rotated', async ({ page }) => {
     await openPdf(page);
+    await page.getByRole('radio', { name: 'Highlight' }).click();
+    await settle(page);
     const line = span(page, /Native rendering/);
     const b = (await line.boundingBox())!;
-    await page.getByRole('radio', { name: 'Highlight' }).click();
     await page.mouse.move(b.x, b.y);
     await page.mouse.down();
     await page.mouse.move(b.x + b.width, b.y + b.height, { steps: 6 });
@@ -47,9 +61,10 @@ test.describe('rotation keeps overlays on their text', () => {
   test('an annotation drawn on a rotated page lines up after rotating back', async ({ page }) => {
     await openPdf(page);
     await rotate(page);
+    await page.getByRole('radio', { name: 'Highlight' }).click();
+    await settle(page);
     const line = span(page, /Native rendering/);
     const b = (await line.boundingBox())!;
-    await page.getByRole('radio', { name: 'Highlight' }).click();
     await page.mouse.move(b.x, b.y);
     await page.mouse.down();
     await page.mouse.move(b.x + b.width, b.y + b.height, { steps: 6 });

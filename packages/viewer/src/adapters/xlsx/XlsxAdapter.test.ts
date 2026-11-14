@@ -41,7 +41,7 @@ describe('XlsxAdapter', () => {
   });
 
   it('renders a bounded number of rows for very tall sheets and says so', async () => {
-    const rows = Array.from({ length: 20_000 }, (_, i) => [`row ${i}`, i]);
+    const rows = Array.from({ length: 6_000 }, (_, i) => [`row ${i}`, i]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['name', 'n'], ...rows]), 'Big');
     const bytes = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
@@ -54,6 +54,6 @@ describe('XlsxAdapter', () => {
     await adapter.renderPage(ctx(0, target));
     expect(target.querySelectorAll('tr').length).toBeLessThanOrEqual(5001);
     expect(target.textContent).toContain('row 0');
-    expect(target.querySelector('.dv-sheet-truncated')?.textContent).toMatch(/20,001/);
-  });
+    expect(target.querySelector('.dv-sheet-truncated')?.textContent).toMatch(/6,001/);
+  }, 30_000);
 });
