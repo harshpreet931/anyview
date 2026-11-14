@@ -101,5 +101,5 @@
     <path d="M1160 732v28h-28"/>
   </g>
 
-  <text x="600" y="788" font-size="5.5" letter-spacing="0.6" fill="#6E7681" text-anchor="middle">Nothing here is a bitmap — zoom to 500% and every hairline, curve and letterform stays exactly this sharp.</text>
+  <text x="600" y="788" font-size="5.5" letter-spacing="0.6" fill="#6E7681" text-anchor="middle">Nothing here is a bitmap: zoom to 500% and every hairline, curve and letterform stays exactly this sharp.</text>
 </svg>
