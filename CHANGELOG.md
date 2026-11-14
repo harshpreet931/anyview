@@ -5,6 +5,32 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.3.1]
+
+### Fixed
+- **Files open by what they are, not just their name.** PDFs, images and Office files are recognised from their first bytes and from a specific server Content-Type, so `download.php?id=42` serving a PDF opens as a PDF. Readable files with no extension open as text.
+- **XLSX workbooks with a blank sheet** (such as Excel's default empty Sheet2) open.
+- **UTF-16 and legacy-encoded text** decodes correctly, and **semicolon-separated CSVs** split into columns.
+- **Zoom stays on the page you were reading.** Ctrl+wheel, pinch and marquee zoom no longer jump several pages, and a slow render can no longer paint over a newer zoom level.
+- **Deep zoom no longer blanks images and PDFs** on high-DPI screens; SVGs served without a type render.
+- **Annotations, search highlights and the selectable text follow page rotation.**
+- **Search:** Enter and Shift+Enter step through matches, Esc keeps focus in the viewer, finding a match scrolls only the viewer (not your page), and zooming no longer snaps back to the match.
+- **Annotations:** notes and text are written inline instead of in a browser prompt, a straight drag along a line highlights it, annotations can be focused and deleted from the keyboard, Ctrl/Cmd+Z undoes, and a two-finger pinch no longer leaves a stray stroke. `importAnnotations()` drops malformed entries instead of crashing your app.
+- **Keyboard:** arrow keys switch sidebar tabs, PageUp/PageDown/Home/End scroll single-page documents, arrows pan zoomed content, and focus stays in the viewer after closing a dialog or picking a thumbnail.
+- **Printing a non-PDF document prints just the document**, not the whole host page.
+- **Large files stay responsive.** CSVs render in chunks with a "Show more rows" control (a 50,000-row file now opens in under 4 seconds), very tall sheets are capped with a note, very large code files skip highlighting, and long HTML outlines are built in one pass.
+- **Custom adapters are detected** by their registered extensions and MIME types, and `FormatId` accepts custom ids, so the README's EPUB example works.
+- **`<DocViewer>` renders `children` inside the viewer**, so the documented hooks (`useNavigation` and friends) work.
+- **Every viewer label is translatable**, partial locale tables fall back to English, and dates and file sizes follow the locale. Image documents are announced by name to screen readers.
+
+### Security
+- **Document ids are namespaced** so HTML, DOCX, XLSX and notebook content can't shadow page globals (DOM clobbering); in-page links keep working.
+- **The `xlsx` peer range now accepts the patched SheetJS builds.** npm's `xlsx` stopped at 0.18.5, which has known vulnerabilities; install `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz` instead.
+
+### Changed
+- File sizes read "1.5 kB" (locale-formatted) instead of "1.5 KB".
+- `registerStrings()` accepts a partial table and merges it over English.
+
 ## [0.3.0]
 
 ### Changed
