@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { TextLayerItem } from '../../core/types';
 import { useViewerStore } from '../../hooks/useDocViewer';
 
@@ -38,19 +38,49 @@ export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
   }, [adapter, pageIndex, rotation]);
 
   // Match each span to the source run width (pdf.js technique) so selection aligns with the bitmap glyphs.
+  // Width and font size both scale with zoom, so the ratio is measured once per run and reused on every zoom.
+  const ratios = useRef<{ items: readonly TextLayerItem[]; values: number[] } | null>(null);
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const spans = container.querySelectorAll<HTMLElement>('span[data-tw]');
-    spans.forEach((span) => {
-      span.style.transform = '';
-      const target = parseFloat(span.dataset.tw ?? '0');
-      const natural = span.offsetWidth;
+    const spans = Array.from(container.querySelectorAll<HTMLElement>('span[data-tw]'));
+    if (ratios.current?.items !== items || ratios.current.values.length !== spans.length) {
+      for (const span of spans) span.style.transform = '';
+      const values = spans.map((span) => {
+        const target = parseFloat(span.dataset.tw ?? '0') * width;
+        const natural = span.offsetWidth;
+        return target > 0 && natural > 0 ? target / natural : 0;
+      });
+      ratios.current = { items, values };
+    }
+    const values = ratios.current.values;
+    spans.forEach((span, i) => {
       const rotate = span.dataset.angle ? `rotate(${span.dataset.angle}deg) ` : '';
-      const scale = target > 0 && natural > 0 ? `scaleX(${target / natural})` : '';
+      const scale = values[i] ? `scaleX(${values[i]})` : '';
       span.style.transform = `${rotate}${scale}`.trim();
     });
   }, [items, width, height]);
+
+  const runs = useMemo(
+    () =>
+      items.map((item, i) =>
+        item.str ? (
+          <span
+            key={i}
+            data-tw={item.width}
+            data-angle={item.angle || undefined}
+            style={{
+              left: `${item.x * 100}%`,
+              top: `${item.y * 100}%`,
+              fontSize: `calc(var(--dv-text-h) * ${item.height})`,
+            }}
+          >
+            {item.str}
+          </span>
+        ) : null,
+      ),
+    [items],
+  );
 
   if (items.length === 0) return null;
 
@@ -58,25 +88,10 @@ export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
     <div
       ref={containerRef}
       className="dv-text-layer"
-      style={{ width, height }}
+      style={{ width, height, '--dv-text-h': `${height}px` } as CSSProperties}
       aria-hidden="false"
     >
-      {items.map((item, i) =>
-        item.str ? (
-          <span
-            key={i}
-            data-tw={item.width * width}
-            data-angle={item.angle || undefined}
-            style={{
-              left: `${item.x * width}px`,
-              top: `${item.y * height}px`,
-              fontSize: `${Math.max(item.height * height, 1)}px`,
-            }}
-          >
-            {item.str}
-          </span>
-        ) : null,
-      )}
+      {runs}
     </div>
   );
 }
