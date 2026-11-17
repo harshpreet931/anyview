@@ -65,8 +65,26 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
       signal: controller.signal,
     };
 
-    adapter
-      .renderPage(ctx)
+    // The worker renders in arrival order, so pages outside the view queue up behind the visible ones.
+    // Visibility is read a frame later, once the virtual rows have moved to their new positions.
+    const target = targetRef.current;
+    const start = () =>
+      new Promise<void>((resolve, reject) => {
+        if (!isCanvasFormat) return resolve();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const frame = requestAnimationFrame(() => {
+          if (inView(target)) resolve();
+          else timer = setTimeout(resolve, OFFSCREEN_DELAY_MS);
+        });
+        controller.signal.addEventListener('abort', () => {
+          cancelAnimationFrame(frame);
+          clearTimeout(timer);
+          reject(new DOMException('Render cancelled', 'AbortError'));
+        });
+      });
+
+    start()
+      .then(() => adapter.renderPage(ctx))
       .then((result) => {
         if (token !== renderTokenRef.current || controller.signal.aborted) {
           result.bitmap?.close();
@@ -103,7 +121,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
       .catch(() => {});
 
     return () => controller.abort();
-  }, [adapter, document, pageIndex, renderScale, rotation, pageCache]);
+  }, [adapter, document, pageIndex, renderScale, rotation, pageCache, isCanvasFormat]);
 
   if (!document || !adapter) return null;
 
@@ -166,6 +184,16 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
       )}
     </div>
   );
+}
+
+const OFFSCREEN_DELAY_MS = 120;
+
+function inView(el: Element): boolean {
+  const view = el.closest('.dv-viewer-container');
+  if (!view) return true;
+  const r = el.getBoundingClientRect();
+  const v = view.getBoundingClientRect();
+  return r.bottom > v.top && r.top < v.bottom && r.right > v.left && r.left < v.right;
 }
 
 function paintCached(
