@@ -114,8 +114,6 @@ export class ImageAdapter implements Adapter {
     const dpr = canvasPixelRatio(outW, outH, ctx.devicePixelRatio || 1);
     target.width = Math.max(1, Math.round(outW * dpr));
     target.height = Math.max(1, Math.round(outH * dpr));
-    target.style.width = `${outW}px`;
-    target.style.height = `${outH}px`;
 
     const c = target.getContext('2d');
     if (!c) return { width: outW, height: outH };

@@ -309,6 +309,8 @@
 
 .dv-page canvas {
   display: block;
+  width: 100%;
+  height: 100%;
   border-radius: var(--dv-radius-xs);
   user-select: none;
 }

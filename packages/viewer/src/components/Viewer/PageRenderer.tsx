@@ -171,8 +171,6 @@ function paintCached(
     const bitmap = cached.bitmap;
     target.width = bitmap.width;
     target.height = bitmap.height;
-    target.style.width = `${cached.width}px`;
-    target.style.height = `${cached.height}px`;
 
     const c2d = target.getContext('2d');
     if (c2d) {

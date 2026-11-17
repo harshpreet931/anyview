@@ -169,9 +169,6 @@ export class PdfAdapter implements Adapter {
         target.width = isSideways ? renderHeight : renderWidth;
         target.height = isSideways ? renderWidth : renderHeight;
 
-        target.style.width = `${outWidth}px`;
-        target.style.height = `${outHeight}px`;
-
         const c2d = target.getContext('2d');
         if (c2d) {
           c2d.drawImage(bitmap, 0, 0, target.width, target.height);
