@@ -5,6 +5,23 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.3.2]
+
+### Added
+- **Ctrl/Cmd+0 returns to the default fit**, and choosing Fit width or Fit page animates instead of snapping.
+- **`AnnotationTool` is exported** for callers of `ref.setActiveTool`.
+
+### Changed
+- **Toolbar and keyboard zoom step along a ratio ladder** (10%, 25%, 33%, 50%, 67%, 75%, 80%, 90%, 100%, 110%, 125%, 150%, 175%, 200%, 250%, 300%, 400%, 500%) like desktop PDF readers.
+
+### Fixed
+- **Pinch and trackpad zoom are smooth and land where they started.** The gesture engine was rebuilt: pinches keep the point between your fingers fixed, two-finger panning works mid-pinch, overshooting the zoom limits rubber-bands back, double-tap zooms on touch, Safari's trackpad gestures are supported, and a mouse wheel notch steps evenly. On phones the page no longer lands thousands of pixels away after a pinch.
+- **Zooming no longer flashes or blurs.** The old page image stretches to its new size until the sharp render arrives, the pages on screen sharpen first, and superseded PDF renders are cancelled in the worker.
+- **Zoom commits are fast on dense documents.** PDF text runs are measured once instead of on every zoom, and rendered pages are cached without an extra copy (a dense PDF's zoom frame went from about 117ms to under 16ms).
+- **Word, Excel, CSV, Markdown and other flowing formats scale instead of re-laying out**, so zooming them is instant and keeps the text under the cursor in place. Fit page on a flowing document fits its width.
+- **Two-page spreads scale as one block** and no longer jump when a pinch ends.
+- **The page number keeps up** when you scroll straight after a zoom.
+
 ## [0.3.1]
 
 ### Fixed
