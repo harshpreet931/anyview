@@ -114,23 +114,25 @@ export function useZoomGestures<A>(
     anchoringRef.current = anchoring;
   });
 
-  // A scaled-down preview shrinks the scroll range and the browser would clamp the scroll position,
-  // so a sizer holds the range open while a gesture or animation is showing.
-  const holdRange = useCallback(
-    (hold: boolean) => {
+  // While a gesture or animation is showing, the content gets its own compositor layer, and a sizer
+  // holds the scroll range open: a scaled-down preview shrinks it and the browser would clamp the scroll.
+  const setZooming = useCallback(
+    (active: boolean) => {
+      const content = contentRef.current;
+      if (content) content.style.willChange = active ? 'transform' : '';
       const sizer = sizerRef?.current;
       const el = scrollRef.current;
       if (!sizer || !el) return;
-      sizer.style.width = hold ? `${el.scrollWidth}px` : '0px';
-      sizer.style.height = hold ? `${el.scrollHeight}px` : '0px';
+      sizer.style.width = active ? `${el.scrollWidth}px` : '0px';
+      sizer.style.height = active ? `${el.scrollHeight}px` : '0px';
     },
-    [sizerRef, scrollRef],
+    [contentRef, sizerRef, scrollRef],
   );
 
   const beginGesture = useCallback(
     (el: HTMLDivElement, cursorX: number, cursorY: number) => {
       animation.current?.cancel();
-      holdRange(true);
+      setZooming(true);
       gesture.current = {
         base: zoomRef.current,
         raw: zoomRef.current,
@@ -148,7 +150,7 @@ export function useZoomGestures<A>(
         ty: 0,
       };
     },
-    [contentRef, holdRange],
+    [contentRef, setZooming],
   );
 
   // Keeps the preview inside what the committed layout can show: narrow pages stay centred and
@@ -207,14 +209,14 @@ export function useZoomGestures<A>(
             animation.current = null;
             if (!gesture.current) {
               content.style.transformOrigin = '';
-              holdRange(false);
+              setZooming(false);
             }
           };
           anim.onfinish = done;
           anim.oncancel = done;
         } else {
           content.style.transformOrigin = '';
-          holdRange(false);
+          setZooming(false);
         }
       }
       return;
@@ -228,7 +230,7 @@ export function useZoomGestures<A>(
     };
     isProgrammaticScrollRef.current = true;
     setZoom(next);
-  }, [setZoom, contentRef, scrollRef, isProgrammaticScrollRef, holdRange]);
+  }, [setZoom, contentRef, scrollRef, isProgrammaticScrollRef, setZooming]);
 
   useLayoutEffect(() => {
     const anchor = pendingAnchor.current;
@@ -242,11 +244,11 @@ export function useZoomGestures<A>(
     const running = animation.current;
     const shown = running && content ? new DOMMatrix(getComputedStyle(content).transform).a || 1 : 1;
     running?.cancel();
-    holdRange(false);
+    setZooming(false);
     anchoringRef.current.restore(anchor.at, anchor.ratio, anchor.cx, anchor.cy);
     const el = scrollRef.current;
     if (anchor.from == null || !content || !el || reducedMotion()) return;
-    holdRange(true);
+    setZooming(true);
     content.style.transformOrigin = `${el.scrollLeft + anchor.cx}px ${el.scrollTop + anchor.cy}px`;
     const anim = content.animate(
       [{ transform: `scale(${shown * anchor.from})` }, { transform: 'none' }],
@@ -258,12 +260,12 @@ export function useZoomGestures<A>(
       animation.current = null;
       if (!gesture.current) {
         content.style.transformOrigin = '';
-        holdRange(false);
+        setZooming(false);
       }
     };
     anim.onfinish = done;
     anim.oncancel = done;
-  }, [zoom, contentRef, scrollRef, holdRange]);
+  }, [zoom, contentRef, scrollRef, setZooming]);
 
   // Zooms that don't come from a gesture (toolbar, keys, fit modes, the API) anchor on the middle of the view.
   useEffect(

@@ -314,7 +314,6 @@
   color: var(--dv-page-ink);
   color-scheme: light;
   animation: dv-page-enter var(--dv-transition-slow) var(--dv-ease-out) backwards;
-  will-change: transform;
 }
 
 .dv-page canvas {
