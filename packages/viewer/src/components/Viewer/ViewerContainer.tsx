@@ -14,6 +14,7 @@ import { EmptyState, LoadingState, ErrorState } from '../States';
 
 const PAGE_VERTICAL_GAP = 48;
 const PAGE_SPREAD_GAP = 16;
+const FIXED_PAGE_FORMATS = new Set(['pdf', 'image', 'pptx']);
 
 function rowAtOffset(items: { index: number; start: number }[], offset: number): number {
   let row = items.length > 0 ? items[0].index : 0;
@@ -283,8 +284,9 @@ export function ViewerContainer() {
       const availW = el.clientWidth - PAGE_VERTICAL_GAP - (cols - 1) * PAGE_SPREAD_GAP;
       const availH = el.clientHeight - PAGE_VERTICAL_GAP;
       if (availW <= 0 || availH <= 0 || rowWidth <= 0 || ph <= 0) return;
+      const flowing = !FIXED_PAGE_FORMATS.has(document!.format);
       let z = 1;
-      if (fitMode === 'page-width') z = availW / rowWidth;
+      if (fitMode === 'page-width' || (fitMode === 'page-fit' && flowing)) z = availW / rowWidth;
       else if (fitMode === 'page-fit') z = Math.min(availW / rowWidth, availH / ph);
       else if (fitMode === 'actual-size') z = 1;
       if (Number.isFinite(z) && z > 0) applyFitZoom(z);
