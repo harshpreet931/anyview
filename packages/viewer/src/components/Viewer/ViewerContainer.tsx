@@ -235,14 +235,7 @@ export function ViewerContainer() {
 
     let ticking = false;
     let settleTimer: ReturnType<typeof setTimeout> | undefined;
-    const onScroll = () => {
-      if (isProgrammaticScrollRef.current) {
-        if (settleTimer) clearTimeout(settleTimer);
-        settleTimer = setTimeout(() => {
-          isProgrammaticScrollRef.current = false;
-        }, 150);
-        return;
-      }
+    const track = () => {
       if (ticking) return;
       ticking = true;
       requestAnimationFrame(() => {
@@ -251,6 +244,19 @@ export function ViewerContainer() {
         setCurrentPage(rows[topRow]?.[0] ?? 0);
         ticking = false;
       });
+    };
+    // Scrolls we caused are ignored for a fixed window from the first one, not one that re-arms on every
+    // event, or a user who keeps scrolling straight after a zoom would never get the page number back.
+    const onScroll = () => {
+      if (isProgrammaticScrollRef.current) {
+        settleTimer ??= setTimeout(() => {
+          settleTimer = undefined;
+          isProgrammaticScrollRef.current = false;
+          track();
+        }, 150);
+        return;
+      }
+      track();
     };
 
     scrollEl.addEventListener('scroll', onScroll, { passive: true });
