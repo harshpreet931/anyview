@@ -199,4 +199,20 @@ test.describe('committing a zoom', () => {
     expect(order.length).toBeGreaterThan(visible.length);
     expect(order.slice(0, visible.length).sort()).toEqual([...visible].sort());
   });
+
+  test('only the content is promoted to its own layer, and only while zooming', async ({ page }) => {
+    await openPdf(page);
+    const p = await pointAt(page, 0.5, 0.5);
+    const idle = await page.evaluate(() => ({
+      page: getComputedStyle(document.querySelector('.dv-page')!).willChange,
+      content: getComputedStyle(document.querySelector('.dv-viewer-container > div')!).willChange,
+    }));
+    expect(idle).toEqual({ page: 'auto', content: 'auto' });
+    await wheelAt(page, p.x, p.y, -3, 5);
+    const live = await page.evaluate(() => getComputedStyle(document.querySelector('.dv-viewer-container > div')!).willChange);
+    expect(live).toBe('transform');
+    await page.waitForTimeout(800);
+    const after = await page.evaluate(() => getComputedStyle(document.querySelector('.dv-viewer-container > div')!).willChange);
+    expect(after).toBe('auto');
+  });
 });
