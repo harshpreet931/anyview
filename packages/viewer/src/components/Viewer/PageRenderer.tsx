@@ -28,8 +28,17 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
   const format = document?.format;
   const isCanvasFormat = format === 'pdf' || format === 'image';
   const features = adapter?.manifest.features;
-  // Flowing formats render once at 100% and are scaled with CSS zoom, so zooming never rebuilds or rewraps them.
+  // Flowing formats are laid out once at 100% and scaled with a transform, so a zoom never rebuilds,
+  // rewraps or even re-lays them out; the page box takes the measured height times the zoom.
   const renderScale = isCanvasFormat ? zoom : 1;
+  const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const el = reflowRef.current;
+    if (isCanvasFormat || !el) return;
+    const ro = new ResizeObserver(() => setNaturalHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isCanvasFormat]);
 
   useDomSearch(reflowRef, !isCanvasFormat, contentKey, pageIndex);
 
@@ -141,7 +150,11 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
       className="dv-page"
       style={{
         width: `${scaledWidth}px`,
-        height: isCanvasFormat ? `${scaledHeight}px` : 'auto',
+        height: isCanvasFormat
+          ? `${scaledHeight}px`
+          : naturalHeight != null
+            ? `${naturalHeight * zoom}px`
+            : 'auto',
         minHeight: isCanvasFormat ? undefined : `${scaledHeight}px`,
       }}
       data-page-index={pageIndex}
@@ -159,7 +172,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
             reflowRef.current = el;
           }}
           className="dv-reflow-target"
-          style={{ width: '100%', zoom }}
+          style={{ width: `${scaledWidth / zoom}px`, transform: `scale(${zoom})`, transformOrigin: '0 0' }}
         />
       )}
 
