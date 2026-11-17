@@ -307,7 +307,7 @@ test.describe('PDF - viewport controls', () => {
     expect(mid.transform).not.toBe('none');
     expect(mid.bmp).toBe(0);
 
-    await page.waitForTimeout(350);
+    await page.waitForTimeout(700);
     const after = await page.evaluate(() => {
       const content = document.querySelector('.dv-viewer-container > div') as HTMLElement;
       return {
