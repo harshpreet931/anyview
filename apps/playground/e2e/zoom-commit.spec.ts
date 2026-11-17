@@ -215,4 +215,21 @@ test.describe('committing a zoom', () => {
     const after = await page.evaluate(() => getComputedStyle(document.querySelector('.dv-viewer-container > div')!).willChange);
     expect(after).toBe('auto');
   });
+
+  test('choosing a fit mode animates like the zoom buttons', async ({ page }) => {
+    await openPdf(page);
+    const first = await page.evaluate(async () => {
+      const content = document.querySelector<HTMLElement>('.dv-viewer-container > div')!;
+      const sel = document.querySelector<HTMLSelectElement>('select[aria-label="Zoom level"]')!;
+      sel.value = 'fit-width';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => requestAnimationFrame(r));
+      await new Promise((r) => requestAnimationFrame(r));
+      return new DOMMatrix(getComputedStyle(content).transform).a;
+    });
+    expect(first).toBeLessThan(0.95);
+    await page.waitForTimeout(500);
+    const settled = await page.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.dv-viewer-container > div')!).transform).a);
+    expect(settled).toBe(1);
+  });
 });

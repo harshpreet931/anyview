@@ -12,6 +12,7 @@ const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 5;
 const clampZoom = (z: number) => Math.max(MIN_ZOOM, Math.min(z, MAX_ZOOM));
 const SETTLE_MS = 150;
+const FIT_ANIMATE_MS = 1000;
 const STRETCH = Math.log(1.5);
 const DOUBLE_TAP = 2;
 const TAP_MS = 250;
@@ -268,28 +269,29 @@ export function useZoomGestures<A>(
   }, [zoom, contentRef, scrollRef, setZooming]);
 
   // Zooms that don't come from a gesture (toolbar, keys, fit modes, the API) anchor on the middle of the view.
-  useEffect(
-    () =>
-      store.subscribe((next, prev) => {
-        if (next.zoom === prev.zoom || next.document !== prev.document) return;
-        if (pendingAnchor.current || gesture.current) return;
-        const el = scrollRef.current;
-        if (!el || !contentRef.current || prev.zoom <= 0) return;
-        const tap = tapAnchor.current && performance.now() - tapAnchor.current.t < 1000 ? tapAnchor.current : null;
-        tapAnchor.current = null;
-        const cx = tap ? tap.x : el.clientWidth / 2;
-        const cy = tap ? tap.y : el.scrollTop <= 0 ? 0 : el.clientHeight / 2;
-        const ratio = next.zoom / prev.zoom;
-        pendingAnchor.current = {
-          ratio,
-          at: anchoringRef.current.capture(el.scrollLeft + cx, el.scrollTop + cy),
-          cx,
-          cy,
-          ...(next.fitMode === 'custom' || tap ? { from: 1 / ratio } : {}),
-        };
-      }),
-    [store, scrollRef, contentRef],
-  );
+  useEffect(() => {
+    let fitChosenAt = -Infinity;
+    return store.subscribe((next, prev) => {
+      if (next.fitMode !== prev.fitMode && next.fitMode !== 'custom') fitChosenAt = performance.now();
+      if (next.zoom === prev.zoom || next.document !== prev.document) return;
+      if (pendingAnchor.current || gesture.current) return;
+      const el = scrollRef.current;
+      if (!el || !contentRef.current || prev.zoom <= 0) return;
+      const tap = tapAnchor.current && performance.now() - tapAnchor.current.t < 1000 ? tapAnchor.current : null;
+      tapAnchor.current = null;
+      const cx = tap ? tap.x : el.clientWidth / 2;
+      const cy = tap ? tap.y : el.scrollTop <= 0 ? 0 : el.clientHeight / 2;
+      const ratio = next.zoom / prev.zoom;
+      const animate = next.fitMode === 'custom' || !!tap || performance.now() - fitChosenAt < FIT_ANIMATE_MS;
+      pendingAnchor.current = {
+        ratio,
+        at: anchoringRef.current.capture(el.scrollLeft + cx, el.scrollTop + cy),
+        cx,
+        cy,
+        ...(animate ? { from: 1 / ratio } : {}),
+      };
+    });
+  }, [store, scrollRef, contentRef]);
 
   // Chrome and Firefox deliver a trackpad pinch as ctrl+wheel with small pixel deltas; a mouse sends
   // line deltas or whole notches. Safari on macOS sends gesture events instead. Listeners stay
