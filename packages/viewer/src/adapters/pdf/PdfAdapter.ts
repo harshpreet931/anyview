@@ -55,6 +55,7 @@ export class PdfAdapter implements Adapter {
   private worker: Worker | null = null;
   private remote: Comlink.Remote<PdfWorkerApi> | null = null;
   private docId: number | null = null;
+  private renderSeq = 0;
   private parsedPdf: ParsedPdf | null = null;
   private originalBuffer: ArrayBuffer | null = null;
 
@@ -140,13 +141,28 @@ export class PdfAdapter implements Adapter {
         ctx.page.height * ctx.scale,
         ctx.devicePixelRatio,
       );
-      const bitmap = await this.remote.renderPage(
-        this.docId,
-        ctx.page.index,
-        ctx.scale,
-        ctx.rotation,
-        dpr,
-      );
+      const remote = this.remote;
+      const renderId = ++this.renderSeq;
+      const job = remote.renderPage(this.docId, ctx.page.index, ctx.scale, ctx.rotation, dpr, renderId);
+      const bitmap = await new Promise<ImageBitmap>((resolve, reject) => {
+        const onAbort = () => {
+          void Promise.resolve(remote.cancelRender(renderId)).catch(() => {});
+          void job.then((b) => b.close(), () => {});
+          reject(new DOMException('Render cancelled', 'AbortError'));
+        };
+        if (ctx.signal.aborted) return onAbort();
+        ctx.signal.addEventListener('abort', onAbort, { once: true });
+        job.then(
+          (b) => {
+            ctx.signal.removeEventListener('abort', onAbort);
+            resolve(b);
+          },
+          (e: unknown) => {
+            ctx.signal.removeEventListener('abort', onAbort);
+            reject(e);
+          },
+        );
+      });
       if (ctx.signal.aborted) {
         bitmap.close();
         throw new DOMException('Render cancelled', 'AbortError');

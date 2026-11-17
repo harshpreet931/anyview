@@ -35,7 +35,9 @@ export interface PdfWorkerApi {
     scale: number,
     rotation: number,
     dpr: number,
+    renderId?: number,
   ): Promise<ImageBitmap>;
+  cancelRender(renderId: number): void;
   getTextContent(
     docId: number,
     pageIndex: number,

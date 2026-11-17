@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import * as Comlink from 'comlink';
-import type { PDFDocumentProxy } from 'pdfjs-dist';
+import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import type { ParsedPdf, PdfOutlineItem, PdfMetadata, PdfWorkerApi } from './types';
 import { totalRotation, type Rotation } from '../../core/rotation';
 import { loadParser } from '../../core/load-parser';
@@ -102,6 +102,9 @@ function buildPdfAssets(assetBase: string | undefined) {
 
 const docs = new Map<number, PDFDocumentProxy>();
 let nextDocId = 1;
+const active = new Set<number>();
+const cancelled = new Set<number>();
+const tasks = new Map<number, RenderTask>();
 
 function getDoc(docId: number): PDFDocumentProxy {
   const doc = docs.get(docId);
@@ -153,6 +156,41 @@ async function mapOutline(
   );
 }
 
+async function renderInto(
+  docId: number,
+  pageIndex: number,
+  scale: number,
+  rotation: number,
+  dpr: number,
+  renderId?: number,
+): Promise<ImageBitmap> {
+  const page = await getDoc(docId).getPage(pageIndex + 1);
+  if (renderId != null && cancelled.has(renderId)) throw new Error('Render cancelled');
+  // Explicit rotation REPLACES page.rotate rather than composing, so combine the two.
+  const total = totalRotation(page.rotate as Rotation, rotation as Rotation);
+  const viewport = page.getViewport({ scale: scale * dpr, rotation: total });
+
+  const canvas = new OffscreenCanvas(
+    Math.ceil(viewport.width),
+    Math.ceil(viewport.height),
+  );
+  const ctx = canvas.getContext('2d')!;
+
+  const task = page.render({
+    canvas: null,
+    canvasContext: ctx as unknown as CanvasRenderingContext2D,
+    viewport,
+  });
+  if (renderId != null) tasks.set(renderId, task);
+  try {
+    await task.promise;
+  } finally {
+    if (renderId != null) tasks.delete(renderId);
+  }
+
+  return canvas.transferToImageBitmap();
+}
+
 const api: PdfWorkerApi = {
   async parse(
     data: ArrayBuffer,
@@ -201,26 +239,25 @@ const api: PdfWorkerApi = {
     scale: number,
     rotation: number,
     dpr: number,
+    renderId?: number,
   ): Promise<ImageBitmap> {
-    const page = await getDoc(docId).getPage(pageIndex + 1);
-    // Explicit rotation REPLACES page.rotate rather than composing, so combine the two.
-    const total = totalRotation(page.rotate as Rotation, rotation as Rotation);
-    const viewport = page.getViewport({ scale: scale * dpr, rotation: total });
-
-    const canvas = new OffscreenCanvas(
-      Math.ceil(viewport.width),
-      Math.ceil(viewport.height),
-    );
-    const ctx = canvas.getContext('2d')!;
-
-    await page.render({
-      canvas: null,
-      canvasContext: ctx as unknown as CanvasRenderingContext2D,
-      viewport,
-    }).promise;
-
-    return canvas.transferToImageBitmap();
+    if (renderId != null) active.add(renderId);
+    try {
+      return await renderInto(docId, pageIndex, scale, rotation, dpr, renderId);
+    } finally {
+      if (renderId != null) {
+        active.delete(renderId);
+        cancelled.delete(renderId);
+      }
+    }
   },
+
+  cancelRender(renderId: number) {
+    const task = tasks.get(renderId);
+    if (task) task.cancel();
+    else if (active.has(renderId)) cancelled.add(renderId);
+  },
+
 
   async getTextContent(docId: number, pageIndex: number, rotation = 0) {
     const page = await getDoc(docId).getPage(pageIndex + 1);
