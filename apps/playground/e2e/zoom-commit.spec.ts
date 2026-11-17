@@ -232,4 +232,29 @@ test.describe('committing a zoom', () => {
     const settled = await page.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.dv-viewer-container > div')!).transform).a);
     expect(settled).toBe(1);
   });
+
+  for (const [label, dy, n] of [['in', -4, 12], ['out', 4, 8]] as const) {
+    test(`two-page spread: pinch ${label} on the right page lets go without a jump`, async ({ page }) => {
+      await openPdf(page);
+      await page.selectOption('select[aria-label="Page layout"]', 'even');
+      await page.waitForTimeout(400);
+      await goToPage(page, 7);
+      const target = await page.evaluate(() => {
+        const c = document.querySelector('.dv-viewer-container')!.getBoundingClientRect();
+        const y = Math.round(c.top + c.height / 2);
+        const right = [...document.querySelectorAll<HTMLElement>('.dv-page')]
+          .map((p) => ({ p, r: p.getBoundingClientRect() }))
+          .filter(({ r }) => r.top < y && r.bottom > y)
+          .sort((a, b) => b.r.left - a.r.left)[0]!;
+        return { x: Math.round(right.r.left + right.r.width * 0.3), y };
+      });
+      const a = await pointAt(page, (target.x - (await page.locator('.dv-viewer-container').boundingBox())!.x) / (await page.locator('.dv-viewer-container').boundingBox())!.width, 0.5);
+      await wheelAt(page, a.x, a.y, dy, n);
+      const live = await whereIs(page, a.index, a.u, a.v);
+      await page.waitForTimeout(900);
+      const after = await whereIs(page, a.index, a.u, a.v);
+      expect(Math.abs(after!.x - live!.x)).toBeLessThan(3);
+      expect(Math.abs(after!.y - live!.y)).toBeLessThan(3);
+    });
+  }
 });
