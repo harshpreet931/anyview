@@ -46,6 +46,43 @@ for (const [label, file] of [['DOCX', docx], ['XLSX', xlsx]] as const) {
   });
 }
 
+test('zooming a big table does not lay it out again', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  const csv = ['id,name,city,amount,status,owner,notes,date']
+    .concat(Array.from({ length: 2000 }, (_, i) => `${i},Item ${i},City ${i % 40},${i * 3},open,User ${i % 9},Row note ${i},2026-01-${(i % 28) + 1}`))
+    .join('\n');
+  await page.locator('input[type="file"]').first().setInputFiles({ name: 'big.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await expect(page.locator('.dv-reflow-target').first()).toContainText('Item 1999');
+  await page.selectOption('select[aria-label="Zoom level"]', '1');
+  await page.waitForTimeout(800);
+  const before = await page.evaluate(() => {
+    const t = document.querySelector<HTMLElement>('.dv-reflow-target')!;
+    return { w: t.offsetWidth, h: t.offsetHeight };
+  });
+  const longest = await page.evaluate(async () => {
+    let max = 0;
+    const po = new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) max = Math.max(max, e.duration);
+    });
+    po.observe({ type: 'long-animation-frame', buffered: false });
+    const sel = document.querySelector<HTMLSelectElement>('select[aria-label="Zoom level"]')!;
+    sel.value = '1.5';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 800));
+    po.disconnect();
+    return max;
+  });
+  const after = await page.evaluate(() => {
+    const t = document.querySelector<HTMLElement>('.dv-reflow-target')!;
+    return { w: t.offsetWidth, h: t.offsetHeight, shown: t.getBoundingClientRect().width };
+  });
+  expect(after.w).toBe(before.w);
+  expect(after.h).toBe(before.h);
+  expect(after.shown / before.w).toBeCloseTo(1.5, 1);
+  expect(longest).toBeLessThan(80);
+});
+
 test('Fit page on a long flowing document fits the width, not the whole document height', async ({ page }) => {
   await page.goto('/');
   await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'start' }));
