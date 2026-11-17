@@ -169,4 +169,34 @@ test.describe('committing a zoom', () => {
     await page.keyboard.press('Control+0');
     await expect(page.locator('select[aria-label="Zoom level"]')).toHaveValue('fit-page');
   });
+
+  test('after a zoom the pages on screen sharpen before the ones just off screen', async ({ page }) => {
+    await openPdf(page);
+    await goToPage(page, 6);
+    await page.evaluate(() => {
+      const w = window as unknown as { __order: number[] };
+      w.__order = [];
+      const orig = CanvasRenderingContext2D.prototype.drawImage;
+      CanvasRenderingContext2D.prototype.drawImage = function (this: CanvasRenderingContext2D, ...args: unknown[]) {
+        const pg = this.canvas.closest<HTMLElement>('.dv-page');
+        if (pg) w.__order.push(Number(pg.dataset.pageIndex));
+        return (orig as (...a: unknown[]) => void).apply(this, args);
+      } as typeof orig;
+    });
+    const p = await pointAt(page, 0.5, 0.5);
+    await wheelAt(page, p.x, p.y, -3, 10);
+    await page.waitForTimeout(1500);
+    const { order, visible } = await page.evaluate(() => {
+      const c = document.querySelector('.dv-viewer-container')!.getBoundingClientRect();
+      const visible = [...document.querySelectorAll<HTMLElement>('.dv-page')]
+        .filter((n) => {
+          const r = n.getBoundingClientRect();
+          return r.bottom > c.top && r.top < c.bottom;
+        })
+        .map((n) => Number(n.dataset.pageIndex));
+      return { order: (window as unknown as { __order: number[] }).__order, visible };
+    });
+    expect(order.length).toBeGreaterThan(visible.length);
+    expect(order.slice(0, visible.length).sort()).toEqual([...visible].sort());
+  });
 });
