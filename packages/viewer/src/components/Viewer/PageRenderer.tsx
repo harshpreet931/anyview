@@ -28,6 +28,8 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
   const format = document?.format;
   const isCanvasFormat = format === 'pdf' || format === 'image';
   const features = adapter?.manifest.features;
+  // Flowing formats render once at 100% and are scaled with CSS zoom, so zooming never rebuilds or rewraps them.
+  const renderScale = isCanvasFormat ? zoom : 1;
 
   useDomSearch(reflowRef, !isCanvasFormat, contentKey, pageIndex);
 
@@ -43,7 +45,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
     const cacheKey = makeCacheKey(
       document.format,
       pageIndex,
-      zoom,
+      renderScale,
       rotation,
       window.devicePixelRatio,
     );
@@ -57,7 +59,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
     const ctx: RenderContext = {
       page,
       target: targetRef.current,
-      scale: zoom,
+      scale: renderScale,
       rotation,
       devicePixelRatio: window.devicePixelRatio,
       signal: controller.signal,
@@ -98,7 +100,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
       .catch(() => {});
 
     return () => controller.abort();
-  }, [adapter, document, pageIndex, zoom, rotation, pageCache]);
+  }, [adapter, document, pageIndex, renderScale, rotation, pageCache]);
 
   if (!document || !adapter) return null;
 
@@ -136,7 +138,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
             reflowRef.current = el;
           }}
           className="dv-reflow-target"
-          style={{ width: '100%' }}
+          style={{ width: '100%', zoom }}
         />
       )}
 
