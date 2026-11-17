@@ -316,6 +316,12 @@
   animation: dv-page-enter var(--dv-transition-slow) var(--dv-ease-out) backwards;
 }
 
+/* A spread is one block: the pair sits together and its gap scales with the zoom. */
+.dv-spread > .dv-page {
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .dv-page canvas {
   display: block;
   width: 100%;

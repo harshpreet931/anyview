@@ -280,8 +280,8 @@ export function ViewerContainer() {
       const pw = isSideways ? page.height : page.width;
       const ph = isSideways ? page.width : page.height;
       const cols = spreadMode !== 'none' && !isHorizontal ? 2 : 1;
-      const rowWidth = cols * pw;
-      const availW = el.clientWidth - PAGE_VERTICAL_GAP - (cols - 1) * PAGE_SPREAD_GAP;
+      const rowWidth = cols * pw + (cols - 1) * PAGE_SPREAD_GAP;
+      const availW = el.clientWidth - PAGE_VERTICAL_GAP;
       const availH = el.clientHeight - PAGE_VERTICAL_GAP;
       if (availW <= 0 || availH <= 0 || rowWidth <= 0 || ph <= 0) return;
       const flowing = !FIXED_PAGE_FORMATS.has(document!.format);
@@ -348,11 +348,12 @@ export function ViewerContainer() {
               >
                 {row.length > 1 ? (
                   <div
+                    className="dv-spread"
                     style={{
                       display: 'flex',
-                      justifyContent: 'center',
+                      justifyContent: 'safe center',
                       alignItems: 'flex-start',
-                      gap: `${PAGE_SPREAD_GAP}px`,
+                      gap: `${PAGE_SPREAD_GAP * zoom}px`,
                     }}
                   >
                     {row.map((p) => (
