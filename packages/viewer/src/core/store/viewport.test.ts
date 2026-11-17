@@ -32,6 +32,24 @@ describe('viewport slice - zoom & fit', () => {
     expect(s.getState().zoom).toBe(0.1);
   });
 
+  it('zoomIn / zoomOut walk a ratio ladder so each click feels the same size', () => {
+    const s = createViewerStore();
+    s.getState().setZoom(1);
+    s.getState().zoomIn();
+    expect(s.getState().zoom).toBe(1.1);
+    s.getState().zoomIn();
+    expect(s.getState().zoom).toBe(1.25);
+    s.getState().setZoom(1.3);
+    s.getState().zoomIn();
+    expect(s.getState().zoom).toBe(1.5);
+    s.getState().setZoom(1);
+    s.getState().zoomOut();
+    expect(s.getState().zoom).toBe(0.9);
+    s.getState().setZoom(0.3);
+    s.getState().zoomOut();
+    expect(s.getState().zoom).toBe(0.25);
+  });
+
   it('zoomIn / zoomOut step and clamp', () => {
     const s = createViewerStore();
     s.getState().setZoom(4.95);

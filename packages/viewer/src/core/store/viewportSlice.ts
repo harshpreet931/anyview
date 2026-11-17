@@ -35,7 +35,12 @@ export interface ViewportSlice {
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 5.0;
-const ZOOM_STEP = 0.1;
+const ZOOM_LADDER = [0.1, 0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
+
+function nextZoom(zoom: number, dir: 1 | -1): number {
+  if (dir > 0) return ZOOM_LADDER.find((z) => z > zoom * 1.01) ?? MAX_ZOOM;
+  return [...ZOOM_LADDER].reverse().find((z) => z < zoom / 1.01) ?? MIN_ZOOM;
+}
 
 export const createViewportSlice: StateCreator<
   ViewportSlice,
@@ -56,17 +61,9 @@ export const createViewportSlice: StateCreator<
     set({ zoom: clamped, fitMode: 'custom' });
   },
 
-  zoomIn: () => {
-    const { zoom } = get();
-    const next = Math.min(zoom + ZOOM_STEP, MAX_ZOOM);
-    set({ zoom: next, fitMode: 'custom' });
-  },
+  zoomIn: () => set({ zoom: nextZoom(get().zoom, 1), fitMode: 'custom' }),
 
-  zoomOut: () => {
-    const { zoom } = get();
-    const next = Math.max(zoom - ZOOM_STEP, MIN_ZOOM);
-    set({ zoom: next, fitMode: 'custom' });
-  },
+  zoomOut: () => set({ zoom: nextZoom(get().zoom, -1), fitMode: 'custom' }),
 
   setFitMode: (mode: FitMode) => set({ fitMode: mode }),
 
