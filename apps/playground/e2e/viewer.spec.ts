@@ -260,12 +260,12 @@ test.describe('PDF - viewport controls', () => {
     page,
   }) => {
     await page.addInitScript(() => {
-      const orig = window.createImageBitmap.bind(window);
+      const orig = CanvasRenderingContext2D.prototype.drawImage;
       (window as unknown as { __bmp: number }).__bmp = 0;
-      window.createImageBitmap = ((...args: unknown[]) => {
+      CanvasRenderingContext2D.prototype.drawImage = function (this: CanvasRenderingContext2D, ...args: unknown[]) {
         (window as unknown as { __bmp: number }).__bmp++;
-        return (orig as (...a: unknown[]) => Promise<ImageBitmap>)(...args);
-      }) as typeof window.createImageBitmap;
+        return (orig as (...a: unknown[]) => void).apply(this, args);
+      } as typeof orig;
     });
     await gotoApp(page);
     await loadSample(page, 'PDF');

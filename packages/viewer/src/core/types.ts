@@ -132,6 +132,7 @@ export interface RenderContext {
 export interface RenderResult {
   readonly width: number;
   readonly height: number;
+  readonly bitmap?: ImageBitmap;
 }
 
 /** A positioned text item (coordinates normalized to 0–1) for search, selection, and a11y. */

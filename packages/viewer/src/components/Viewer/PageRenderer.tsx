@@ -68,11 +68,14 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
     adapter
       .renderPage(ctx)
       .then((result) => {
-        if (token !== renderTokenRef.current || controller.signal.aborted) return;
+        if (token !== renderTokenRef.current || controller.signal.aborted) {
+          result.bitmap?.close();
+          return;
+        }
 
         if (targetRef.current instanceof HTMLCanvasElement) {
           const canvas = targetRef.current;
-          createImageBitmap(canvas)
+          (result.bitmap ? Promise.resolve(result.bitmap) : createImageBitmap(canvas))
             .then((bitmap) => {
               if (token !== renderTokenRef.current || controller.signal.aborted) {
                 bitmap.close();

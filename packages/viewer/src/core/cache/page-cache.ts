@@ -1,6 +1,6 @@
 import type { RenderResult } from '../types';
 
-export interface CachedPage extends RenderResult {
+export interface CachedPage extends Omit<RenderResult, 'bitmap'> {
   readonly key: string;
   readonly bitmap: ImageBitmap | HTMLCanvasElement;
   readonly byteSize: number;

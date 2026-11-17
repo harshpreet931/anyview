@@ -64,4 +64,25 @@ describe('PdfAdapter.renderPage', () => {
     expect(renderId).toBeTypeOf('number');
     expect(cancelRender).toHaveBeenCalledWith(renderId);
   });
+
+  it('hands the rendered bitmap back for caching instead of closing it', async () => {
+    const bitmap = { width: 600, height: 800, close: vi.fn() };
+    const adapter = new PdfAdapter();
+    Object.assign(adapter, {
+      docId: 1,
+      remote: { renderPage: () => Promise.resolve(bitmap), cancelRender: vi.fn() },
+    });
+    const canvas = document.createElement('canvas');
+    vi.spyOn(canvas, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D);
+    const result = await adapter.renderPage({
+      page: { index: 0, width: 600, height: 800, rotation: 0 },
+      target: canvas,
+      scale: 1,
+      rotation: 0,
+      devicePixelRatio: 1,
+      signal: new AbortController().signal,
+    });
+    expect(result.bitmap).toBe(bitmap);
+    expect(bitmap.close).not.toHaveBeenCalled();
+  });
 });

@@ -189,8 +189,9 @@ export class PdfAdapter implements Adapter {
         if (c2d) {
           c2d.drawImage(bitmap, 0, 0, target.width, target.height);
         }
-        bitmap.close();
+        return { width: outWidth, height: outHeight, bitmap };
       }
+      bitmap.close();
 
       return {
         width: outWidth,
