@@ -67,7 +67,7 @@ export function useZoomGestures<A>(
   contentRef: RefObject<HTMLDivElement | null>,
   isProgrammaticScrollRef: RefObject<boolean>,
   anchoring: ZoomAnchoring<A>,
-  sizerRef?: RefObject<HTMLDivElement | null>,
+  sizerRef: RefObject<HTMLDivElement | null>,
 ): { marquee: MarqueeRect | null } {
   const zoom = useViewerStore((s) => s.zoom);
   const setZoom = useViewerStore((s) => s.setZoom);
@@ -120,7 +120,7 @@ export function useZoomGestures<A>(
     (active: boolean) => {
       const content = contentRef.current;
       if (content) content.style.willChange = active ? 'transform' : '';
-      const sizer = sizerRef?.current;
+      const sizer = sizerRef.current;
       const el = scrollRef.current;
       if (!sizer || !el) return;
       sizer.style.width = active ? `${el.scrollWidth}px` : '0px';
