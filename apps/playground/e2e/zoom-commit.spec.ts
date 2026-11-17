@@ -257,4 +257,29 @@ test.describe('committing a zoom', () => {
       expect(Math.abs(after!.y - live!.y)).toBeLessThan(3);
     });
   }
+
+  test('scrolling straight after a zoom still updates the page number', async ({ page }) => {
+    await openPdf(page);
+    await goToPage(page, 2);
+    const p = await pointAt(page, 0.5, 0.5);
+    await wheelAt(page, p.x, p.y, -3, 6);
+    await page.waitForTimeout(220);
+    await page.evaluate(async () => {
+      const el = document.querySelector('.dv-viewer-container')!;
+      for (let i = 0; i < 40; i++) {
+        el.scrollTop += 60;
+        await new Promise((r) => setTimeout(r, 30));
+      }
+    });
+    await page.waitForTimeout(300);
+    const top = await page.evaluate(() => {
+      const c = document.querySelector('.dv-viewer-container')!.getBoundingClientRect();
+      const hit = document
+        .elementsFromPoint(c.left + c.width / 2, c.top + 5)
+        .map((n) => n.closest<HTMLElement>('.dv-page'))
+        .find(Boolean);
+      return hit ? Number(hit.dataset.pageIndex) + 1 : -1;
+    });
+    await expect(page.getByLabel('Page number')).toHaveValue(String(top));
+  });
 });
