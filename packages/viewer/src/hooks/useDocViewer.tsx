@@ -30,6 +30,14 @@ export function useViewerStore<T>(selector?: (s: ViewerStore) => T): T | ViewerS
   return useStore(store, selector as (s: ViewerStore) => T);
 }
 
+export function useViewerStoreApi(): ViewerStoreInstance {
+  const store = useContext(ViewerStoreContext);
+  if (!store) {
+    throw new Error('useViewerStoreApi must be used within a ViewerStoreProvider');
+  }
+  return store;
+}
+
 export function useDocViewer() {
   const store = useContext(ViewerStoreContext);
   if (!store) {

@@ -24,6 +24,40 @@ function rowAtOffset(items: { index: number; start: number }[], offset: number):
   return row;
 }
 
+function pageInRow(
+  content: HTMLElement | null,
+  row: number,
+  cross: number,
+  horizontal: boolean,
+): HTMLElement | null {
+  const rowEl = content?.querySelector<HTMLElement>(`[data-index="${row}"]`);
+  if (!rowEl) return null;
+  let best: HTMLElement | null = null;
+  let bestDist = Infinity;
+  for (const p of rowEl.querySelectorAll<HTMLElement>('.dv-page')) {
+    const { cross: from } = pageOffset(p, horizontal);
+    const to = from + (horizontal ? p.offsetHeight : p.offsetWidth);
+    const dist = cross < from ? from - cross : cross > to ? cross - to : 0;
+    if (dist < bestDist) {
+      best = p;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+function pageOffset(p: HTMLElement, horizontal: boolean): { main: number; cross: number } {
+  const rowEl = p.closest<HTMLElement>('[data-index]');
+  if (!rowEl) return { main: 0, cross: 0 };
+  const content = rowEl.parentElement;
+  const scale = content && content.offsetWidth > 0 ? content.getBoundingClientRect().width / content.offsetWidth : 1;
+  const pr = p.getBoundingClientRect();
+  const rr = rowEl.getBoundingClientRect();
+  const dx = (pr.left - rr.left) / scale;
+  const dy = (pr.top - rr.top) / scale;
+  return horizontal ? { main: dx, cross: dy } : { main: dy, cross: dx };
+}
+
 export function ViewerContainer() {
   const strings = useStrings();
   const document = useViewerStore((s) => s.document);
@@ -45,6 +79,7 @@ export function ViewerContainer() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const sizerRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScrollRef = useRef(false);
 
   const isHorizontal = scrollMode === 'horizontal';
@@ -114,13 +149,19 @@ export function ViewerContainer() {
   const { marquee } = useZoomGestures(scrollRef, contentRef, isProgrammaticScrollRef, {
     capture: (x, y) => {
       const main = isHorizontal ? x : y;
+      const cross = isHorizontal ? y : x;
       const items = virtualizer.measurementsCache;
       const row = rowAtOffset(items, main);
-      const item = items[row];
+      const start = items[row]?.start ?? 0;
+      const pageEl = pageInRow(contentRef.current, row, cross, isHorizontal);
+      const off = pageEl ? pageOffset(pageEl, isHorizontal) : { main: 0, cross: 0 };
       return {
         row,
-        frac: item && item.size > 0 ? (main - item.start) / item.size : 0,
-        cross: isHorizontal ? y : x,
+        page: pageEl ? Number(pageEl.dataset.pageIndex) : -1,
+        main: main - start - off.main,
+        cross: cross - off.cross,
+        atStart: main <= 0,
+        sizes: new Map(virtualizer.itemSizeCache),
       };
     },
     restore: (at, ratio, viewX, viewY) => {
@@ -129,17 +170,35 @@ export function ViewerContainer() {
       holdAnchor();
       virtualizer.measure();
       virtualizer.getVirtualItems();
-      const item = virtualizer.measurementsCache[at.row];
-      const main = item ? item.start + at.frac * item.size : 0;
-      if (isHorizontal) {
-        el.scrollLeft = main - viewX;
-        el.scrollTop = at.cross * ratio - viewY;
-      } else {
-        el.scrollTop = main - viewY;
-        el.scrollLeft = at.cross * ratio - viewX;
+      const gap = isHorizontal ? 0 : PAGE_VERTICAL_GAP;
+      for (const [key, size] of at.sizes) {
+        if (typeof key === 'number') virtualizer.resizeItem(key, Math.max(0, size - gap) * ratio + gap);
       }
+      virtualizer.getVirtualItems();
+      const content = contentRef.current;
+      if (content) {
+        const total = `${virtualizer.getTotalSize()}px`;
+        if (isHorizontal) content.style.width = total;
+        else content.style.height = total;
+      }
+      const start = virtualizer.measurementsCache[at.row]?.start ?? 0;
+      const pageEl =
+        at.page >= 0
+          ? content?.querySelector<HTMLElement>(`.dv-page[data-page-index="${at.page}"]`)
+          : null;
+      const off = pageEl ? pageOffset(pageEl, isHorizontal) : { main: 0, cross: 0 };
+      const main = at.atStart ? 0 : start + off.main + at.main * ratio - (isHorizontal ? viewX : viewY);
+      const cross = off.cross + at.cross * ratio - (isHorizontal ? viewY : viewX);
+      const left = Math.max(0, isHorizontal ? main : cross);
+      const top = Math.max(0, isHorizontal ? cross : main);
+      if (Math.abs(el.scrollLeft - left) < 1 && Math.abs(el.scrollTop - top) < 1) return;
+      const was = [el.scrollLeft, el.scrollTop];
+      isProgrammaticScrollRef.current = true;
+      el.scrollLeft = left;
+      el.scrollTop = top;
+      if (el.scrollLeft === was[0] && el.scrollTop === was[1]) isProgrammaticScrollRef.current = false;
     },
-  });
+  }, sizerRef);
 
   useEffect(() => {
     if (currentPage < 0 || currentPage >= pageCount) return;
@@ -319,6 +378,7 @@ export function ViewerContainer() {
           )}
         </div>
       )}
+      <div ref={sizerRef} className="dv-zoom-sizer" aria-hidden="true" />
     </div>
   );
 }

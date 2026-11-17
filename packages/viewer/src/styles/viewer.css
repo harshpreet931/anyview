@@ -242,6 +242,16 @@
   scrollbar-color: var(--dv-scrollbar-color) transparent;
 }
 
+.dv-zoom-sizer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* Marquee zoom: a crosshair drag that ignores text/annotation hit targets. */
 .dv-viewer-container[data-marquee] {
   cursor: crosshair;
