@@ -9,6 +9,7 @@ import {
   displayedPageSize,
   type Rotation,
 } from '../../core/rotation';
+import { rowAtOffset, currentRow } from '../../core/current-row';
 import { PageRenderer } from './PageRenderer';
 import { EmptyState, LoadingState, ErrorState } from '../States';
 
@@ -16,13 +17,17 @@ const PAGE_VERTICAL_GAP = 48;
 const PAGE_SPREAD_GAP = 16;
 const FIXED_PAGE_FORMATS = new Set(['pdf', 'image', 'pptx']);
 
-function rowAtOffset(items: { index: number; start: number }[], offset: number): number {
-  let row = items.length > 0 ? items[0].index : 0;
-  for (const it of items) {
-    if (it.start <= offset + 1) row = it.index;
-    else break;
-  }
-  return row;
+function rowInView(
+  el: HTMLElement,
+  items: { index: number; start: number }[],
+  horizontal: boolean,
+  count: number,
+): number {
+  return currentRow(items, horizontal ? el.scrollLeft : el.scrollTop, {
+    viewport: horizontal ? el.clientWidth : el.clientHeight,
+    total: horizontal ? el.scrollWidth : el.scrollHeight,
+    count,
+  });
 }
 
 function pageInRow(
@@ -206,12 +211,11 @@ export function ViewerContainer() {
     const el = scrollRef.current;
     if (!el) return;
     const targetRow = pageToRow[currentPage] ?? 0;
-    const offset = isHorizontal ? el.scrollLeft : el.scrollTop;
-    if (rowAtOffset(virtualizer.getVirtualItems(), offset) !== targetRow) {
+    if (rowInView(el, virtualizer.getVirtualItems(), isHorizontal, rows.length) !== targetRow) {
       isProgrammaticScrollRef.current = true;
       virtualizer.scrollToIndex(targetRow, { align: 'start' });
     }
-  }, [currentPage, pageCount, virtualizer, pageToRow, isHorizontal]);
+  }, [currentPage, pageCount, virtualizer, pageToRow, isHorizontal, rows.length]);
 
   useEffect(() => {
     if (!isScrolling) return;
@@ -239,9 +243,8 @@ export function ViewerContainer() {
       if (ticking) return;
       ticking = true;
       requestAnimationFrame(() => {
-        const offset = isHorizontal ? scrollEl.scrollLeft : scrollEl.scrollTop;
-        const topRow = rowAtOffset(virtualizer.getVirtualItems(), offset);
-        setCurrentPage(rows[topRow]?.[0] ?? 0);
+        const row = rowInView(scrollEl, virtualizer.getVirtualItems(), isHorizontal, rows.length);
+        setCurrentPage(rows[row]?.[0] ?? 0);
         ticking = false;
       });
     };
