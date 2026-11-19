@@ -336,6 +336,7 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
+  font-family: sans-serif;
   line-height: 1;
   user-select: text;
   z-index: 2;

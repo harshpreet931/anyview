@@ -216,7 +216,7 @@ export class PdfAdapter implements Adapter {
     pageIndex: number,
     signal: AbortSignal | undefined,
     rotation: number,
-  ): Promise<Array<{ item: TextLayerItem; box: { x: number; y: number; width: number; height: number } }>> {
+  ): Promise<Array<{ item: TextLayerItem; slice: (from: number, to: number) => Box }>> {
     if (!this.remote || this.docId == null || signal?.aborted) return [];
     try {
       const result = await this.remote.getTextContent(this.docId, pageIndex, rotation);
@@ -224,13 +224,20 @@ export class PdfAdapter implements Adapter {
       const vh = result.viewportHeight;
       return result.items.map((run) => {
         const angle = run.angle ?? 0;
+        const degrees = Math.round((angle * 180) / Math.PI * 100) / 100;
+        const length = run.str.length || 1;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
-        const xs = [run.x, run.x + cos * run.width, run.x - sin * run.height, run.x + cos * run.width - sin * run.height];
-        const ys = [run.y, run.y + sin * run.width, run.y + cos * run.height, run.y + sin * run.width + cos * run.height];
-        const left = Math.min(...xs);
-        const top = Math.min(...ys);
-        const degrees = Math.round((angle * 180) / Math.PI * 100) / 100;
+        const slice = (from: number, to: number) =>
+          boundingBox(
+            run.x + cos * run.width * (from / length),
+            run.y + sin * run.width * (from / length),
+            run.width * ((to - from) / length),
+            run.height,
+            angle,
+            vw,
+            vh,
+          );
         return {
           item: {
             str: run.str,
@@ -240,12 +247,7 @@ export class PdfAdapter implements Adapter {
             height: run.height / vh,
             ...(degrees ? { angle: degrees } : {}),
           },
-          box: {
-            x: left / vw,
-            y: top / vh,
-            width: (Math.max(...xs) - left) / vw,
-            height: (Math.max(...ys) - top) / vh,
-          },
+          slice,
         };
       });
     } catch {
@@ -271,35 +273,20 @@ export class PdfAdapter implements Adapter {
 
     const matches: SearchMatch[] = [];
 
+    const pattern = searchPattern(query);
+    if (!pattern) return { query, matches: [], totalMatches: 0 };
     pages.forEach((runs, pageIndex) => {
-      for (const { item, box } of runs) {
-        if (this.matchText(item.str, query)) {
-          matches.push({ pageIndex, text: item.str, ...box });
+      runs.forEach(({ item, slice }, runIndex) => {
+        for (const m of item.str.matchAll(pattern)) {
+          if (!m[0]) continue;
+          const start = m.index;
+          const end = start + m[0].length;
+          matches.push({ pageIndex, text: m[0], ...slice(start, end), runIndex, start, end });
         }
-      }
+      });
     });
 
     return { query, matches, totalMatches: matches.length };
-  }
-
-  private matchText(text: string, query: SearchQuery): boolean {
-    const flags = query.caseSensitive ? 'g' : 'gi';
-    // query.regex is the caller opting into raw regex syntax, so their text is the pattern;
-    // every other path escapes it. Matches how HtmlAdapter picks its pattern.
-    const pattern = query.regex ? query.text : escapeRegex(query.text);
-    if (query.regex) {
-      try {
-        const re = new RegExp(pattern, flags);
-        return re.test(text);
-      } catch {
-        return false;
-      }
-    }
-    if (query.wholeWord) {
-      const re = new RegExp(`\\b${pattern}\\b`, flags);
-      return re.test(text);
-    }
-    return text.toLowerCase().includes(query.text.toLowerCase());
   }
 
   private async buildOutline(
@@ -341,6 +328,41 @@ export class PdfAdapter implements Adapter {
     this.docId = null;
     this.parsedPdf = null;
     this.originalBuffer = null;
+  }
+}
+
+interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function boundingBox(x: number, y: number, width: number, height: number, angle: number, vw: number, vh: number): Box {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const xs = [x, x + cos * width, x - sin * height, x + cos * width - sin * height];
+  const ys = [y, y + sin * width, y + cos * height, y + sin * width + cos * height];
+  const left = Math.min(...xs);
+  const top = Math.min(...ys);
+  return {
+    x: left / vw,
+    y: top / vh,
+    width: (Math.max(...xs) - left) / vw,
+    height: (Math.max(...ys) - top) / vh,
+  };
+}
+
+function searchPattern(query: SearchQuery): RegExp | null {
+  if (!query.text) return null;
+  const flags = query.caseSensitive ? 'g' : 'gi';
+  // query.regex is the caller opting into raw regex syntax, so their text is the pattern;
+  // every other path escapes it. Matches how HtmlAdapter picks its pattern.
+  const pattern = query.regex ? query.text : escapeRegex(query.text);
+  try {
+    return new RegExp(query.wholeWord && !query.regex ? `\\b${pattern}\\b` : pattern, flags);
+  } catch {
+    return null;
   }
 }
 

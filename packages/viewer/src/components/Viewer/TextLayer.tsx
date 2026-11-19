@@ -67,6 +67,7 @@ export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
         item.str ? (
           <span
             key={i}
+            data-run={i}
             data-tw={item.width}
             data-angle={item.angle || undefined}
             style={{

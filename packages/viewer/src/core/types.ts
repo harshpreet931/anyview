@@ -166,6 +166,10 @@ export interface SearchMatch {
   readonly y: number;
   readonly width: number;
   readonly height: number;
+  /** Index of the text-layer run holding the match, with the match's [start, end) offsets in that run. */
+  readonly runIndex?: number;
+  readonly start?: number;
+  readonly end?: number;
 }
 
 export interface SearchResult {
