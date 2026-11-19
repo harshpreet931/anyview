@@ -9,7 +9,8 @@ export interface SampleFile {
   label: string;
   fileName: string;
   mimeType: string;
-  content: string;
+  content?: string;
+  url?: string;
 }
 
 const pdfStream1 = `BT
@@ -39,7 +40,7 @@ const pdfStream1 = `BT
 0 -18 Td
 (- Accessible WCAG 2.2 AA, four themes, and full i18n) Tj
 0 -18 Td
-(- Tree-shakeable, about 23 kB gzip base bundle) Tj
+(- Free, MIT licensed, and open source) Tj
 /F2 16 Tf
 0 -42 Td
 (Quick start) Tj
@@ -106,44 +107,6 @@ startxref
 0
 %%EOF`;
 
-const jsonContent = `{
-  "name": "Anyview",
-  "version": "1.0.0",
-  "description": "One component. Every format. Zero iframes.",
-  "license": "MIT",
-  "keywords": [
-    "react", "document-viewer", "pdf", "docx", "xlsx",
-    "pptx", "markdown", "csv", "html", "image"
-  ],
-  "formats": {
-    "pdf": { "engine": "pdf.js", "worker": true },
-    "docx": { "engine": "mammoth.js" },
-    "xlsx": { "engine": "SheetJS" },
-    "pptx": { "engine": "JSZip" },
-    "csv": { "engine": "PapaParse" },
-    "html": { "engine": "DOMPurify" },
-    "markdown": { "engine": "react-markdown" },
-    "image": { "formats": ["png", "jpg", "gif", "webp", "svg", "avif"] },
-    "text": { "extensions": ["txt", "log"] },
-    "code": { "highlighter": "Shiki" }
-  },
-  "bundleSize": {
-    "base": "~23 kB gzip",
-    "css": "~4 kB gzip",
-    "adapters": "loaded on demand, per format"
-  },
-  "features": [
-    "virtualized-scrolling",
-    "search",
-    "annotations",
-    "thumbnails",
-    "outline",
-    "dark-mode",
-    "accessibility",
-    "plugin-architecture"
-  ]
-}`;
-
 const notebookContent = JSON.stringify({
   cells: [
     {
@@ -208,16 +171,40 @@ const notebookContent = JSON.stringify({
 
 export const SAMPLE_FILES: SampleFile[] = [
   {
+    label: 'PDF',
+    fileName: 'pdf-sample.pdf',
+    mimeType: 'application/pdf',
+    content: pdfContent,
+  },
+  {
+    label: 'Word',
+    fileName: 'proposal.docx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    url: 'samples/proposal.docx',
+  },
+  {
+    label: 'Excel',
+    fileName: 'revenue.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    url: 'samples/revenue.xlsx',
+  },
+  {
+    label: 'PowerPoint',
+    fileName: 'pitch.pptx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    url: 'samples/pitch.pptx',
+  },
+  {
     label: 'Markdown',
     fileName: 'markdown-sample.md',
     mimeType: 'text/markdown',
     content: markdownContent,
   },
   {
-    label: 'Text',
-    fileName: 'text-sample.txt',
-    mimeType: 'text/plain',
-    content: textContent,
+    label: 'Jupyter',
+    fileName: 'notebook-sample.ipynb',
+    mimeType: 'application/x-ipynb+json',
+    content: notebookContent,
   },
   {
     label: 'CSV',
@@ -226,22 +213,16 @@ export const SAMPLE_FILES: SampleFile[] = [
     content: csvContent,
   },
   {
-    label: 'HTML',
-    fileName: 'html-sample.html',
-    mimeType: 'text/html',
-    content: htmlContent,
-  },
-  {
     label: 'TypeScript',
     fileName: 'code-sample.ts',
     mimeType: 'text/typescript',
     content: codeContent,
   },
   {
-    label: 'JSON',
-    fileName: 'sample.json',
-    mimeType: 'application/json',
-    content: jsonContent,
+    label: 'HTML',
+    fileName: 'html-sample.html',
+    mimeType: 'text/html',
+    content: htmlContent,
   },
   {
     label: 'SVG',
@@ -250,21 +231,18 @@ export const SAMPLE_FILES: SampleFile[] = [
     content: svgContent,
   },
   {
-    label: 'PDF',
-    fileName: 'pdf-sample.pdf',
-    mimeType: 'application/pdf',
-    content: pdfContent,
-  },
-  {
-    label: 'Jupyter',
-    fileName: 'notebook-sample.ipynb',
-    mimeType: 'application/x-ipynb+json',
-    content: notebookContent,
+    label: 'Text',
+    fileName: 'text-sample.txt',
+    mimeType: 'text/plain',
+    content: textContent,
   },
 ];
 
 export function createSampleFileSource(sample: SampleFile) {
-  const file = new File([sample.content], sample.fileName, {
+  if (sample.url) {
+    return { kind: 'url' as const, url: `${import.meta.env.BASE_URL}${sample.url}`, filename: sample.fileName };
+  }
+  const file = new File([sample.content ?? ''], sample.fileName, {
     type: sample.mimeType,
   });
   return { kind: 'file' as const, file };
