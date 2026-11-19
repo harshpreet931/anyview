@@ -9,6 +9,7 @@ export function ToolbarPageNav() {
   const goToPage = useViewerStore((s) => s.goToPage);
   const nextPage = useViewerStore((s) => s.nextPage);
   const prevPage = useViewerStore((s) => s.prevPage);
+  const empty = pageCount === 0;
 
   return (
     <div className="dv-toolbar-group dv-toolbar-page-nav">
@@ -24,7 +25,9 @@ export function ToolbarPageNav() {
       <input
         type="number"
         className="dv-page-input"
-        value={currentPage + 1}
+        value={empty ? '' : currentPage + 1}
+        placeholder={empty ? '–' : undefined}
+        disabled={empty}
         min={1}
         max={pageCount || 1}
         onChange={(e) => {
@@ -34,7 +37,7 @@ export function ToolbarPageNav() {
         aria-label={strings.navigation.pageInput}
       />
       <span className="dv-page-count">
-        / {pageCount}
+        / {empty ? '–' : pageCount}
       </span>
       <button
         className="dv-button"

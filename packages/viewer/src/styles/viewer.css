@@ -733,6 +733,10 @@
   box-shadow: none;
 }
 
+@keyframes dv-backdrop-enter {
+  from { opacity: 0; }
+}
+
 @keyframes dv-sidebar-enter {
   from { opacity: 0; transform: translateX(-8px); }
   to { opacity: 1; transform: translateX(0); }
@@ -1161,6 +1165,7 @@
 
 .dv-page-count {
   padding-right: 4px;
+  white-space: nowrap;
   font-size: var(--dv-font-size-md);
   color: var(--dv-muted);
   font-variant-numeric: tabular-nums;
@@ -1614,6 +1619,36 @@
   .dv-toolbar[data-tier="sm"] .dv-toolbar-overflow:not([data-open="true"]) { display: none; }
 }
 
+/* 40px touch controls make every tier wider, so it folds sooner. */
+@media (pointer: coarse) {
+  @container dv-viewer (max-width: 1280px) {
+    .dv-toolbar[data-tier="lg"] .dv-toolbar-more { display: inline-flex; }
+    .dv-toolbar[data-tier="lg"] .dv-toolbar-overflow[data-open="true"] { display: flex; }
+    .dv-toolbar[data-tier="lg"] .dv-toolbar-overflow:not([data-open="true"]) { display: none; }
+  }
+
+  @container dv-viewer (max-width: 920px) {
+    .dv-toolbar[data-tier="md"] .dv-toolbar-more { display: inline-flex; }
+    .dv-toolbar[data-tier="md"] .dv-toolbar-overflow[data-open="true"] { display: flex; }
+    .dv-toolbar[data-tier="md"] .dv-toolbar-overflow:not([data-open="true"]) { display: none; }
+  }
+
+  @container dv-viewer (max-width: 720px) {
+    .dv-toolbar[data-tier="sm"] .dv-toolbar-more { display: inline-flex; }
+    .dv-toolbar[data-tier="sm"] .dv-toolbar-overflow[data-open="true"] { display: flex; }
+    .dv-toolbar[data-tier="sm"] .dv-toolbar-overflow:not([data-open="true"]) { display: none; }
+  }
+
+  @container dv-viewer (max-width: 560px) {
+    .dv-toolbar-zoom-step,
+    .dv-toolbar-marquee { display: none; }
+  }
+
+  @container dv-viewer (max-width: 448px) {
+    .dv-toolbar-page-nav > .dv-button { display: none; }
+  }
+}
+
 /* The popover itself. Only matches once a query above has turned the
    wrapper into a flex box, so wide layouts never see it. */
 .dv-toolbar-overflow[data-open="true"] {
@@ -1661,9 +1696,21 @@
   }
 }
 
+.dv-sidebar-backdrop {
+  display: none;
+}
+
 @container dv-viewer (max-width: 640px) {
   .dv-sidebar {
     box-shadow: var(--dv-shadow-lg);
+  }
+  .dv-sidebar-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: calc(var(--dv-z-sidebar) - 1);
+    background-color: rgb(41 28 18 / 0.16);
+    animation: dv-backdrop-enter var(--dv-transition-normal) var(--dv-ease-out);
   }
   .dv-toolbar {
     gap: var(--dv-spacing-sm);
@@ -1679,6 +1726,28 @@
 
 @container dv-viewer (max-width: 400px) {
   .dv-toolbar-page-nav > .dv-button { display: none; }
+  .dv-search-bar { padding-inline: 6px; }
+  .dv-search-bar > .dv-search-input { margin-right: 0; }
+  .dv-search-count { min-width: 0; }
+}
+
+/* Touch screens: 40px targets, and 16px fields so iOS does not zoom in on focus. */
+@media (pointer: coarse) {
+  .dv-root {
+    --dv-toolbar-height: var(--dv-toolbar-height-touch);
+    --dv-control-size: 40px;
+  }
+  .dv-page-input,
+  .dv-zoom-select {
+    height: var(--dv-control-size);
+  }
+  .dv-page-input {
+    width: 48px;
+  }
+  .dv-root input:not([type="checkbox"], [type="radio"], [type="range"]),
+  .dv-root textarea {
+    font-size: 16px;
+  }
 }
 
 /* ---------- Forced Colors & Reduced Motion ---------- */

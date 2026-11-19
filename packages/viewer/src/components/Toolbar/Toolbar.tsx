@@ -20,6 +20,8 @@ interface ToolbarProps {
  * so a 600px embed with a PDF never clips while a Markdown file keeps every
  * control inline at the same width.
  */
+const NARROW_TOOLBAR_WIDTH = 360;
+
 function toolbarTier(features: AdapterFeatures | undefined, pageCount: number) {
   if (features?.annotations) return 'lg';
   if (features?.rotation || pageCount > 1) return 'md';
@@ -38,6 +40,18 @@ export function Toolbar({ features }: ToolbarProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const overflowRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+
+  useEffect(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+    const measure = () => setNarrow(el.clientWidth > 0 && el.clientWidth <= NARROW_TOOLBAR_WIDTH);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const closeMore = useCallback((restoreFocus: boolean) => {
     setMoreOpen(false);
@@ -77,10 +91,12 @@ export function Toolbar({ features }: ToolbarProps) {
   return (
     <>
       <div
+        ref={toolbarRef}
         className="dv-toolbar"
         role="toolbar"
         aria-label={strings.toolbar.label}
         data-tier={toolbarTier(features, pageCount)}
+        data-narrow={narrow || undefined}
       >
         <div className="dv-toolbar-group">
           <button
@@ -113,7 +129,7 @@ export function Toolbar({ features }: ToolbarProps) {
           </div>
         )}
 
-        <ToolbarZoom {...(features ? { features } : {})} />
+        {!narrow && <ToolbarZoom {...(features ? { features } : {})} />}
 
         {/* Before the popover in DOM order so Tab moves from the button into it. */}
         <button
@@ -138,6 +154,7 @@ export function Toolbar({ features }: ToolbarProps) {
           onClick={onOverflowClick}
           onChange={() => closeMore(false)}
         >
+          {narrow && <ToolbarZoom {...(features ? { features } : {})} />}
           <ToolbarView {...(features ? { features } : {})} />
           <ToolbarActions {...(features ? { features } : {})} />
           {features?.annotations && <ToolbarAnnotations />}

@@ -120,96 +120,101 @@ export function Sidebar() {
   const panelId = `${instanceId}-sidebar-panel`;
 
   return (
-    <aside
-      ref={asideRef}
-      className="dv-sidebar"
-      data-open={sidebarOpen}
-      aria-label={strings.sidebar.region}
-      style={{ width: `${sidebarWidth}px` }}
-    >
-      <div
-        className="dv-sidebar-views"
-        role="tablist"
-        aria-label={strings.sidebar.viewSwitcher}
-        onKeyDown={(e) => {
-          const i = views.findIndex((v) => v.id === activeView);
-          const next =
-            e.key === 'ArrowRight' || e.key === 'ArrowDown'
-              ? (i + 1) % views.length
-              : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
-                ? (i - 1 + views.length) % views.length
-                : e.key === 'Home'
-                  ? 0
-                  : e.key === 'End'
-                    ? views.length - 1
-                    : -1;
-          if (next === -1) return;
-          e.preventDefault();
-          e.stopPropagation();
-          setSidebarView(views[next]!.id);
-          e.currentTarget
-            .querySelector<HTMLElement>(`#${CSS.escape(tabId(views[next]!.id))}`)
-            ?.focus();
-        }}
+    <>
+      {sidebarOpen && (
+        <div className="dv-sidebar-backdrop" aria-hidden="true" onClick={closeSidebarTransiently} />
+      )}
+      <aside
+        ref={asideRef}
+        className="dv-sidebar"
+        data-open={sidebarOpen}
+        aria-label={strings.sidebar.region}
+        style={{ width: `${sidebarWidth}px` }}
       >
-        {views.map((view) => (
-          <button
-            key={view.id}
-            id={tabId(view.id)}
-            role="tab"
-            aria-selected={activeView === view.id}
-            aria-controls={panelId}
-            tabIndex={activeView === view.id ? 0 : -1}
-            className="dv-sidebar-view-tab"
-            data-toggled={activeView === view.id}
-            onClick={() => setSidebarView(view.id)}
-          >
-            {view.label}
-          </button>
-        ))}
-      </div>
+        <div
+          className="dv-sidebar-views"
+          role="tablist"
+          aria-label={strings.sidebar.viewSwitcher}
+          onKeyDown={(e) => {
+            const i = views.findIndex((v) => v.id === activeView);
+            const next =
+              e.key === 'ArrowRight' || e.key === 'ArrowDown'
+                ? (i + 1) % views.length
+                : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
+                  ? (i - 1 + views.length) % views.length
+                  : e.key === 'Home'
+                    ? 0
+                    : e.key === 'End'
+                      ? views.length - 1
+                      : -1;
+            if (next === -1) return;
+            e.preventDefault();
+            e.stopPropagation();
+            setSidebarView(views[next]!.id);
+            e.currentTarget
+              .querySelector<HTMLElement>(`#${CSS.escape(tabId(views[next]!.id))}`)
+              ?.focus();
+          }}
+        >
+          {views.map((view) => (
+            <button
+              key={view.id}
+              id={tabId(view.id)}
+              role="tab"
+              aria-selected={activeView === view.id}
+              aria-controls={panelId}
+              tabIndex={activeView === view.id ? 0 : -1}
+              className="dv-sidebar-view-tab"
+              data-toggled={activeView === view.id}
+              onClick={() => setSidebarView(view.id)}
+            >
+              {view.label}
+            </button>
+          ))}
+        </div>
 
-      <div
-        id={panelId}
-        role="tabpanel"
-        aria-labelledby={tabId(activeView)}
-        tabIndex={0}
-        style={{ flex: 1, overflow: 'auto' }}
-      >
-        {activeView === 'thumbnails' && (
-          <ThumbnailList
-            pages={document.pages}
-            format={document.format}
-            adapter={adapter}
-            live={!!adapter?.manifest.features.thumbnails || document.meta.size <= LIVE_PREVIEW_MAX_BYTES}
-            currentPage={currentPage}
-            onThumbnailClick={goToPage}
-          />
-        )}
+        <div
+          id={panelId}
+          role="tabpanel"
+          aria-labelledby={tabId(activeView)}
+          tabIndex={0}
+          style={{ flex: 1, overflow: 'auto' }}
+        >
+          {activeView === 'thumbnails' && (
+            <ThumbnailList
+              pages={document.pages}
+              format={document.format}
+              adapter={adapter}
+              live={!!adapter?.manifest.features.thumbnails || document.meta.size <= LIVE_PREVIEW_MAX_BYTES}
+              currentPage={currentPage}
+              onThumbnailClick={goToPage}
+            />
+          )}
 
-        {activeView === 'outline' && document.outline && (
-          <OutlineList nodes={document.outline} onNavigate={navigateToOutline} />
-        )}
+          {activeView === 'outline' && document.outline && (
+            <OutlineList nodes={document.outline} onNavigate={navigateToOutline} />
+          )}
 
-        {activeView === 'attachments' && document.attachments && (
-          <AttachmentList attachments={document.attachments} />
-        )}
-      </div>
+          {activeView === 'attachments' && document.attachments && (
+            <AttachmentList attachments={document.attachments} />
+          )}
+        </div>
 
-      <div
-        className="dv-sidebar-resizer"
-        data-active={resizing}
-        role="separator"
-        tabIndex={0}
-        aria-orientation="vertical"
-        aria-label={strings.sidebar.resize}
-        aria-valuenow={sidebarWidth}
-        aria-valuemin={SIDEBAR_MIN_WIDTH}
-        aria-valuemax={SIDEBAR_MAX_WIDTH}
-        onPointerDown={startResize}
-        onKeyDown={onResizeKey}
-      />
-    </aside>
+        <div
+          className="dv-sidebar-resizer"
+          data-active={resizing}
+          role="separator"
+          tabIndex={0}
+          aria-orientation="vertical"
+          aria-label={strings.sidebar.resize}
+          aria-valuenow={sidebarWidth}
+          aria-valuemin={SIDEBAR_MIN_WIDTH}
+          aria-valuemax={SIDEBAR_MAX_WIDTH}
+          onPointerDown={startResize}
+          onKeyDown={onResizeKey}
+        />
+      </aside>
+    </>
   );
 }
 
