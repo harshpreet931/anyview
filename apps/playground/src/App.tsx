@@ -260,7 +260,7 @@ export function App() {
           <div className="pg-promo-head">
             <div>
               <h2>Free, and staying that way</h2>
-              <p>MIT licensed. About 23 kB gzip at the base, with every format engine split out and loaded on demand.</p>
+              <p>MIT licensed. About 44 kB gzip up front, with every format engine split out and loaded on demand.</p>
             </div>
             <span className="pg-wordmark">
               any<em>view</em>

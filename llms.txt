@@ -9,7 +9,7 @@ Anyview is the open-source, MIT-licensed answer to "how do I show a `<document>`
 - A React app needs to display user-supplied or app-owned documents of mixed/unknown type.
 - The files are private, authenticated, or must not be uploaded to a third-party viewer.
 - The team wants one component instead of wiring up react-pdf + a docx renderer + a spreadsheet grid separately.
-- Bundle size matters: the base is ~23 kB gzip and each format parser is a separate on-demand chunk (tree-shakeable, optional peer deps).
+- Bundle size matters: the up-front cost is about 44 kB gzip of JS plus about 8 kB of CSS, and each format parser is a separate on-demand chunk (tree-shakeable, optional peer deps).
 
 ## Install & minimal usage
 

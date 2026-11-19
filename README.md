@@ -55,7 +55,6 @@ Every other React document viewer either **uses iframes** (slow, insecure, leaks
 | **Web Workers** | ✅ Off-main-thread | ❌ | ✅ | ❌ |
 | **Tree-shakeable** | ✅ Load only what you need | ❌ | ✅ | ❌ |
 | **WCAG 2.2 AA** | ✅ Built-in | ❌ | ❌ | ❌ |
-| **Bundle size** | **~23 kB gzip** (base) | ~40 kB | ~50 kB | ~100 kB |
 
 ## Quick Start
 
@@ -197,7 +196,7 @@ Drag any PDF / DOCX / XLSX / PPTX / CSV / Markdown / code / HTML / `.ipynb` / im
 - **Worker-offloaded.** PDF parsing and rendering run in a Web Worker via Comlink, so the main thread never blocks.
 - **Byte-budgeted LRU cache.** Rendered page bitmaps are cached under a 256 MB budget with automatic eviction and memory-pressure shrinking.
 - **WCAG 2.2 AA.** ARIA roles, keyboard navigation, screen-reader announcements, forced-colors, and reduced-motion support, built in.
-- **~23 kB gzip base.** Only Zustand + Comlink + @tanstack/react-virtual ship in the base; format engines load on demand as separate chunks.
+- **About 44 kB gzip up front.** That is the component plus Zustand, Comlink and @tanstack/react-virtual (the stylesheet adds about 8 kB). Every format engine loads on demand as a separate chunk, only when a matching file opens.
 
 ## Advanced Usage
 
