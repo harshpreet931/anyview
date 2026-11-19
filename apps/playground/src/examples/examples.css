@@ -403,3 +403,11 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
   .ex-review-panel { border-left: 0; border-top: 1px solid var(--hairline); max-height: 220px; }
   .ex-primary { margin-top: 4px; }
 }
+
+@media (pointer: coarse) {
+  .ex-tabs button,
+  .ex-tools button,
+  .ex-review-actions button { height: 40px; }
+  .ex-samples button { min-height: 40px; }
+  .ex-controls button { width: 40px; height: 40px; }
+}

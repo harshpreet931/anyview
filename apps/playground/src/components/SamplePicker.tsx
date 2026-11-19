@@ -25,6 +25,24 @@ export function SamplePicker({ samples, active, onPick }: Props) {
     return () => ro.disconnect();
   }, [active]);
 
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const update = () => {
+      const max = track.scrollWidth - track.clientWidth;
+      track.dataset.fadeStart = String(max > 1 && track.scrollLeft > 1);
+      track.dataset.fadeEnd = String(max > 1 && track.scrollLeft < max - 1);
+    };
+    update();
+    track.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(track);
+    return () => {
+      track.removeEventListener('scroll', update);
+      ro.disconnect();
+    };
+  }, []);
+
   // Keep the chosen format in view when the track scrolls (narrow screens).
   useLayoutEffect(() => {
     const track = trackRef.current;
