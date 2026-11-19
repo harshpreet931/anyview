@@ -569,13 +569,13 @@
   :where(:not(pre) > code) {
   padding: 0.12em 0.36em;
   border-radius: 0.35em;
-  background: #f3eee8;
+  background: #f1f1f1;
 }
 
 :is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(pre) {
   padding: 1em 1.15em;
   border-radius: 0.75em;
-  background: #f6f3ef;
+  background: #f6f6f6;
   box-shadow: inset 0 0 0 1px rgb(41 28 18 / 0.06);
   overflow-x: auto;
   line-height: 1.55;
@@ -587,7 +587,7 @@
 
 :is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(blockquote) {
   padding: 0.1em 0 0.1em 1em;
-  border-inline-start: 3px solid #e2d9ce;
+  border-inline-start: 3px solid #dddddd;
   color: var(--dv-page-ink-soft);
 }
 
@@ -601,7 +601,7 @@
 
 :is(.dv-markdown-content, .dv-html-content, .dv-ipynb-md) :where(th, td) {
   padding: 0.45em 0.9em;
-  border-bottom: 1px solid #ebe5dd;
+  border-bottom: 1px solid #e8e8e8;
   text-align: start;
   vertical-align: top;
 }
@@ -615,7 +615,7 @@
   height: 1px;
   margin: 2em 0;
   border: 0;
-  background: #ebe5dd;
+  background: #e8e8e8;
 }
 
 :is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md) :where(img) {

@@ -32,10 +32,10 @@
   --dv-ink-2: light-dark(#2b2825, #d9d2ca);
   --dv-muted: light-dark(#6b635a, #a39a90); /* 4.5:1+ on canvas and surface 1-3 */
   --dv-on-ink: light-dark(#ffffff, #121110);
-  --dv-canvas: light-dark(#efe9e1, #12100e);
+  --dv-canvas: light-dark(#f3f3f3, #12100e);
   --dv-surface: light-dark(#ffffff, #1a1715);
-  --dv-surface-2: light-dark(#f7f3ee, #232020);
-  --dv-surface-3: light-dark(#ece5dc, #2d2926);
+  --dv-surface-2: light-dark(#f7f7f7, #232020);
+  --dv-surface-3: light-dark(#ebebeb, #2d2926);
   --dv-hairline: light-dark(rgb(18 17 16 / 0.08), rgb(255 245 235 / 0.08));
   --dv-accent: light-dark(#e8551f, #ff7a45); /* 3:1+ as a ring on every surface */
   --dv-accent-soft: light-dark(rgb(232 85 31 / 0.14), rgb(255 122 69 / 0.2));
@@ -68,8 +68,7 @@
   --dv-page-ink: #1f1c19;
   --dv-page-ink-soft: #5f574f;
 
-  /* Shadows - layered, low-opacity, tinted warm (umber) so they sit on
-     the sand canvas without going grey. A 1px ring replaces borders; two soft depths give lift. */
+  /* Shadows - layered, low-opacity, tinted warm (umber). A 1px ring replaces borders; two soft depths give lift. */
   --dv-shadow-xs: 0 0 0 1px rgb(41 28 18 / 0.05), 0 1px 2px rgb(41 28 18 / 0.04);
   --dv-shadow-sm: 0 0 0 1px rgb(41 28 18 / 0.05), 0 1px 2px -1px rgb(41 28 18 / 0.06),
     0 2px 6px rgb(41 28 18 / 0.04);
@@ -141,10 +140,10 @@
     --dv-ink-2: #2b2825;
     --dv-muted: #6b635a;
     --dv-on-ink: #ffffff;
-    --dv-canvas: #efe9e1;
+    --dv-canvas: #f3f3f3;
     --dv-surface: #ffffff;
-    --dv-surface-2: #f7f3ee;
-    --dv-surface-3: #ece5dc;
+    --dv-surface-2: #f7f7f7;
+    --dv-surface-3: #ebebeb;
     --dv-hairline: rgb(18 17 16 / 0.08);
     --dv-accent: #e8551f;
     --dv-accent-soft: rgb(232 85 31 / 0.14);
@@ -194,10 +193,10 @@
     --dv-ink-2: #2b2825;
     --dv-muted: #6b635a;
     --dv-on-ink: #ffffff;
-    --dv-canvas: #efe9e1;
+    --dv-canvas: #f3f3f3;
     --dv-surface: #ffffff;
-    --dv-surface-2: #f7f3ee;
-    --dv-surface-3: #ece5dc;
+    --dv-surface-2: #f7f7f7;
+    --dv-surface-3: #ebebeb;
     --dv-hairline: rgb(18 17 16 / 0.08);
     --dv-accent: #e8551f;
     --dv-accent-soft: rgb(232 85 31 / 0.14);
@@ -229,10 +228,10 @@
       --dv-ink-2: #2b2825;
       --dv-muted: #6b635a;
       --dv-on-ink: #ffffff;
-      --dv-canvas: #efe9e1;
+      --dv-canvas: #f3f3f3;
       --dv-surface: #ffffff;
-      --dv-surface-2: #f7f3ee;
-      --dv-surface-3: #ece5dc;
+      --dv-surface-2: #f7f7f7;
+      --dv-surface-3: #ebebeb;
       --dv-hairline: rgb(18 17 16 / 0.08);
       --dv-accent: #e8551f;
       --dv-accent-soft: rgb(232 85 31 / 0.14);
