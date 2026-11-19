@@ -34,7 +34,7 @@ test.describe('images - pixels actually reach the canvas', () => {
   test('SVG sample renders to the canvas', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.dv-root')).toBeVisible();
-    await page.locator('.pg-sample-chip').nth(6).click();
+    await page.getByRole('group', { name: 'Sample documents' }).getByRole('button', { name: 'SVG', exact: true }).click();
     await expectCanvasNotBlank(page);
   });
 

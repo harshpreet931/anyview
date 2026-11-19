@@ -7,10 +7,10 @@ function luminance(rgb: string): number {
   return 0.299 * (r ?? 0) + 0.587 * (g ?? 0) + 0.114 * (b ?? 0);
 }
 
-async function loadReflowable(page: Page, chipIndex: number) {
+async function loadReflowable(page: Page, label: string) {
   await page.goto('/');
   await expect(page.locator('.dv-root')).toBeVisible();
-  await page.locator('.pg-sample-chip').nth(chipIndex).click();
+  await page.getByRole('group', { name: 'Sample documents' }).getByRole('button', { name: label, exact: true }).click();
   const target = page.locator('.dv-reflow-target').first();
   await target.waitFor({ state: 'attached' });
   await expect
@@ -19,9 +19,9 @@ async function loadReflowable(page: Page, chipIndex: number) {
 }
 
 test.describe('dark mode - a document page stays readable paper', () => {
-  for (const [name, idx] of [['Markdown', 0], ['CSV', 2], ['TypeScript', 4]] as const) {
+  for (const name of ['Markdown', 'CSV', 'TypeScript'] as const) {
     test(`${name} renders dark ink on a light page`, async ({ page }) => {
-      await loadReflowable(page, idx);
+      await loadReflowable(page, name);
 
       const { textLum, pageLum } = await page.evaluate(() => {
         const text = document.querySelector('.dv-reflow-target') as HTMLElement;

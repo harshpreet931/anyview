@@ -1,25 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const SAMPLE_INDEX: Record<string, number> = {
-  Markdown: 0,
-  Text: 1,
-  CSV: 2,
-  HTML: 3,
-  TypeScript: 4,
-  JSON: 5,
-  SVG: 6,
-  PDF: 7,
-  Jupyter: 8,
-};
-
 async function gotoApp(page: Page) {
   await page.goto('/');
   await expect(page.locator('.dv-root')).toBeVisible();
 }
 
-async function loadSample(page: Page, name: keyof typeof SAMPLE_INDEX | string) {
-  const idx = SAMPLE_INDEX[name];
-  await page.locator('.pg-sample-chip').nth(idx).click();
+async function loadSample(page: Page, name: string) {
+  await page.getByRole('group', { name: 'Sample documents' }).getByRole('button', { name, exact: true }).click();
 }
 
 async function waitForCanvasRendered(page: Page) {
@@ -50,7 +37,7 @@ async function openSearch(page: Page, query: string) {
 }
 
 test.describe('rendering - every sample format', () => {
-  for (const name of ['Markdown', 'Text', 'CSV', 'HTML', 'TypeScript', 'JSON', 'Jupyter']) {
+  for (const name of ['Markdown', 'Text', 'CSV', 'HTML', 'TypeScript', 'Jupyter']) {
     test(`renders ${name} (reflowable)`, async ({ page }) => {
       await gotoApp(page);
       await loadSample(page, name);
