@@ -1,6 +1,6 @@
 {
   "name": "anyview",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "One component. Every format. Zero iframes. The universal document viewer for React.",
   "license": "MIT",
   "publishConfig": {

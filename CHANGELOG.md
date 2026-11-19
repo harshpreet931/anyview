@@ -5,6 +5,19 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.4.0]
+
+### Changed
+- **A clean white look.** The light theme's canvas and surfaces are neutral white and grey instead of warm sand, and code blocks, inline code, quotes, table rules and dividers in flowing documents follow. Ink, the tangerine accent and the dark theme are unchanged. Override `--dv-canvas`, `--dv-surface-2` and `--dv-surface-3` to bring the old tones back.
+- **Code and notebooks use the brand palette.** Syntax colours are ink, tangerine, browns, ochre and olive instead of blue and purple, every token at 4.5:1 contrast or better.
+- **PDF search respects `caseSensitive`** for plain-text queries.
+
+### Fixed
+- **PDF search highlights only the matched words**, not the whole text run, and a run that contains the word twice counts twice.
+- **Long code lines are never clipped.** Code pages are sized to their longest line and scroll sideways.
+- **Code renders in a real monospace font** in Chrome instead of falling back to Courier.
+- **The sticky-note editor shows an accent focus ring** instead of the browser's default blue one.
+
 ## [0.3.2]
 
 ### Added
