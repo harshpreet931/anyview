@@ -5,6 +5,14 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.4.1]
+
+### Fixed
+- **The page number reaches the last page on phones and tablets.** When the last page can't scroll to the top of the viewer, scrolling to the end (or jumping to the last page) now shows it as current instead of snapping back.
+- **Every tool is reachable on small screens.** On narrow viewers the zoom select moves into the More menu so the menu button never falls off the edge, and the menu stays inside the screen.
+- **Touch-friendly controls.** On touch screens toolbar controls are 40px, and text inputs are 16px so iOS Safari no longer zooms in when you tap search or the page number.
+- **Small polish:** the page count no longer wraps, an empty viewer shows "– / –" with the page input disabled, the search field is wider on narrow viewers, and tapping outside the thumbnail drawer closes it on narrow containers.
+
 ## [0.4.0]
 
 ### Changed
