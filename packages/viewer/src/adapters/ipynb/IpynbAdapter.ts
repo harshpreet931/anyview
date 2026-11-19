@@ -16,6 +16,7 @@ import { loadSanitizer, DOCUMENT_HTML_CONFIG } from '../../core/sanitizer';
 import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 import { makeSafeUrlTransform } from '../../core/markdown-url';
 import { assertTransformSize } from '../../core/limits';
+import { CODE_THEME } from '../../core/code-theme';
 
 export const ipynbManifest: AdapterManifest = {
   id: 'ipynb',
@@ -160,13 +161,13 @@ export class IpynbAdapter implements Adapter {
     try {
       const shiki = await import('shiki');
       const highlighter = await shiki.createHighlighter({
-        themes: ['github-dark', 'github-light'],
+        themes: [CODE_THEME],
         langs: [this.language],
       });
       codeToHtml = (src: string) =>
         highlighter.codeToHtml(src, {
           lang: this.language,
-          themes: { light: 'github-light', dark: 'github-dark' },
+          theme: CODE_THEME,
         });
     } catch {
       codeToHtml = null;

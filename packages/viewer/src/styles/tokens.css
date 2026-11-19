@@ -120,7 +120,7 @@
   --dv-font-family: 'Geist', 'Geist Variable', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', Roboto, sans-serif;
   --dv-font-mono: 'Geist Mono', ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono',
-    monospace;
+    Menlo, Consolas, 'Liberation Mono', monospace;
   --dv-font-size-xs: 11px;
   --dv-font-size-sm: 12px;
   --dv-font-size-md: 13px;

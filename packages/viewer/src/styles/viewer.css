@@ -623,6 +623,28 @@
   height: auto;
 }
 
+/* ---------- Source code ---------- */
+.dv-code {
+  padding: 16px;
+}
+.dv-code pre {
+  margin: 0;
+  padding: 16px;
+  border-radius: 10px;
+  background-color: #f6f6f6;
+  color: #2b2825;
+  box-shadow: inset 0 0 0 1px rgb(41 28 18 / 0.06);
+  font-family: var(--dv-font-mono);
+  font-size: inherit;
+  line-height: 20px;
+  tab-size: 4;
+  overflow-x: auto;
+}
+.dv-code code,
+.dv-ipynb-input code {
+  font-family: inherit;
+}
+
 /* ---------- Jupyter notebook (.ipynb) ---------- */
 .dv-ipynb-cell {
   display: flex;
@@ -641,6 +663,7 @@
   padding: 10px 12px;
   border-radius: 4px;
   overflow: auto;
+  font-family: var(--dv-font-mono);
 }
 .dv-ipynb-stream,
 .dv-ipynb-result,

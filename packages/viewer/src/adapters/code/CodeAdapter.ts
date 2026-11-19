@@ -11,6 +11,7 @@ import type {
   TextLayerItem,
 } from '../../core/types';
 import { assertTransformSize } from '../../core/limits';
+import { CODE_THEME } from '../../core/code-theme';
 
 export const codeManifest: AdapterManifest = {
   id: 'code',
@@ -60,6 +61,18 @@ function detectLanguage(filename: string): string {
 }
 
 const HIGHLIGHT_MAX_CHARS = 300_000;
+const FONT_SIZE = 14;
+const LINE_HEIGHT = 20;
+const CHAR_WIDTH = FONT_SIZE * 0.61;
+const TAB_SIZE = 4;
+const PADDING_X = 64;
+const PADDING_Y = 64;
+
+function columnCount(line: string): number {
+  let columns = 0;
+  for (const ch of line) columns = ch === '\t' ? columns + TAB_SIZE - (columns % TAB_SIZE) : columns + 1;
+  return columns;
+}
 
 export class CodeAdapter implements Adapter {
   readonly manifest = codeManifest;
@@ -85,13 +98,13 @@ export class CodeAdapter implements Adapter {
       try {
         const shiki = await import('shiki');
         const highlighter = await shiki.createHighlighter({
-          themes: ['github-dark', 'github-light'],
+          themes: [CODE_THEME],
           langs: [this.language],
         });
 
         this.highlightedHtml = highlighter.codeToHtml(this.codeText, {
           lang: this.language,
-          themes: { light: 'github-light', dark: 'github-dark' },
+          theme: CODE_THEME,
         });
       } catch {
         this.highlightedHtml = plain();
@@ -99,20 +112,19 @@ export class CodeAdapter implements Adapter {
     }
 
     const lines = this.codeText.split('\n');
-    const lineHeight = 20;
-    const charWidth = 8;
     // Loop instead of Math.max(...spread): spreading a huge array overflows the call-stack arg limit.
-    let maxLineLength = 0;
+    let maxColumns = 0;
     for (const line of lines) {
-      if (line.length > maxLineLength) maxLineLength = line.length;
+      const columns = columnCount(line);
+      if (columns > maxColumns) maxColumns = columns;
     }
-    const maxWidth = maxLineLength * charWidth;
-    const totalHeight = lines.length * lineHeight;
+    const maxWidth = Math.ceil(maxColumns * CHAR_WIDTH);
+    const totalHeight = lines.length * LINE_HEIGHT;
 
     const page: PageRef = {
       index: 0,
-      width: Math.max(maxWidth + 48, 600),
-      height: Math.max(totalHeight + 48, 400),
+      width: Math.max(maxWidth + PADDING_X, 600),
+      height: Math.max(totalHeight + PADDING_Y, 400),
       rotation: 0,
     };
 
@@ -129,18 +141,9 @@ export class CodeAdapter implements Adapter {
     target.innerHTML = '';
 
     const container = document.createElement('div');
-    container.style.padding = '16px';
-    container.style.overflow = 'auto';
-    container.style.fontSize = `${14 * ctx.scale}px`;
+    container.className = 'dv-code';
+    container.style.fontSize = `${FONT_SIZE * ctx.scale}px`;
     container.innerHTML = this.highlightedHtml;
-
-    const codeElement = container.querySelector('pre');
-    if (codeElement) {
-      (codeElement as HTMLElement).style.margin = '0';
-      (codeElement as HTMLElement).style.padding = '16px';
-      (codeElement as HTMLElement).style.borderRadius = '4px';
-    }
-
     target.appendChild(container);
 
     return {
@@ -158,9 +161,9 @@ export class CodeAdapter implements Adapter {
       .map((line, i) => ({
         str: line,
         x: 0,
-        y: i * 20,
-        width: line.length * 8,
-        height: 20,
+        y: i * LINE_HEIGHT,
+        width: columnCount(line) * CHAR_WIDTH,
+        height: LINE_HEIGHT,
       }));
 
     return { pageIndex: 0, items };

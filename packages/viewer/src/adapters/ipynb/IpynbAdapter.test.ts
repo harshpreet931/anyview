@@ -137,3 +137,42 @@ describe('IpynbAdapter', () => {
     expect(src.startsWith('data:image/png;base64,')).toBe(true);
   });
 });
+
+describe('IpynbAdapter highlighting', () => {
+  it('highlights code cells with the on-brand theme, no blue or purple tokens', async () => {
+    const nb = JSON.stringify({
+      cells: [
+        {
+          cell_type: 'code',
+          source: ['import math\n', 'def area(r: float) -> float:\n', '    """Circle."""\n', '    return math.pi * r ** 2  # sq\n', 'print(area(2), True, None)'],
+          outputs: [],
+        },
+      ],
+      metadata: { language_info: { name: 'python' } },
+      nbformat: 4,
+    });
+    const adapter = new IpynbAdapter();
+    await adapter.parse(reader(nb), new AbortController().signal);
+    const target = document.createElement('div');
+    await adapter.renderPage({
+      page: { index: 0, width: 900, height: 600, rotation: 0 },
+      target,
+      scale: 1,
+      rotation: 0,
+      devicePixelRatio: 1,
+      signal: new AbortController().signal,
+    });
+    expect(target.querySelectorAll('.shiki span[style]').length).toBeGreaterThan(8);
+    const cool = [...target.innerHTML.matchAll(/#([0-9a-f]{6})\b/gi)]
+      .map((m) => m[1]!)
+      .filter((hex) => {
+        const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
+        const max = Math.max(r, g, b);
+        const d = max - Math.min(r, g, b);
+        if (d < 0.08) return false;
+        const hue = max === r ? 60 * (((g - b) / d + 6) % 6) : max === g ? 60 * ((b - r) / d + 2) : 60 * ((r - g) / d + 4);
+        return hue >= 180 && hue <= 330;
+      });
+    expect(cool).toEqual([]);
+  });
+});
