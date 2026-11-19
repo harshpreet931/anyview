@@ -23,14 +23,15 @@ async function settle(page: Page) {
 
 const span = (page: Page, text: RegExp) => page.locator('.dv-text-layer span').filter({ hasText: text }).first();
 
-async function overlap(a: Locator, b: Locator) {
+async function overlap(a: Locator, b: Locator, within: 'a' | 'b' = 'b') {
   await expect.poll(async () => {
     const ra = await a.boundingBox();
     const rb = await b.boundingBox();
     if (!ra || !rb) return 0;
     const w = Math.min(ra.x + ra.width, rb.x + rb.width) - Math.max(ra.x, rb.x);
     const h = Math.min(ra.y + ra.height, rb.y + rb.height) - Math.max(ra.y, rb.y);
-    return w > 0 && h > 0 ? (w * h) / (rb.width * rb.height) : 0;
+    const r = within === 'a' ? ra : rb;
+    return w > 0 && h > 0 ? (w * h) / (r.width * r.height) : 0;
   }, { timeout: 8000 }).toBeGreaterThan(0.5);
 }
 
@@ -80,6 +81,6 @@ test.describe('rotation keeps overlays on their text', () => {
     await page.locator('.dv-search-input').fill('Native rendering');
     await expect(page.locator('.dv-search-count')).toContainText(/1 of/);
     await rotate(page);
-    await overlap(page.locator('.dv-search-highlight-current'), span(page, /Native rendering/));
+    await overlap(page.locator('.dv-search-highlight-current'), span(page, /Native rendering/), 'a');
   });
 });
