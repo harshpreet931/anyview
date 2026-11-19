@@ -1,38 +1,37 @@
 /* ============================================================
  * anyview: the site
- * A warm sand haze, floating white cards, black pills.
+ * Clean white, floating cards, black pills.
  * ============================================================ */
 
 :root {
-  /* Sand haze: top, middle, deep (the bottom of the page). */
-  --sky-1: #f4efe7;
-  --sky-2: #ede4d8;
-  --sky-3: #e8dccb;
-  --sky-4: #f8f4ee; /* warm cloud */
+  --sky-1: #ffffff;
+  --sky-2: #ffffff;
+  --sky-3: #f6f6f6;
+  --sky-4: #ffffff;
 
   --surface: #ffffff;
-  --surface-2: #f7f3ee;
+  --surface-2: #f5f5f5;
   --ink: #121110;
   --ink-2: #2b2825;
-  --muted: #5f574f; /* brand #6b635a, deepened to clear 4.5:1 on the deepest sand */
+  --muted: #5f574f;
   --hairline: rgb(18 17 16 / 0.08);
   --accent: #e8551f;
-  --accent-ink: #c2410c; /* accent text, and focus rings on the sand (3:1+) */
+  --accent-ink: #c2410c;
   --focus: var(--accent-ink);
 
-  --frost: rgb(255 253 250 / 0.5);
-  --frost-hover: rgb(255 253 250 / 0.7);
+  --frost: rgb(18 17 16 / 0.035);
+  --frost-hover: rgb(18 17 16 / 0.065);
   --frost-ink: #4a443e;
-  --frost-edge: inset 0 0 0 1px rgb(255 252 247 / 0.55);
+  --frost-edge: inset 0 0 0 1px rgb(18 17 16 / 0.06);
 
   --pill: #121110;
   --pill-ink: #ffffff;
 
   --card-shadow:
-    0 0 0 1px rgb(41 28 18 / 0.035),
-    0 1px 2px rgb(60 38 20 / 0.04),
-    0 8px 24px -6px rgb(92 58 28 / 0.09),
-    0 30px 60px -20px rgb(92 58 28 / 0.15);
+    0 0 0 1px rgb(0 0 0 / 0.05),
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 8px 24px -6px rgb(0 0 0 / 0.07),
+    0 30px 60px -20px rgb(0 0 0 / 0.1);
 
   --promo: #1c1917;
   --promo-ink: #f5f1ec;
@@ -124,7 +123,7 @@ body {
   outline-offset: 3px;
 }
 
-/* ---------- Sky (warm sand haze) ---------- */
+/* ---------- Sky ---------- */
 
 .pg-sky {
   position: fixed;
@@ -133,18 +132,14 @@ body {
   overflow: hidden;
   pointer-events: none;
   background:
-    radial-gradient(60% 50% at 6% 8%, rgb(246 205 168 / 0.42) 0%, transparent 70%),
-    radial-gradient(55% 45% at 94% 2%, rgb(240 214 188 / 0.6) 0%, transparent 70%),
-    radial-gradient(60% 45% at 50% 55%, var(--sky-4) 0%, transparent 72%),
-    radial-gradient(80% 50% at 85% 100%, #e2d3bf 0%, transparent 70%),
-    radial-gradient(70% 45% at 5% 95%, #e9dccb 0%, transparent 70%),
+    radial-gradient(55% 45% at 6% 4%, rgb(255 138 61 / 0.07) 0%, transparent 70%),
     linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 50%, var(--sky-3) 100%);
 }
 
 .pg-cloud {
   position: absolute;
   border-radius: 50%;
-  background: #fffaf3;
+  background: #ffffff;
   filter: blur(70px);
   opacity: 0.55;
   will-change: transform;
@@ -152,7 +147,7 @@ body {
 
 .pg-cloud-1 { width: 46vw; height: 22vw; left: -8vw; top: 46vh; opacity: 0.42; animation: pg-drift 70s ease-in-out infinite alternate; }
 .pg-cloud-2 { width: 38vw; height: 16vw; right: -6vw; top: 22vh; opacity: 0.35; animation: pg-drift 90s ease-in-out -30s infinite alternate-reverse; }
-.pg-cloud-3 { width: 60vw; height: 20vw; left: 20vw; bottom: -10vw; opacity: 0.55; background: #f6efe5; animation: pg-drift 110s ease-in-out -50s infinite alternate; }
+.pg-cloud-3 { width: 60vw; height: 20vw; left: 20vw; bottom: -10vw; opacity: 0.55; background: #ffffff; animation: pg-drift 110s ease-in-out -50s infinite alternate; }
 .pg-cloud-4 { width: 26vw; height: 12vw; left: 40vw; top: -4vw; opacity: 0.3; animation: pg-drift 80s ease-in-out -10s infinite alternate-reverse; }
 
 .pg-stars { display: none; }
@@ -318,7 +313,7 @@ body {
   transition-timing-function: var(--ease);
 }
 
-.pg-sample-chip:hover { color: var(--ink); background: rgb(255 252 247 / 0.4); }
+.pg-sample-chip:hover { color: var(--ink); background: rgb(18 17 16 / 0.05); }
 :root[data-theme='dark'] .pg-sample-chip:hover { background: rgb(255 240 225 / 0.06); }
 .pg-sample-chip:active { scale: 0.96; }
 .pg-sample-chip[data-active='true'] { color: var(--pill-ink); background: transparent; }
@@ -756,7 +751,7 @@ body {
 .pg-btn-ghost-dark { background: var(--promo-btn); color: var(--promo-ink); }
 .pg-btn-ghost-dark:hover { background: color-mix(in srgb, var(--promo-btn) 80%, #fff); }
 .pg-btn-white { background: #fff; color: #121110; }
-.pg-btn-white:hover { background: #f1ebe3; }
+.pg-btn-white:hover { background: #f2f2f2; }
 .pg-btn-ghost-dark:active,
 .pg-btn-white:active { scale: 0.96; }
 
@@ -798,7 +793,7 @@ body {
   display: grid;
   place-items: center;
   padding: 28px;
-  background: rgb(237 228 216 / 0.45);
+  background: rgb(245 245 245 / 0.6);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   pointer-events: none;
