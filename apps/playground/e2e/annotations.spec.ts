@@ -52,6 +52,26 @@ test.describe('annotations', () => {
     await expect(page.locator('.dv-annotation-comment')).toHaveText('Ship it');
   });
 
+  test('the note editor shows a tangerine focus ring instead of the browser default', async ({ page }) => {
+    await openPdf(page);
+    await page.getByRole('radio', { name: 'Note' }).click();
+    const box = (await page.locator('.dv-page').first().boundingBox())!;
+    await page.mouse.click(box.x + 400, box.y + 120);
+    const editor = page.getByRole('textbox', { name: 'Note' });
+    await expect(editor).toBeFocused();
+    const ring = await editor.evaluate((el) => {
+      const probe = document.createElement('i');
+      probe.style.color = 'var(--dv-accent)';
+      el.parentElement!.appendChild(probe);
+      const accent = getComputedStyle(probe).color;
+      probe.remove();
+      const s = getComputedStyle(el);
+      return { outline: s.outlineStyle, shadow: s.boxShadow, accent };
+    });
+    expect(ring.outline).toBe('none');
+    expect(ring.shadow).toContain(`${ring.accent} 0px 0px 0px 2px inset`);
+  });
+
   test('Escape cancels an inline note', async ({ page }) => {
     await openPdf(page);
     await page.getByRole('radio', { name: 'Text' }).click();
