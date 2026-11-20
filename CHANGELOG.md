@@ -5,6 +5,27 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.4.2]
+
+### Changed
+- **Huge tables and text files open fast and stay light.** CSV, Excel, plain text, logs and code draw only the rows on screen, so a million-row CSV shows in about a second and a 50 MB log in under half a second. The 2,000-row "Show more" button and the 5,000-row Excel limit are gone, every row is reachable at every zoom, and code is highlighted however long it is.
+- **Big Markdown, HTML, Word and notebook files no longer freeze the page.** They load in short slices and the browser skips drawing what is off screen.
+- **The sidebar is virtualized.** Thumbnails and the outline mount only what is visible, free memory as you scroll, keep the current page in view, and are one tab stop with arrow-key navigation. The outline can be collapsed and expanded.
+- **A smaller first download.** Registering the built-in formats no longer pulls any engine code into the initial bundle.
+- **Short flowing documents show as a full sheet of paper.**
+
+### Fixed
+- **Search covers the whole document in every format**, not just what is drawn: rows past the first screen of a CSV or sheet, every Excel sheet and PowerPoint slide, and the far end of a log. Next/previous jumps to matches that aren't rendered yet, text matches scroll to the match itself, scrolling is never pulled back while search is open, capped counts read "10,000+", and an invalid regex no longer throws.
+- **Page jumps land exactly** after opening another document, rotating, switching scroll or spread mode, and while pages above the target are still loading. Dragging the scrollbar at fit-width no longer snaps back, Next/Previous step a whole spread, and the page number follows the page in view.
+- **Fast scrolling through a big PDF no longer leaves the landing page blank**, and the PDF engine releases the memory of pages it no longer needs.
+- **Apps on Vite 7 and older can build with Anyview.**
+- **A format engine that fails to download shows an error** instead of loading forever.
+- **PDF properties show the real creation and modified dates.**
+- **Outline links land on their heading**, including repeated heading names in Markdown.
+- **The error dialog is translated**, and dialogs keep focus where you put it.
+- **Annotations with an invalid type are rejected** when imported.
+- **Printing never includes buttons**, and very long tables print the first 10,000 rows with a note.
+
 ## [0.4.1]
 
 ### Fixed
