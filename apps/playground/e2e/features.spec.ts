@@ -1,29 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fileURLToPath } from 'node:url';
-
-const fixture = (name: string) =>
-  fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url));
+import { fixture, openApp, openFile, pickSample, revealViewer, settleAnimations, waitForZoom } from './helpers';
 
 async function openPdf(page: Page) {
-  await page.goto('/');
-  await expect(page.locator('.dv-root')).toBeVisible();
-  await page.locator('.pg-sample-chip', { hasText: 'PDF' }).first().click();
+  await openApp(page);
+  await pickSample(page, 'PDF');
   await page.waitForSelector('.dv-page canvas');
-  await settleLayout(page);
-  // The live demo sits below the hero; centre it so pointer gestures at
-  // page-relative coordinates land on the document.
-  await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await settleAnimations(page);
+  await revealViewer(page, 'center');
 }
 
-async function settleLayout(page: Page) {
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-    const oneShot = document
-      .getAnimations()
-      .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity);
-    await Promise.all(oneShot.map((a) => a.finished.catch(() => undefined)));
-  });
-}
 const pageWidth = (page: Page) =>
   page.locator('.dv-page').first().evaluate((el) => el.getBoundingClientRect().width);
 
@@ -31,7 +16,7 @@ test.describe('zoom - fit modes', () => {
   test('fit-width sizes the page to the available width', async ({ page }) => {
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'fit-width');
-    await page.waitForTimeout(300);
+    await waitForZoom(page);
     const { pw, avail } = await page.evaluate(() => {
       const c = document.querySelector('.dv-viewer-container')!;
       const p = document.querySelector('.dv-page')!;
@@ -43,7 +28,7 @@ test.describe('zoom - fit modes', () => {
   test('fit-page fits the whole page in the viewport', async ({ page }) => {
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'fit-page');
-    await page.waitForTimeout(300);
+    await waitForZoom(page);
     const ok = await page.evaluate(() => {
       const c = document.querySelector('.dv-viewer-container')!;
       const p = document.querySelector('.dv-page')!.getBoundingClientRect();
@@ -57,21 +42,21 @@ test.describe('zoom - gestures', () => {
   test('Ctrl+wheel zooms the page in', async ({ page }) => {
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'actual');
-    await page.waitForTimeout(300);
+    await waitForZoom(page);
     const before = await pageWidth(page);
     await page.evaluate(() => {
       const el = document.querySelector('.dv-viewer-container')!;
       const r = el.getBoundingClientRect();
       el.dispatchEvent(new WheelEvent('wheel', { deltaY: -240, ctrlKey: true, clientX: r.left + r.width / 2, clientY: r.top + 100, bubbles: true, cancelable: true }));
     });
-    await page.waitForTimeout(300);
+    await waitForZoom(page);
     expect(await pageWidth(page)).toBeGreaterThan(before * 1.1);
   });
 
   test('marquee zoom magnifies a dragged region', async ({ page }) => {
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'fit-page');
-    await page.waitForTimeout(300);
+    await waitForZoom(page);
     const before = await pageWidth(page);
     await page.locator('button[aria-label="Marquee zoom"]').click();
     await expect(page.locator('.dv-viewer-container[data-marquee]')).toHaveCount(1);
@@ -81,7 +66,7 @@ test.describe('zoom - gestures', () => {
     await page.mouse.move(box.x + 350, box.y + 200);
     await page.mouse.move(box.x + 430, box.y + 290);
     await page.mouse.up();
-    await page.waitForTimeout(400);
+    await waitForZoom(page);
     expect(await pageWidth(page)).toBeGreaterThan(before * 1.8);
     await expect(page.locator('.dv-viewer-container[data-marquee]')).toHaveCount(0);
   });
@@ -92,7 +77,7 @@ test.describe('layout - two-page spread', () => {
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'actual');
     await page.selectOption('select[aria-label="Page layout"]', 'even');
-    await page.waitForTimeout(400);
+    await waitForZoom(page);
     const sideBySide = await page.evaluate(() => {
       const ps = [...document.querySelectorAll('.dv-page')].slice(0, 2).map((p) => p.getBoundingClientRect());
       return ps.length >= 2 && Math.abs(ps[0]!.top - ps[1]!.top) < 8 && ps[1]!.left > ps[0]!.left + ps[0]!.width - 4;
@@ -103,7 +88,7 @@ test.describe('layout - two-page spread', () => {
 
 test.describe('empty state - open files', () => {
   test('dropping a file opens it', async ({ page }) => {
-    await page.goto('/');
+    await openApp(page);
     await expect(page.locator('.dv-empty-dropzone')).toBeVisible();
     await page.evaluate(() => {
       const dz = document.querySelector('.dv-empty-dropzone')!;
@@ -115,7 +100,7 @@ test.describe('empty state - open files', () => {
   });
 
   test('click-to-browse opens a file', async ({ page }) => {
-    await page.goto('/');
+    await openApp(page);
     await page.locator('.dv-empty-dropzone input[type="file"]').setInputFiles(fixture('sample.ipynb'));
     await expect(page.locator('.dv-reflow-target')).toContainText('Notebook Fixture');
   });
@@ -123,8 +108,7 @@ test.describe('empty state - open files', () => {
 
 test.describe('format - Jupyter notebook', () => {
   test('renders markdown, code, and outputs', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.pg-upload-btn input[type="file"]').setInputFiles(fixture('sample.ipynb'));
+    await openFile(page, fixture('sample.ipynb'));
     const root = page.locator('.dv-reflow-target');
     await expect(root.locator('.dv-ipynb-md h1')).toHaveText('Notebook Fixture');
     await expect(root).toContainText('sum = 10');
@@ -137,9 +121,9 @@ test.describe('annotations - shapes & free-text', () => {
   test('draws rectangle, line, and free-text', async ({ page }) => {
     await openPdf(page);
     await page.selectOption('select[aria-label="Zoom level"]', 'fit-page');
-    await page.waitForTimeout(300);
+    await waitForZoom(page);
     const pageBox = async () => (await page.locator('.dv-page').first().boundingBox())!;
-    const drag = async (label: string, x1: number, y1: number, x2: number, y2: number) => {
+    const drag = async (label: string, x1: number, y1: number, x2: number, y2: number, drawn: number) => {
       await page.locator(`button[aria-label="${label}"]`).click();
       const box = await pageBox();
       await page.mouse.move(box.x + x1, box.y + y1);
@@ -147,16 +131,15 @@ test.describe('annotations - shapes & free-text', () => {
       await page.mouse.move(box.x + (x1 + x2) / 2, box.y + (y1 + y2) / 2);
       await page.mouse.move(box.x + x2, box.y + y2);
       await page.mouse.up();
-      await page.waitForTimeout(120);
+      await expect(page.locator('g.dv-annotation')).toHaveCount(drawn);
     };
-    await drag('Rectangle', 40, 60, 200, 150);
-    await drag('Line', 40, 230, 240, 330);
+    await drag('Rectangle', 40, 60, 200, 150, 1);
+    await drag('Line', 40, 230, 240, 330, 2);
     await page.locator('button[aria-label="Text"]').click();
     const box = await pageBox();
     await page.mouse.click(box.x + 80, box.y + 420);
     await page.keyboard.type('Note text');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(200);
     await expect(page.locator('g.dv-annotation')).toHaveCount(3);
     await expect(page.locator('.dv-annotation-layer text')).toHaveText('Note text');
   });

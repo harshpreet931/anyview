@@ -1,11 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openApp, openFile, pickSample, revealViewer, waitForStable, waitForStableLayout, waitForZoom } from './helpers';
+
+const content = (page: Page) => page.locator('.dv-viewer-container > div').first();
 
 async function openPdfSearch(page: Page, query: string) {
-  await page.goto('/');
-  await expect(page.locator('.dv-root')).toBeVisible();
-  await page.locator('.pg-sample-chip', { hasText: /^PDF$/ }).click();
+  await openApp(page);
+  await pickSample(page, 'PDF');
   await page.waitForSelector('.dv-page canvas');
-  await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  await revealViewer(page);
   await page.locator('button[aria-label="Toggle search"]').click();
   const input = page.locator('.dv-search-input');
   await expect(input).toBeFocused();
@@ -29,13 +31,16 @@ test.describe('search keyboard and scrolling', () => {
       const top = document.querySelector('.dv-root')!.getBoundingClientRect().top + scrollY;
       scrollTo(0, top - innerHeight / 2);
     });
-    await page.waitForTimeout(400);
+    await waitForStable(() => page.evaluate(() => scrollY));
     const before = await page.evaluate(() => scrollY);
+    const count = page.locator('.dv-search-count');
     for (let i = 0; i < 2; i++) {
+      const was = await count.innerText();
       await page.evaluate(() =>
         document.querySelector<HTMLButtonElement>('button[aria-label="Next match"]')!.click(),
       );
-      await page.waitForTimeout(500);
+      await expect(count).not.toHaveText(was);
+      await waitForStableLayout(content(page));
     }
     expect(await page.evaluate(() => scrollY)).toBe(before);
   });
@@ -55,9 +60,9 @@ test.describe('search keyboard and scrolling', () => {
     await openPdfSearch(page, 'format');
     const container = page.locator('.dv-viewer-container');
     await container.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
-    await page.waitForTimeout(400);
+    await waitForStableLayout(content(page));
     await page.locator('button[aria-label="Zoom in"]').click();
-    await page.waitForTimeout(900);
+    await waitForZoom(page);
     const visible = await page.evaluate(() => {
       const c = document.querySelector('.dv-viewer-container')!.getBoundingClientRect();
       const m = document.querySelector('.dv-search-highlight-current')?.getBoundingClientRect();
@@ -97,9 +102,7 @@ startxref
 
 test.describe('PDF search highlights', () => {
   test('highlights only the matched characters and counts every match in a run', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('.dv-root')).toBeVisible();
-    await page.locator('.pg-upload-btn input[type="file"]').setInputFiles({
+    await openFile(page, {
       name: 'runs.pdf',
       mimeType: 'application/pdf',
       buffer: pdfWithLine('Wide WWMM and slim iiil ones, then Revenue rose, so revenue led'),
@@ -107,7 +110,7 @@ test.describe('PDF search highlights', () => {
     await page.waitForSelector('.dv-page canvas');
     await page.locator('.dv-text-layer span').filter({ hasText: 'Wide WWMM' }).waitFor();
     await page.getByLabel('Zoom level').selectOption('1.5');
-    await page.waitForTimeout(600);
+    await waitForZoom(page);
     await page.locator('button[aria-label="Toggle search"]').click();
     const input = page.locator('.dv-search-input');
     await input.fill('revenue');

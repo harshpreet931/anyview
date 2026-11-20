@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openApp } from './helpers';
 
 async function dragOver(page: Page, selector: string) {
   await page.locator(selector).first().evaluate((el) => {
@@ -12,8 +13,7 @@ async function dragOver(page: Page, selector: string) {
 
 test.describe('site drop overlay', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('.dv-root')).toBeVisible();
+    await openApp(page);
   });
 
   test('clears after a file is dropped onto the viewer empty state', async ({ page }) => {

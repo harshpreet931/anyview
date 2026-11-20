@@ -1,21 +1,27 @@
 import { test, expect, devices, type Page, type CDPSession } from '@playwright/test';
-import { fileURLToPath } from 'node:url';
+import { fixture, openFile, revealViewer, waitForStableLayout, waitForZoom } from './helpers';
 
-const pdf = fileURLToPath(new URL('./fixtures/pages-12.pdf', import.meta.url));
+const TOUCH_STEP_MS = 16;
+const TAP_GAP_MS = 80;
+const LIFT_GAP_MS = 100;
+
+const content = (page: Page) => page.locator('.dv-viewer-container > div').first();
 
 async function openPdf(page: Page, zoom: string) {
-  await page.goto('/');
-  await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'start' }));
-  await page.locator('input[type="file"]').first().setInputFiles(pdf);
+  await openFile(page, fixture('pages-12.pdf'));
+  await revealViewer(page);
   await page.waitForSelector('.dv-page canvas');
   await page.selectOption('select[aria-label="Zoom level"]', zoom);
-  await page.waitForTimeout(400);
+  await waitForZoom(page);
   await page.evaluate(() => {
     const el = document.querySelector('.dv-viewer-container')!;
     el.scrollTop = el.scrollHeight * 0.3;
   });
-  await page.waitForTimeout(500);
+  await waitForStableLayout(content(page));
 }
+
+const contentScale = (page: Page) =>
+  content(page).evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a);
 
 const zoomOf = (page: Page) =>
   page.evaluate(() => {
@@ -67,7 +73,7 @@ test.describe('touch pinch', () => {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: pts([[c.x - from / 2, c.y]]) });
       for (let i = 1; i <= 4; i++) {
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: pts([[c.x - from / 2, c.y - (preMove * i) / 4]]) });
-        await page.waitForTimeout(16);
+        await page.waitForTimeout(TOUCH_STEP_MS);
       }
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: pts([[c.x - from / 2, c.y - preMove], [c.x + from / 2, c.y]]) });
     } else {
@@ -76,7 +82,7 @@ test.describe('touch pinch', () => {
     for (let i = 1; i <= 20; i++) {
       const d = from + ((to - from) * i) / 20;
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: pts(two(d, (panX * i) / 20, (panY * i) / 20)) });
-      await page.waitForTimeout(16);
+      await page.waitForTimeout(TOUCH_STEP_MS);
     }
     return two(to, panX, panY);
   }
@@ -87,7 +93,7 @@ test.describe('touch pinch', () => {
     const z0 = await zoomOf(page);
     await pinch(cdp, page, await centre(page), { from: 60, to: 180, preMove: 30 });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await page.waitForTimeout(800);
+    await waitForZoom(page);
     expect((await zoomOf(page)) / z0).toBeGreaterThan(2);
     expect(await page.evaluate(() => visualViewport!.scale)).toBe(1);
   });
@@ -102,7 +108,7 @@ test.describe('touch pinch', () => {
     expect(Math.abs(live.x - (c.x + 40))).toBeLessThan(4);
     expect(Math.abs(live.y - (c.y + 90))).toBeLessThan(4);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await page.waitForTimeout(800);
+    await waitForZoom(page);
     const after = await screenOf(page, a);
     expect(Math.abs(after.x - live.x)).toBeLessThan(4);
     expect(Math.abs(after.y - live.y)).toBeLessThan(4);
@@ -115,7 +121,7 @@ test.describe('touch pinch', () => {
       const el = document.querySelector('.dv-viewer-container')!;
       el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
     });
-    await page.waitForTimeout(200);
+    await waitForStableLayout(content(page));
     const c = await centre(page);
     const a = await anchorAt(page, c.x, c.y);
     await pinch(cdp, page, c, { from: 60, to: 150 });
@@ -123,7 +129,7 @@ test.describe('touch pinch', () => {
     expect(Math.abs(live.x - c.x)).toBeLessThan(4);
     expect(Math.abs(live.y - c.y)).toBeLessThan(4);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await page.waitForTimeout(800);
+    await waitForZoom(page);
     const after = await screenOf(page, a);
     expect(Math.abs(after.x - c.x)).toBeLessThan(4);
     expect(Math.abs(after.y - c.y)).toBeLessThan(4);
@@ -140,17 +146,16 @@ test.describe('touch pinch', () => {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     };
     await tap();
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(TAP_GAP_MS);
     await tap();
-    await page.waitForTimeout(700);
-    expect((await zoomOf(page)) / z0).toBeGreaterThan(1.8);
+    await expect.poll(async () => (await zoomOf(page)) / z0).toBeGreaterThan(1.8);
+    await waitForZoom(page);
     const at = await screenOf(page, a);
     expect(Math.abs(at.x - c.x)).toBeLessThan(4);
     expect(Math.abs(at.y - c.y)).toBeLessThan(4);
     await tap();
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(TAP_GAP_MS);
     await tap();
-    await page.waitForTimeout(700);
     await expect(page.locator('select[aria-label="Zoom level"]')).toHaveValue('fit-width');
   });
 
@@ -160,16 +165,16 @@ test.describe('touch pinch', () => {
     const end = await pinch(cdp, page, await centre(page), { from: 60, to: 140 });
     const one = end[0]!;
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: pts([one]) });
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(LIFT_GAP_MS);
     const st0 = await page.evaluate(() => document.querySelector('.dv-viewer-container')!.scrollTop);
     for (let i = 1; i <= 8; i++) {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: pts([[one[0]!, one[1]! - i * 15]]) });
-      await page.waitForTimeout(16);
+      await page.waitForTimeout(TOUCH_STEP_MS);
     }
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await page.waitForTimeout(200);
-    const st1 = await page.evaluate(() => document.querySelector('.dv-viewer-container')!.scrollTop);
-    expect(st1 - st0).toBeGreaterThan(80);
+    await expect
+      .poll(async () => (await page.evaluate(() => document.querySelector('.dv-viewer-container')!.scrollTop)) - st0)
+      .toBeGreaterThan(80);
   });
 });
 
@@ -189,10 +194,8 @@ test.describe('zoom limits and extras', () => {
     );
     expect(live).toBeGreaterThan(1.1);
     expect(live).toBeLessThan(1.5);
-    await page.waitForTimeout(800);
+    await expect.poll(() => contentScale(page), { timeout: 1500 }).toBe(1);
     await expect(page.locator('select[aria-label="Zoom level"]')).toHaveValue('5');
-    const settled = await page.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.dv-viewer-container')!.firstElementChild!).transform).a);
-    expect(settled).toBe(1);
   });
 });
 
@@ -211,7 +214,7 @@ test.describe('trackpad and Safari pinch', () => {
       },
       [c.x, c.y] as const,
     );
-    await page.waitForTimeout(800);
+    await waitForZoom(page);
     expect((await zoomOf(page)) / z0).toBeCloseTo(2, 1);
   });
 
@@ -226,7 +229,7 @@ test.describe('trackpad and Safari pinch', () => {
       },
       [c.x, c.y] as const,
     );
-    await page.waitForTimeout(800);
+    await waitForZoom(page);
     const r = (await zoomOf(page)) / z0;
     expect(r).toBeGreaterThan(1.05);
     expect(r).toBeLessThan(1.3);
@@ -252,7 +255,7 @@ test.describe('trackpad and Safari pinch', () => {
       },
       [c.x, c.y] as const,
     );
-    await page.waitForTimeout(800);
+    await waitForZoom(page);
     expect(prevented).toBe(true);
     expect((await zoomOf(page)) / z0).toBeCloseTo(1.5, 1);
   });

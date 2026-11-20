@@ -1,10 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openApp, pickSample, revealViewer } from './helpers';
 
 async function open(page: Page, label: string) {
-  await page.goto('/');
-  await expect(page.locator('.dv-root')).toBeVisible();
-  await page.locator('.pg-sample-chip', { hasText: new RegExp(`^${label}$`) }).click();
-  await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  await openApp(page);
+  await pickSample(page, label);
+  await revealViewer(page);
 }
 
 test.describe('keyboard', () => {

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { QUIET_WINDOW_MS, openApp, openFile } from './helpers';
 
 function bigCsv(rows: number): Buffer {
   const lines = ['id,name,email,city,amount'];
@@ -8,10 +9,9 @@ function bigCsv(rows: number): Buffer {
 
 test.describe('large inputs', () => {
   test('a 50,000-row CSV opens quickly and loads more rows on demand', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('.dv-root')).toBeVisible();
+    await openApp(page);
     const t0 = Date.now();
-    await page.locator('input[type="file"]').first().setInputFiles({
+    await page.locator('.pg-upload-btn input[type="file"]').setInputFiles({
       name: 'big.csv',
       mimeType: 'text/csv',
       buffer: bigCsv(50_000),
@@ -29,14 +29,14 @@ test.describe('large inputs', () => {
   });
 
   test('a large text-only format does not render a second copy for its thumbnail', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('input[type="file"]').first().setInputFiles({
+    await openFile(page, {
       name: 'big.csv',
       mimeType: 'text/csv',
       buffer: bigCsv(30_000),
     });
     await expect(page.locator('.dv-reflow-target td').first()).toBeVisible({ timeout: 15_000 });
-    await page.waitForTimeout(500);
+    await expect(page.locator('.dv-thumbnail-list .dv-thumbnail').first()).toBeAttached();
+    await page.waitForTimeout(QUIET_WINDOW_MS);
     expect(await page.locator('.dv-thumbnail-list td').count()).toBe(0);
   });
 });

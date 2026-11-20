@@ -1,24 +1,18 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
+import { openApp, pickSample, revealViewer, waitForStableLayout, waitForZoom } from './helpers';
 
 async function openPdf(page: Page) {
-  await page.goto('/');
-  await page.locator('.pg-sample-chip', { hasText: /^PDF$/ }).click();
+  await openApp(page);
+  await pickSample(page, 'PDF');
   await page.waitForSelector('.dv-page canvas');
   await page.getByLabel('Zoom level').selectOption('1');
+  await waitForZoom(page);
   await settle(page);
 }
 
 async function settle(page: Page) {
-  await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
-  let last = '';
-  await expect
-    .poll(async () => {
-      const now = JSON.stringify(await page.locator('.dv-page').first().boundingBox());
-      const stable = now === last;
-      last = now;
-      return stable;
-    }, { intervals: [200] })
-    .toBe(true);
+  await revealViewer(page);
+  await waitForStableLayout(page.locator('.dv-page').first());
 }
 
 const span = (page: Page, text: RegExp) => page.locator('.dv-text-layer span').filter({ hasText: text }).first();
@@ -37,7 +31,7 @@ async function overlap(a: Locator, b: Locator, within: 'a' | 'b' = 'b') {
 
 async function rotate(page: Page) {
   await page.getByRole('button', { name: 'Rotate clockwise' }).click();
-  await page.waitForTimeout(500);
+  await waitForZoom(page);
   await settle(page);
 }
 

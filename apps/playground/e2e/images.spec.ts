@@ -1,8 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fileURLToPath } from 'node:url';
-
-const fixture = (name: string) =>
-  fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url));
+import { fixture, openApp, openFile, pickSample } from './helpers';
 
 async function expectCanvasNotBlank(page: Page) {
   const canvas = page.locator('.dv-page canvas').first();
@@ -32,23 +29,20 @@ async function expectCanvasNotBlank(page: Page) {
 
 test.describe('images - pixels actually reach the canvas', () => {
   test('SVG sample renders to the canvas', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('.dv-root')).toBeVisible();
-    await page.getByRole('group', { name: 'Sample documents' }).getByRole('button', { name: 'SVG', exact: true }).click();
+    await openApp(page);
+    await pickSample(page, 'SVG');
     await expectCanvasNotBlank(page);
   });
 
   test('uploaded PNG renders to the canvas', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('.dv-root')).toBeVisible();
-    await page.locator('.pg-upload-btn input[type="file"]').setInputFiles(fixture('sample.png'));
+    await openFile(page, fixture('sample.png'));
     await expectCanvasNotBlank(page);
   });
 });
 
 test('an image document is exposed to assistive tech with its name', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('.pg-sample-chip', { hasText: /^SVG$/ }).click();
+  await openApp(page);
+  await pickSample(page, 'SVG');
   await expectCanvasNotBlank(page);
   await expect(page.getByRole('img', { name: 'image-sample.svg' })).toBeVisible();
 });

@@ -1,19 +1,14 @@
-import { fileURLToPath } from 'node:url';
 import { test, expect, type Locator, type Page } from '@playwright/test';
-
-const pdf12 = fileURLToPath(new URL('./fixtures/pages-12.pdf', import.meta.url));
+import { fixture, pickSample, sampleChip, settleAnimations, waitForStable, waitForStableLayout } from './helpers';
 
 const touch = { isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
 
-function sample(page: Page, name: string) {
-  return page.getByRole('group', { name: 'Sample documents' }).getByRole('button', { name, exact: true });
-}
-
 async function openSample(page: Page, name: string) {
   await page.goto('/');
-  await sample(page, name).click();
-  await expect(page.locator('.pg-canvas .dv-page').first()).toBeVisible({ timeout: 20_000 });
-  await settle(page);
+  await pickSample(page, name);
+  const firstPage = page.locator('.pg-canvas .dv-page').first();
+  await expect(firstPage).toBeVisible({ timeout: 20_000 });
+  await settle(page, firstPage);
   await scrollToTop(page, page.locator('.pg-canvas'));
 }
 
@@ -44,10 +39,12 @@ async function expectInsideViewport(page: Page, locator: Locator, margin = 0) {
   expect(right).toBeLessThanOrEqual(width - margin);
 }
 
-async function settle(page: Page) {
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForTimeout(1000);
+async function settle(page: Page, target: Locator) {
+  await settleAnimations(page);
+  await waitForStableLayout(target);
 }
+
+const toolbar = (page: Page) => page.locator('.pg-canvas .dv-toolbar');
 
 async function expectHitTarget(locator: Locator) {
   const hit = await locator.evaluate((el) => {
@@ -84,7 +81,7 @@ test.describe('fold phone, 280px', () => {
     await openSample(page, 'PDF');
     const more = page.locator('.pg-canvas').getByRole('button', { name: 'More options' });
     await expect(more).toBeVisible();
-    await settle(page);
+    await settle(page, more);
     await expectInsideViewport(page, more);
     await expectHitTarget(more);
 
@@ -103,7 +100,7 @@ test.describe('fold phone, 280px', () => {
     const more = review.getByRole('button', { name: 'More options' });
     await scrollToTop(page, review);
     await expect(more).toBeVisible({ timeout: 20_000 });
-    await settle(page);
+    await settle(page, more);
     await expectInsideViewport(page, more);
     const card = await box(review.locator('.dv-root'));
     const b = await box(more);
@@ -112,8 +109,8 @@ test.describe('fold phone, 280px', () => {
 
   test('the hero call-to-action row fits without wrapping or overflowing', async ({ page }) => {
     await page.goto('/');
-    await settle(page);
     const row = page.locator('.pg-cta-row');
+    await settle(page, row);
     const rowBox = await box(row);
     for (const child of await row.locator(':scope > *:visible').all()) {
       const b = await box(child);
@@ -147,8 +144,10 @@ test.describe('page never scrolls sideways', () => {
       test(`no horizontal overflow at ${width}px`, async ({ page }) => {
         await page.goto('/');
         await expect(page.locator('.dv-root')).toBeVisible();
-        await settle(page);
-        const overflow = await page.evaluate(() => document.scrollingElement!.scrollWidth);
+        await settleAnimations(page);
+        const scrollWidth = () => page.evaluate(() => document.scrollingElement!.scrollWidth);
+        await waitForStable(scrollWidth);
+        const overflow = await scrollWidth();
         expect(overflow).toBeLessThanOrEqual(width);
       });
     });
@@ -163,7 +162,7 @@ test.describe('phone, 375px', () => {
     const input = page.locator('.pg-canvas .dv-page-input');
     await input.fill('2');
     await input.press('Enter');
-    await page.waitForTimeout(800);
+    await waitForStableLayout(page.locator('.pg-canvas .dv-viewer-container > div').first());
     expect(await pageNumber(page)).toBe('2');
   });
 
@@ -175,7 +174,7 @@ test.describe('phone, 375px', () => {
 
   test('scrolling to the end of a 12-page PDF shows page 12', async ({ page }) => {
     await page.goto('/');
-    await page.locator('.pg-upload-btn input[type="file"]').setInputFiles(pdf12);
+    await page.locator('.pg-upload-btn input[type="file"]').setInputFiles(fixture('pages-12.pdf'));
     await expect(page.locator('.pg-canvas .dv-page-count')).toContainText('12', { timeout: 20_000 });
     await scrollViewerToEnd(page);
     await expect.poll(() => pageNumber(page)).toBe('12');
@@ -198,30 +197,30 @@ test.describe('phone, 375px', () => {
 
   test('viewer controls are at least 40px tall on touch screens', async ({ page }) => {
     await openSample(page, 'PDF');
-    await settle(page);
-    const toolbar = page.locator('.pg-canvas .dv-toolbar');
-    const controls = toolbar.locator('.dv-button:visible, .dv-page-input:visible, .dv-zoom-select:visible');
+    await settle(page, toolbar(page));
+    const controls = toolbar(page).locator('.dv-button:visible, .dv-page-input:visible, .dv-zoom-select:visible');
     expect(await controls.count()).toBeGreaterThan(2);
     for (const control of await controls.all()) {
       const b = await box(control);
       expect(b.height).toBeGreaterThanOrEqual(40);
       expect(b.width).toBeGreaterThanOrEqual(40);
     }
-    expect(await toolbar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    expect(await toolbar(page).evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
   });
 
   test('site controls are at least 40px tall on touch screens', async ({ page }) => {
     await page.goto('/');
-    await settle(page);
+    const samples = page.getByRole('group', { name: 'Sample documents' });
+    await settle(page, samples);
     expect((await box(page.getByRole('combobox', { name: 'Viewer theme' }))).height).toBeGreaterThanOrEqual(40);
-    for (const chip of await page.getByRole('group', { name: 'Sample documents' }).getByRole('button').all()) {
+    for (const chip of await samples.getByRole('button').all()) {
       expect((await box(chip)).height).toBeGreaterThanOrEqual(40);
     }
   });
 
   test('examples page tabs are at least 40px tall on touch screens', async ({ page }) => {
     await page.goto('/examples/');
-    await settle(page);
+    await settle(page, page.getByRole('tab').last());
     for (const tab of await page.getByRole('tab').all()) {
       expect((await box(tab)).height).toBeGreaterThanOrEqual(40);
     }
@@ -229,7 +228,7 @@ test.describe('phone, 375px', () => {
 
   test('the active last sample tab is not hidden under the edge fade', async ({ page }) => {
     await page.goto('/');
-    const chip = sample(page, 'Text');
+    const chip = sampleChip(page, 'Text');
     await chip.click();
     const track = page.getByRole('group', { name: 'Sample documents' });
     let last = -1;
@@ -318,11 +317,13 @@ test.describe('tablet, 768px', () => {
 
   test('the See examples link is at least 40px tall on touch screens', async ({ page }) => {
     await page.goto('/');
-    await settle(page);
     const link = page.locator('.pg-cta-row').getByRole('link', { name: 'See examples' });
+    await settle(page, link);
     expect((await box(link)).height).toBeGreaterThanOrEqual(40);
   });
 });
+
+const FORMAT = { PDF: 'pdf', Word: 'docx', Markdown: 'markdown', PowerPoint: 'pptx' } as const;
 
 for (const [width, samples] of [
   [440, ['PDF']],
@@ -338,11 +339,11 @@ for (const [width, samples] of [
     test('the larger touch controls never overflow the toolbar', async ({ page }) => {
       await page.goto('/');
       for (const name of samples) {
-        await sample(page, name).click();
-        await expect(page.locator('.pg-canvas .dv-page').first()).toBeVisible({ timeout: 20_000 });
-        await settle(page);
-        const toolbar = page.locator('.pg-canvas .dv-toolbar');
-        expect(await toolbar.evaluate((el) => el.scrollWidth <= el.clientWidth), name).toBe(true);
+        await pickSample(page, name);
+        const firstPage = page.locator(`.pg-canvas .dv-page[data-format="${FORMAT[name]}"]`).first();
+        await expect(firstPage).toBeVisible({ timeout: 20_000 });
+        await settle(page, firstPage);
+        expect(await toolbar(page).evaluate((el) => el.scrollWidth <= el.clientWidth), name).toBe(true);
       }
     });
   });

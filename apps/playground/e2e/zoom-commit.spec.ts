@@ -1,24 +1,36 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fileURLToPath } from 'node:url';
+import { fixture, openFile, revealViewer, waitForStableLayout, waitForZoom } from './helpers';
 
-const pdf = fileURLToPath(new URL('./fixtures/pages-12.pdf', import.meta.url));
+const CLICK_GAP_MS = 150;
+const SCROLL_DURING_SPRING_MS = 220;
+
+const content = (page: Page) => page.locator('.dv-viewer-container > div').first();
+
+async function zoomTo(page: Page, zoom: string) {
+  await page.selectOption('select[aria-label="Zoom level"]', zoom);
+  await waitForZoom(page);
+}
 
 async function openPdf(page: Page) {
-  await page.goto('/');
-  await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'start' }));
-  await page.locator('input[type="file"]').first().setInputFiles(pdf);
+  await openFile(page, fixture('pages-12.pdf'));
+  await revealViewer(page);
   await expect(page.getByLabel('Page number')).toBeVisible();
   await page.waitForSelector('.dv-page canvas');
-  await page.selectOption('select[aria-label="Zoom level"]', '0.5');
-  await page.waitForTimeout(400);
+  await zoomTo(page, '0.5');
 }
 
 async function goToPage(page: Page, n: number) {
   const input = page.getByLabel('Page number');
   await input.fill(String(n));
   await input.press('Enter');
-  await page.waitForTimeout(500);
+  await expect(input).toHaveValue(String(n));
+  await waitForStableLayout(content(page));
 }
+
+const contentScale = (page: Page) =>
+  content(page).evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a);
+
+const contentWillChange = (page: Page) => content(page).evaluate((el) => getComputedStyle(el).willChange);
 
 async function pointAt(page: Page, fx: number, fy: number) {
   return page.evaluate(
@@ -69,7 +81,7 @@ test.describe('committing a zoom', () => {
     await goToPage(page, 10);
     const before = await pointAt(page, 0.45, 0.4);
     await wheelAt(page, before.x, before.y, -60, 20);
-    await page.waitForTimeout(900);
+    await waitForZoom(page);
     const after = await whereIs(page, before.index, before.u, before.v);
     expect(after).not.toBeNull();
     expect(Math.abs(after!.x - before.x)).toBeLessThan(4);
@@ -78,12 +90,11 @@ test.describe('committing a zoom', () => {
 
   test('zooming out keeps the point under the cursor too', async ({ page }) => {
     await openPdf(page);
-    await page.selectOption('select[aria-label="Zoom level"]', '2');
-    await page.waitForTimeout(400);
+    await zoomTo(page, '2');
     await goToPage(page, 9);
     const before = await pointAt(page, 0.55, 0.6);
     await wheelAt(page, before.x, before.y, 60, 4);
-    await page.waitForTimeout(900);
+    await waitForZoom(page);
     const after = await whereIs(page, before.index, before.u, before.v);
     expect(after).not.toBeNull();
     expect(Math.abs(after!.y - before.y)).toBeLessThan(4);
@@ -94,8 +105,9 @@ test.describe('committing a zoom', () => {
     await goToPage(page, 3);
     const p = await pointAt(page, 0.5, 0.5);
     await page.evaluate(() => {
-      const w = window as unknown as { __mismatch: number };
+      const w = window as unknown as { __mismatch: number; __watched: boolean };
       w.__mismatch = 0;
+      w.__watched = false;
       const t0 = performance.now();
       const tick = () => {
         for (const pg of document.querySelectorAll<HTMLElement>('.dv-page')) {
@@ -106,11 +118,12 @@ test.describe('committing a zoom', () => {
           w.__mismatch = Math.max(w.__mismatch, Math.abs(a.width - b.width), Math.abs(a.height - b.height));
         }
         if (performance.now() - t0 < 1500) requestAnimationFrame(tick);
+        else w.__watched = true;
       };
       requestAnimationFrame(tick);
     });
     await wheelAt(page, p.x, p.y, -80, 15);
-    await page.waitForTimeout(1600);
+    await page.waitForFunction(() => (window as unknown as { __watched: boolean }).__watched);
     const mismatch = await page.evaluate(() => (window as unknown as { __mismatch: number }).__mismatch);
     expect(mismatch).toBeLessThan(1.5);
   });
@@ -122,9 +135,9 @@ test.describe('committing a zoom', () => {
       const before = await pointAt(page, 0.5, 0.5);
       for (let i = 0; i < 3; i++) {
         await page.getByRole('button', { name: button, exact: true }).dispatchEvent('click');
-        await page.waitForTimeout(150);
+        await page.waitForTimeout(CLICK_GAP_MS);
       }
-      await page.waitForTimeout(600);
+      await waitForZoom(page);
       const after = await whereIs(page, before.index, before.u, before.v);
       expect(after).not.toBeNull();
       expect(Math.abs(after!.x - before.x)).toBeLessThan(4);
@@ -143,12 +156,10 @@ test.describe('committing a zoom', () => {
         await new Promise((r) => requestAnimationFrame(r));
         out.push(new DOMMatrix(getComputedStyle(content).transform).a);
       }
-      await new Promise((r) => setTimeout(r, 400));
-      out.push(new DOMMatrix(getComputedStyle(content).transform).a);
       return out;
     });
     expect(scales[0]).toBeLessThan(0.99);
-    expect(scales[scales.length - 1]).toBe(1);
+    await expect.poll(() => contentScale(page), { timeout: 1000 }).toBe(1);
   });
 
   test('with reduced motion the toolbar zoom is instant', async ({ page }) => {
@@ -185,8 +196,8 @@ test.describe('committing a zoom', () => {
     });
     const p = await pointAt(page, 0.5, 0.5);
     await wheelAt(page, p.x, p.y, -3, 10);
-    await page.waitForTimeout(1500);
-    const { order, visible } = await page.evaluate(() => {
+    await waitForZoom(page);
+    const drawOrder = () => page.evaluate(() => {
       const c = document.querySelector('.dv-viewer-container')!.getBoundingClientRect();
       const visible = [...document.querySelectorAll<HTMLElement>('.dv-page')]
         .filter((n) => {
@@ -196,7 +207,11 @@ test.describe('committing a zoom', () => {
         .map((n) => Number(n.dataset.pageIndex));
       return { order: (window as unknown as { __order: number[] }).__order, visible };
     });
-    expect(order.length).toBeGreaterThan(visible.length);
+    await expect.poll(async () => {
+      const { order, visible } = await drawOrder();
+      return order.length - visible.length;
+    }, { timeout: 2500 }).toBeGreaterThan(0);
+    const { order, visible } = await drawOrder();
     expect(order.slice(0, visible.length).sort()).toEqual([...visible].sort());
   });
 
@@ -209,11 +224,8 @@ test.describe('committing a zoom', () => {
     }));
     expect(idle).toEqual({ page: 'auto', content: 'auto' });
     await wheelAt(page, p.x, p.y, -3, 5);
-    const live = await page.evaluate(() => getComputedStyle(document.querySelector('.dv-viewer-container > div')!).willChange);
-    expect(live).toBe('transform');
-    await page.waitForTimeout(800);
-    const after = await page.evaluate(() => getComputedStyle(document.querySelector('.dv-viewer-container > div')!).willChange);
-    expect(after).toBe('auto');
+    expect(await contentWillChange(page)).toBe('transform');
+    await expect.poll(() => contentWillChange(page), { timeout: 1500 }).toBe('auto');
   });
 
   test('choosing a fit mode animates like the zoom buttons', async ({ page }) => {
@@ -228,16 +240,14 @@ test.describe('committing a zoom', () => {
       return new DOMMatrix(getComputedStyle(content).transform).a;
     });
     expect(first).toBeLessThan(0.95);
-    await page.waitForTimeout(500);
-    const settled = await page.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.dv-viewer-container > div')!).transform).a);
-    expect(settled).toBe(1);
+    await expect.poll(() => contentScale(page), { timeout: 1000 }).toBe(1);
   });
 
   for (const [label, dy, n] of [['in', -4, 12], ['out', 4, 8]] as const) {
     test(`two-page spread: pinch ${label} on the right page lets go without a jump`, async ({ page }) => {
       await openPdf(page);
       await page.selectOption('select[aria-label="Page layout"]', 'even');
-      await page.waitForTimeout(400);
+      await waitForZoom(page);
       await goToPage(page, 7);
       const target = await page.evaluate(() => {
         const c = document.querySelector('.dv-viewer-container')!.getBoundingClientRect();
@@ -251,7 +261,7 @@ test.describe('committing a zoom', () => {
       const a = await pointAt(page, (target.x - (await page.locator('.dv-viewer-container').boundingBox())!.x) / (await page.locator('.dv-viewer-container').boundingBox())!.width, 0.5);
       await wheelAt(page, a.x, a.y, dy, n);
       const live = await whereIs(page, a.index, a.u, a.v);
-      await page.waitForTimeout(900);
+      await waitForZoom(page);
       const after = await whereIs(page, a.index, a.u, a.v);
       expect(Math.abs(after!.x - live!.x)).toBeLessThan(3);
       expect(Math.abs(after!.y - live!.y)).toBeLessThan(3);
@@ -263,15 +273,16 @@ test.describe('committing a zoom', () => {
     await goToPage(page, 2);
     const p = await pointAt(page, 0.5, 0.5);
     await wheelAt(page, p.x, p.y, -3, 6);
-    await page.waitForTimeout(220);
+    await page.waitForTimeout(SCROLL_DURING_SPRING_MS);
     await page.evaluate(async () => {
       const el = document.querySelector('.dv-viewer-container')!;
       for (let i = 0; i < 40; i++) {
         el.scrollTop += 60;
-        await new Promise((r) => setTimeout(r, 30));
+        await new Promise((r) => requestAnimationFrame(r));
+        await new Promise((r) => requestAnimationFrame(r));
       }
     });
-    await page.waitForTimeout(300);
+    await waitForStableLayout(content(page));
     const top = await page.evaluate(() => {
       const c = document.querySelector('.dv-viewer-container')!.getBoundingClientRect();
       const hit = document

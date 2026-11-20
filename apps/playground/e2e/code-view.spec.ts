@@ -1,18 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openFile, waitForZoom } from './helpers';
 
 const LONG = "export const registry = createRegistry({ adapters: ['pdf', 'docx', 'xlsx', 'pptx', 'csv', 'md', 'code', 'html', 'all'] });";
 
 async function openCode(page: Page, zoom: string) {
-  await page.goto('/');
-  await expect(page.locator('.dv-root')).toBeVisible();
-  await page.locator('.pg-upload-btn input[type="file"]').setInputFiles({
+  await openFile(page, {
     name: 'wide.ts',
     mimeType: 'text/typescript',
     buffer: Buffer.from(`import { createRegistry } from 'anyview';\n\n${LONG}\n\tconst tabbed = 1;\n`),
   });
   await page.locator('.dv-reflow-target .shiki').waitFor();
   await page.getByLabel('Zoom level').selectOption(zoom);
-  await page.waitForTimeout(400);
+  await waitForZoom(page);
 }
 
 test.describe('code view', () => {

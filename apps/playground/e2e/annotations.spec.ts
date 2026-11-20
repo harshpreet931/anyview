@@ -1,23 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
+import { QUIET_WINDOW_MS, openApp, pickSample, revealViewer, waitForStableLayout, waitForZoom } from './helpers';
 
 async function openPdf(page: Page) {
-  await page.goto('/');
-  await expect(page.locator('.dv-root')).toBeVisible();
-  await page.locator('.pg-sample-chip', { hasText: /^PDF$/ }).click();
+  await openApp(page);
+  await pickSample(page, 'PDF');
   await page.waitForSelector('.dv-page canvas');
   await page.getByLabel('Zoom level').selectOption('1.25');
-  await page.waitForTimeout(400);
-  await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
-  let last = '';
-  await expect
-    .poll(async () => {
-      const b = await page.locator('.dv-page').first().boundingBox();
-      const now = JSON.stringify(b);
-      const stable = now === last;
-      last = now;
-      return stable;
-    }, { intervals: [150] })
-    .toBe(true);
+  await waitForZoom(page);
+  await revealViewer(page);
+  await waitForStableLayout(page.locator('.dv-page').first());
   let dialogs = 0;
   page.on('dialog', (d) => {
     dialogs++;
@@ -122,7 +113,7 @@ test.describe('annotations', () => {
     await page.getByRole('radio', { name: 'Draw' }).click();
     const box = (await page.locator('.dv-annotation-layer').first().boundingBox())!;
     const cdp = await page.context().newCDPSession(page);
-    const touch = (type: string, points: [number, number][]) =>
+    const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', points: [number, number][]) =>
       cdp.send('Input.dispatchTouchEvent', {
         type,
         touchPoints: points.map(([x, y], id) => ({ x: box.x + x, y: box.y + y, id })),
@@ -134,7 +125,7 @@ test.describe('annotations', () => {
     await touch('touchMove', [[200, 190], [330, 330]]);
     await touch('touchMove', [[180, 170], [360, 360]]);
     await touch('touchEnd', []);
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(QUIET_WINDOW_MS);
     await expect(annotations(page)).toHaveCount(0);
   });
 });

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openApp, pickSample, revealViewer } from './helpers';
 
 test('printing a reflowable document prints only the document', async ({ page }) => {
   await page.addInitScript(() => {
@@ -8,10 +9,10 @@ test('printing a reflowable document prints only the document', async ({ page })
       top.__printed.push(window === top ? 'HOST PAGE' : document.body.innerText);
     };
   });
-  await page.goto('/');
-  await page.locator('.pg-sample-chip', { hasText: /^Markdown$/ }).click();
+  await openApp(page);
+  await pickSample(page, 'Markdown');
   await page.locator('.dv-reflow-target').first().waitFor();
-  await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
+  await revealViewer(page);
   await page.getByRole('button', { name: 'Print' }).click();
   await expect
     .poll(() => page.evaluate(() => (window as Window & { __printed?: string[] }).__printed ?? []))

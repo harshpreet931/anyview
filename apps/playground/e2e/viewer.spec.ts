@@ -1,33 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
+import { QUIET_WINDOW_MS, openApp, pickSample, revealViewer, waitForCanvas, waitForReflow, waitForStable, waitForZoom } from './helpers';
 
-async function gotoApp(page: Page) {
-  await page.goto('/');
-  await expect(page.locator('.dv-root')).toBeVisible();
-}
-
-async function loadSample(page: Page, name: string) {
-  await page.getByRole('group', { name: 'Sample documents' }).getByRole('button', { name, exact: true }).click();
-}
-
-async function waitForCanvasRendered(page: Page) {
-  const canvas = page.locator('.dv-page canvas').first();
-  await canvas.waitFor({ state: 'attached' });
-  await expect
-    .poll(async () => canvas.evaluate((c: HTMLCanvasElement) => c.width), {
-      timeout: 20_000,
-    })
-    .toBeGreaterThan(0);
-  return canvas;
-}
-
-async function waitForReflowContent(page: Page) {
-  const target = page.locator('.dv-reflow-target').first();
-  await target.waitFor({ state: 'attached' });
-  await expect
-    .poll(async () => (await target.innerText()).trim().length, { timeout: 20_000 })
-    .toBeGreaterThan(0);
-  return target;
-}
+const WHEEL_STEP_MS = 12;
 
 async function openSearch(page: Page, query: string) {
   await page.locator('button[aria-label="Toggle search"]').click();
@@ -39,30 +13,30 @@ async function openSearch(page: Page, query: string) {
 test.describe('rendering - every sample format', () => {
   for (const name of ['Markdown', 'Text', 'CSV', 'HTML', 'TypeScript', 'Jupyter']) {
     test(`renders ${name} (reflowable)`, async ({ page }) => {
-      await gotoApp(page);
-      await loadSample(page, name);
-      const target = await waitForReflowContent(page);
+      await openApp(page);
+      await pickSample(page, name);
+      const target = await waitForReflow(page);
       expect((await target.innerText()).length).toBeGreaterThan(10);
     });
   }
 
   test('renders SVG image to a canvas', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'SVG');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'SVG');
+    await waitForCanvas(page);
   });
 
   test('renders PDF to a canvas with 2 pages', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
     await expect(page.locator('.dv-page-count')).toContainText('2');
   });
 
   test('PDF thumbnails render real page previews', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     const thumbs = page.locator('.dv-thumbnail-canvas');
     await expect(thumbs).toHaveCount(2);
@@ -74,9 +48,9 @@ test.describe('rendering - every sample format', () => {
   });
 
   test('reflowable thumbnails render real document content', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'Markdown');
-    await waitForReflowContent(page);
+    await openApp(page);
+    await pickSample(page, 'Markdown');
+    await waitForReflow(page);
 
     const thumbDoc = page.locator('.dv-thumbnail-doc').first();
     await thumbDoc.waitFor({ state: 'attached' });
@@ -91,9 +65,9 @@ test.describe('rendering - every sample format', () => {
 
 test.describe('PDF - text selection', () => {
   test('text layer exposes real, selectable text', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     await expect.poll(async () =>
       page.locator('.dv-text-layer span').count(), { timeout: 20_000 },
@@ -115,9 +89,9 @@ test.describe('PDF - text selection', () => {
 
 test.describe('PDF - search highlight + navigation', () => {
   test('finds, highlights, and navigates matches', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     await openSearch(page, 'anyview');
     await expect(page.locator('.dv-search-count')).toContainText(/of/i, {
@@ -132,9 +106,9 @@ test.describe('PDF - search highlight + navigation', () => {
   });
 
   test('reports "not found" for a missing term', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
     await openSearch(page, 'zzzznotpresent');
     await expect(page.locator('.dv-search-count')).toContainText(/not found/i);
   });
@@ -142,18 +116,16 @@ test.describe('PDF - search highlight + navigation', () => {
 
 test.describe('PDF - annotations', () => {
   async function pageBox(page: Page) {
-    // The live demo sits below the hero; centre it so pointer gestures at
-    // page-relative coordinates land on the document.
-    await page.locator('.dv-root').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await revealViewer(page, 'center');
     const box = await page.locator('.dv-page').first().boundingBox();
     if (!box) throw new Error('no page box');
     return box;
   }
 
   test('highlight tool draws a highlight annotation', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     await page.locator('button[aria-label="Highlight"]').click();
     const box = await pageBox(page);
@@ -166,9 +138,9 @@ test.describe('PDF - annotations', () => {
   });
 
   test('ink tool draws a freehand annotation', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     await page.locator('button[aria-label="Draw"]').click();
     const box = await pageBox(page);
@@ -182,9 +154,9 @@ test.describe('PDF - annotations', () => {
   });
 
   test('sticky-note tool places a note', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     await page.locator('button[aria-label="Note"]').click();
     const box = await pageBox(page);
@@ -198,9 +170,9 @@ test.describe('PDF - annotations', () => {
 
 test.describe('PDF - viewport controls', () => {
   test('zoom in enlarges the page', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     const widthOf = async () =>
       (await page.locator('.dv-page').first().boundingBox())!.width;
@@ -211,9 +183,9 @@ test.describe('PDF - viewport controls', () => {
   });
 
   test('rotation changes page orientation', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     const dims = async () => {
       const b = (await page.locator('.dv-page').first().boundingBox())!;
@@ -254,11 +226,13 @@ test.describe('PDF - viewport controls', () => {
         return (orig as (...a: unknown[]) => void).apply(this, args);
       } as typeof orig;
     });
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
-    await page.waitForTimeout(300);
+    const drawCount = () => page.evaluate(() => (window as unknown as { __bmp: number }).__bmp);
+    await expect.poll(drawCount).toBeGreaterThan(0);
+    await waitForStable(drawCount);
     await page.evaluate(() => ((window as unknown as { __bmp: number }).__bmp = 0));
 
     const pageBox = page.locator('.dv-page').first();
@@ -281,7 +255,7 @@ test.describe('PDF - viewport controls', () => {
       });
     for (let i = 0; i < 5; i++) {
       await dispatch();
-      await page.waitForTimeout(12);
+      await page.waitForTimeout(WHEEL_STEP_MS);
     }
 
     const mid = await page.evaluate(() => {
@@ -294,7 +268,9 @@ test.describe('PDF - viewport controls', () => {
     expect(mid.transform).not.toBe('none');
     expect(mid.bmp).toBe(0);
 
-    await page.waitForTimeout(700);
+    await waitForZoom(page, 1500);
+    await expect.poll(drawCount).toBeGreaterThan(0);
+    await waitForStable(drawCount);
     const after = await page.evaluate(() => {
       const content = document.querySelector('.dv-viewer-container > div') as HTMLElement;
       return {
@@ -311,9 +287,9 @@ test.describe('PDF - viewport controls', () => {
   });
 
   test('page navigation moves to page 2', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     await page.locator('button[aria-label="Next page"]').click();
     await expect(page.locator('.dv-page-input')).toHaveValue('2');
@@ -327,9 +303,9 @@ test.describe('PDF - viewport controls', () => {
     }, idx);
 
   test('Next/Previous scroll the target page into view', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
     expect(await pageTop(page, 0)).toBeLessThan(60);
 
     await page.locator('button[aria-label="Next page"]').click();
@@ -344,9 +320,9 @@ test.describe('PDF - viewport controls', () => {
   });
 
   test('clicking a thumbnail scrolls that page into view', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     await page.locator('.dv-thumbnail').nth(1).click();
     await expect(page.locator('.dv-page-input')).toHaveValue('2');
@@ -354,9 +330,9 @@ test.describe('PDF - viewport controls', () => {
   });
 
   test('free scrolling still updates the page number without fighting the user', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     const target = await page.evaluate(() => {
       const sc = document.querySelector('.dv-viewer-container') as HTMLElement;
@@ -366,15 +342,15 @@ test.describe('PDF - viewport controls', () => {
       return Math.round(sc.scrollTop);
     });
     await expect(page.locator('.dv-page-input')).toHaveValue('2');
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(QUIET_WINDOW_MS);
     const now = await page.locator('.dv-viewer-container').evaluate((el) => Math.round(el.scrollTop));
     expect(Math.abs(now - target)).toBeLessThan(3);
   });
 
   test('keyboard navigation (ArrowRight) advances the page', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     await page.locator('.dv-viewer-container').focus();
     await page.keyboard.press('ArrowRight');
@@ -382,9 +358,9 @@ test.describe('PDF - viewport controls', () => {
   });
 
   test('arrow keys on a toolbar control do not navigate pages', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     await page.locator('button[aria-label="Zoom in"]').focus();
     await page.keyboard.press('ArrowRight');
@@ -398,9 +374,9 @@ test.describe('PDF - viewport controls', () => {
 
 test.describe('reflowable - DOM search', () => {
   test('Markdown search highlights via the Custom Highlight API', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'Markdown');
-    await waitForReflowContent(page);
+    await openApp(page);
+    await pickSample(page, 'Markdown');
+    await waitForReflow(page);
 
     await openSearch(page, 'anyview');
     await expect(page.locator('.dv-search-count')).toContainText(/of/i, {
@@ -417,18 +393,18 @@ test.describe('reflowable - DOM search', () => {
 
 test.describe('chrome - theme & sidebar', () => {
   test('theme switch applies the theme class', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'Markdown');
-    await waitForReflowContent(page);
+    await openApp(page);
+    await pickSample(page, 'Markdown');
+    await waitForReflow(page);
 
     await page.locator('.pg-theme-select').selectOption('dark');
     await expect(page.locator('.dv-root.dv-theme-dark')).toBeVisible();
   });
 
   test('sidebar toggle flips aria-expanded', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     const toggle = page.locator('button[aria-label="Toggle sidebar"]');
     const before = await toggle.getAttribute('aria-expanded');
@@ -437,9 +413,9 @@ test.describe('chrome - theme & sidebar', () => {
   });
 
   test('sidebar resizer is keyboard operable', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'PDF');
-    await waitForCanvasRendered(page);
+    await openApp(page);
+    await pickSample(page, 'PDF');
+    await waitForCanvas(page);
 
     const resizer = page.locator('.dv-sidebar-resizer');
     const before = Number(await resizer.getAttribute('aria-valuenow'));
@@ -453,9 +429,9 @@ test.describe('chrome - theme & sidebar', () => {
 
 test.describe('outline navigation', () => {
   test('clicking a heading scrolls to its offset (reflowable)', async ({ page }) => {
-    await gotoApp(page);
-    await loadSample(page, 'Markdown');
-    await waitForReflowContent(page);
+    await openApp(page);
+    await pickSample(page, 'Markdown');
+    await waitForReflow(page);
 
     const zoomIn = page.locator('button[aria-label="Zoom in"]');
     for (let i = 0; i < 10; i++) await zoomIn.click();
