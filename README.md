@@ -27,7 +27,7 @@ No iframes, no server round-trips, no uploads. Your files never leave the page.
 
 ---
 
-> **Status:** `v0.2`, published on npm (`npm i anyview`), pre-1.0 and actively evolving. The flagship PDF experience (native render, text selection, search highlighting, 8 annotation tools) is implemented; reflowable formats (DOCX, XLSX, PPTX, CSV, Markdown, code, HTML, Jupyter notebooks) render, are searchable, and have page thumbnails. Full zoom UX (wheel / pinch / marquee / fit modes), two-page spread, a drag-drop empty state, and a rich imperative + callback API round it out. Try it via the [playground](#run-the-playground).
+> **Status:** published on npm (`npm i anyview`), pre-1.0 and actively evolving. The flagship PDF experience (native render, text selection, search highlighting, 8 annotation tools) is implemented; reflowable formats (DOCX, XLSX, PPTX, CSV, Markdown, code, HTML, Jupyter notebooks) render, are searchable, and have page thumbnails. Full zoom UX (wheel / pinch / marquee / fit modes), two-page spread, a drag-drop empty state, and a rich imperative + callback API round it out. Try it via the [playground](#run-the-playground).
 
 ## Why Anyview?
 
