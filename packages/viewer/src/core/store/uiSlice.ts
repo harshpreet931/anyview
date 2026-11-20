@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { Theme, SidebarView, RecentFile } from '../types';
+import { SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from '../zoom';
 
 export type ToolbarDensity = 'compact' | 'default' | 'touch';
 
@@ -54,37 +55,36 @@ export const createUiSlice: StateCreator<
   locale: 'en',
   instanceId: `dv-${++instanceCounter}`,
 
-  setTheme: (theme: Theme) => set({ theme }),
+  setTheme: (theme) => set({ theme }),
 
   toggleSearch: () => set((s) => ({ searchOpen: !s.searchOpen })),
 
-  setSearchOpen: (open: boolean) => set({ searchOpen: open }),
+  setSearchOpen: (open) => set({ searchOpen: open }),
 
-  setPropertiesOpen: (open: boolean) => set({ propertiesOpen: open }),
+  setPropertiesOpen: (open) => set({ propertiesOpen: open }),
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen, sidebarPref: !s.sidebarOpen })),
 
-  setSidebarOpen: (open: boolean) => set({ sidebarOpen: open, sidebarPref: open }),
+  setSidebarOpen: (open) => set({ sidebarOpen: open, sidebarPref: open }),
 
   closeSidebarTransiently: () => set({ sidebarOpen: false }),
 
-  setSidebarView: (view: SidebarView) => set({ sidebarView: view }),
+  setSidebarView: (view) => set({ sidebarView: view }),
 
-  setSidebarWidth: (width: number) => {
-    const clamped = Math.max(140, Math.min(width, 400));
-    set({ sidebarWidth: clamped });
+  setSidebarWidth: (width) => {
+    set({ sidebarWidth: Math.max(SIDEBAR_MIN_WIDTH, Math.min(width, SIDEBAR_MAX_WIDTH)) });
   },
 
   toggleCommentsPanel: () =>
     set((s) => ({ commentsPanelOpen: !s.commentsPanelOpen })),
 
-  setToolbarDensity: (density: ToolbarDensity) => set({ toolbarDensity: density }),
+  setToolbarDensity: (density) => set({ toolbarDensity: density }),
 
-  addRecentFile: (file: RecentFile) => {
+  addRecentFile: (file) => {
     const existing = get().recentFiles.filter((f) => f.id !== file.id);
     const next = [file, ...existing].slice(0, MAX_RECENT_FILES);
     set({ recentFiles: next });
   },
 
-  setLocale: (locale: string) => set({ locale }),
+  setLocale: (locale) => set({ locale }),
 });

@@ -43,4 +43,9 @@ describe('sidebar preference persistence', () => {
     expect(s.getState().sidebarOpen).toBe(true);
     expect(saved().sidebarOpen).toBe(true);
   });
+
+  it('recent files survive a reload', () => {
+    createViewerStore({ persistKey: KEY }).getState().addRecentFile({ id: '1', name: 'a.pdf', format: 'pdf' });
+    expect(createViewerStore({ persistKey: KEY }).getState().recentFiles).toEqual([{ id: '1', name: 'a.pdf', format: 'pdf' }]);
+  });
 });

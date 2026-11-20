@@ -48,22 +48,25 @@ export const createAnnotationSlice: StateCreator<
     if (history.length > HISTORY_LIMIT) history.shift();
   };
 
+  const emptyAnnotations = (extra: Partial<AnnotationSlice>) => {
+    const had = get().annotations.length > 0;
+    set({ annotations: [], selectedAnnotationId: null, ...extra });
+    if (had) notify([]);
+  };
+
   return {
     annotations: [],
     activeAnnotationTool: null,
     selectedAnnotationId: null,
 
-    addAnnotation: (annotation: Annotation) => {
+    addAnnotation: (annotation) => {
       remember();
       const next = [...get().annotations, annotation];
       set({ annotations: next });
       notify(next);
     },
 
-    updateAnnotation: (
-      id: string,
-      patch: Partial<Omit<Annotation, 'id' | 'pageIndex' | 'type'>>,
-    ) => {
+    updateAnnotation: (id, patch) => {
       if (!get().annotations.some((a) => a.id === id)) return;
       remember();
       const next = get().annotations.map((a) =>
@@ -73,7 +76,7 @@ export const createAnnotationSlice: StateCreator<
       notify(next);
     },
 
-    deleteAnnotation: (id: string) => {
+    deleteAnnotation: (id) => {
       if (!get().annotations.some((a) => a.id === id)) return;
       remember();
       const next = get().annotations.filter((a) => a.id !== id);
@@ -85,26 +88,20 @@ export const createAnnotationSlice: StateCreator<
       notify(next);
     },
 
-    setAnnotations: (annotations: Annotation[]) => {
+    setAnnotations: (annotations) => {
       const next = [...annotations];
       history = [];
       set({ annotations: next, selectedAnnotationId: null });
       notify(next);
     },
 
-    clearAnnotations: () => {
-      const had = get().annotations.length > 0;
-      set({ annotations: [], selectedAnnotationId: null });
-      if (had) notify([]);
-    },
+    clearAnnotations: () => emptyAnnotations({}),
 
-    selectAnnotation: (id: string | null) =>
-      set({ selectedAnnotationId: id }),
+    selectAnnotation: (id) => set({ selectedAnnotationId: id }),
 
-    setActiveTool: (tool: AnnotationTool | null) =>
-      set({ activeAnnotationTool: tool }),
+    setActiveTool: (tool) => set({ activeAnnotationTool: tool }),
 
-    onAnnotationChange: (cb: AnnotationChangeListener) => {
+    onAnnotationChange: (cb) => {
       listeners.add(cb);
       return () => {
         listeners.delete(cb);
@@ -125,13 +122,7 @@ export const createAnnotationSlice: StateCreator<
 
     _resetAnnotations: () => {
       history = [];
-      const had = get().annotations.length > 0;
-      set({
-        annotations: [],
-        selectedAnnotationId: null,
-        activeAnnotationTool: null,
-      });
-      if (had) notify([]);
+      emptyAnnotations({ activeAnnotationTool: null });
     },
   };
 };

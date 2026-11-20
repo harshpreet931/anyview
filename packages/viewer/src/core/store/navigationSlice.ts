@@ -30,12 +30,7 @@ export const createNavigationSlice: StateCreator<
   isScrolling: false,
   visiblePages: [],
 
-  goToPage: (index: number) => {
-    const doc = get().document;
-    if (!doc) return;
-    const clamped = Math.max(0, Math.min(index, doc.pageCount - 1));
-    set({ currentPage: clamped });
-  },
+  goToPage: (index) => get().setCurrentPage(index),
 
   nextPage: () => {
     const { document: doc, currentPage } = get();
@@ -60,7 +55,7 @@ export const createNavigationSlice: StateCreator<
     set({ currentPage: doc.pageCount - 1 });
   },
 
-  setCurrentPage: (index: number) => {
+  setCurrentPage: (index) => {
     const doc = get().document;
     if (!doc) return;
     const clamped = Math.max(0, Math.min(index, doc.pageCount - 1));
@@ -69,12 +64,12 @@ export const createNavigationSlice: StateCreator<
     }
   },
 
-  setScrollOffset: (offset: number) =>
+  setScrollOffset: (offset) =>
     set({ scrollOffset: offset, isScrolling: true }),
 
-  setScrolling: (scrolling: boolean) => set({ isScrolling: scrolling }),
+  setScrolling: (scrolling) => set({ isScrolling: scrolling }),
 
-  setVisiblePages: (pages: number[]) => {
+  setVisiblePages: (pages) => {
     const prev = get().visiblePages;
     if (prev.length === pages.length && prev.every((p, i) => p === pages[i])) {
       return;

@@ -5,11 +5,13 @@ import type {
   SpreadMode,
   CursorMode,
 } from '../types';
+import type { Rotation } from '../rotation';
+import { MAX_ZOOM, MIN_ZOOM, clampZoom } from '../zoom';
 
 export interface ViewportSlice {
   zoom: number;
   fitMode: FitMode;
-  rotation: 0 | 90 | 180 | 270;
+  rotation: Rotation;
   scrollMode: ScrollMode;
   spreadMode: SpreadMode;
   cursorMode: CursorMode;
@@ -20,7 +22,7 @@ export interface ViewportSlice {
   zoomOut: () => void;
   setFitMode: (mode: FitMode) => void;
   _applyFitZoom: (zoom: number) => void;
-  setRotation: (rotation: 0 | 90 | 180 | 270) => void;
+  setRotation: (rotation: Rotation) => void;
   rotateClockwise: () => void;
   rotateCounterClockwise: () => void;
   setScrollMode: (mode: ScrollMode) => void;
@@ -33,8 +35,6 @@ export interface ViewportSlice {
   _setFullscreen: (value: boolean) => void;
 }
 
-const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 5.0;
 const ZOOM_LADDER = [0.1, 0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
 
 function nextZoom(zoom: number, dir: 1 | -1): number {
@@ -56,41 +56,29 @@ export const createViewportSlice: StateCreator<
   cursorMode: 'select',
   isFullscreen: false,
 
-  setZoom: (zoom: number) => {
-    const clamped = Math.max(MIN_ZOOM, Math.min(zoom, MAX_ZOOM));
-    set({ zoom: clamped, fitMode: 'custom' });
-  },
+  setZoom: (zoom) => set({ zoom: clampZoom(zoom), fitMode: 'custom' }),
 
   zoomIn: () => set({ zoom: nextZoom(get().zoom, 1), fitMode: 'custom' }),
 
   zoomOut: () => set({ zoom: nextZoom(get().zoom, -1), fitMode: 'custom' }),
 
-  setFitMode: (mode: FitMode) => set({ fitMode: mode }),
+  setFitMode: (mode) => set({ fitMode: mode }),
 
-  _applyFitZoom: (zoom: number) =>
-    set({ zoom: Math.max(MIN_ZOOM, Math.min(zoom, MAX_ZOOM)) }),
+  _applyFitZoom: (zoom) => set({ zoom: clampZoom(zoom) }),
 
-  setRotation: (rotation: 0 | 90 | 180 | 270) => set({ rotation }),
+  setRotation: (rotation) => set({ rotation }),
 
-  rotateClockwise: () => {
-    const { rotation } = get();
-    const next = ((rotation / 90 + 1) % 4) * 90 as 0 | 90 | 180 | 270;
-    set({ rotation: next });
-  },
+  rotateClockwise: () => set({ rotation: ((get().rotation + 90) % 360) as Rotation }),
 
-  rotateCounterClockwise: () => {
-    const { rotation } = get();
-    const next = ((rotation / 90 + 3) % 4) * 90 as 0 | 90 | 180 | 270;
-    set({ rotation: next });
-  },
+  rotateCounterClockwise: () => set({ rotation: ((get().rotation + 270) % 360) as Rotation }),
 
-  setScrollMode: (mode: ScrollMode) => set({ scrollMode: mode }),
-  setSpreadMode: (mode: SpreadMode) => set({ spreadMode: mode }),
-  setCursorMode: (mode: CursorMode) => set({ cursorMode: mode }),
+  setScrollMode: (mode) => set({ scrollMode: mode }),
+  setSpreadMode: (mode) => set({ spreadMode: mode }),
+  setCursorMode: (mode) => set({ cursorMode: mode }),
 
   _rootElement: null,
-  setRootElement: (el: HTMLElement | null) => set({ _rootElement: el }),
-  _setFullscreen: (value: boolean) => set({ isFullscreen: value }),
+  setRootElement: (el) => set({ _rootElement: el }),
+  _setFullscreen: (value) => set({ isFullscreen: value }),
 
   toggleFullscreen: () => {
     if (typeof document === 'undefined') return;

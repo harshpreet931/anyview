@@ -4,41 +4,17 @@ import type {
   Adapter,
   AdapterManifest,
   AdapterRegistry,
-  Annotation,
   DocumentModel,
-  FileSource,
   FormatId,
   RenderResult,
 } from '../types';
-
-const MANIFEST: AdapterManifest = {
-  id: 'pdf',
-  label: 'PDF',
-  extensions: ['pdf'],
-  mimeTypes: ['application/pdf'],
-  icon: '',
-  features: {
-    search: false,
-    annotations: true,
-    textSelection: false,
-    print: false,
-    thumbnails: false,
-    outline: false,
-    zoom: true,
-    rotation: false,
-    attachments: false,
-    fullscreen: false,
-    download: false,
-  },
-  priority: 100,
-  protocolVersion: 1,
-};
+import { bufferSource, makeDoc, manifest } from './test-fixtures';
 
 class CountingAdapter implements Adapter {
-  readonly manifest = MANIFEST;
+  readonly manifest = manifest({ annotations: true });
   disposeCount = 0;
   async parse(): Promise<DocumentModel> {
-    return docA();
+    return makeDoc();
   }
   async renderPage(): Promise<RenderResult> {
     return { width: 0, height: 0 };
@@ -70,19 +46,6 @@ class TestRegistry implements AdapterRegistry {
   }
 }
 
-function docA(): DocumentModel {
-  return {
-    format: 'pdf',
-    meta: { name: 'a.pdf', size: 0, mimeType: 'application/pdf' },
-    pageCount: 1,
-    pages: [{ index: 0, width: 100, height: 100, rotation: 0 }],
-  };
-}
-
-function bufferSource(name: string): FileSource {
-  return { kind: 'buffer', buffer: new ArrayBuffer(4), name, type: 'application/pdf' };
-}
-
 describe('failed document replacement', () => {
   it('clears document, source, and annotations when the new open fails', async () => {
     const store = createViewerStore();
@@ -90,11 +53,24 @@ describe('failed document replacement', () => {
     const registry = new TestRegistry(adapterA);
     store.getState().setRegistry(registry);
 
-    await store.getState().openDocument(bufferSource('a.pdf'));
+    await store.getState().openDocument(bufferSource());
     expect(store.getState().loadState).toBe('loaded');
     expect(store.getState().document).not.toBeNull();
 
-    store.setState({ annotations: [{ id: 'x' } as unknown as Annotation] });
+    store.setState({
+      annotations: [
+        {
+          id: 'x',
+          pageIndex: 0,
+          type: 'highlight',
+          color: '#ffd400',
+          opacity: 0.4,
+          createdAt: 1,
+          updatedAt: 1,
+          data: { rects: [] },
+        },
+      ],
+    });
 
     registry.format = null;
     await store.getState().openDocument(bufferSource('b.bogus'));
