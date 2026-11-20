@@ -5,6 +5,12 @@ All notable changes to **anyview** are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.4.3]
+
+### Fixed
+- **Merged cells in Excel span their area again**, including tall merges that start above the rows in view, and search finds their text.
+- **Big workbooks no longer lock the page while they open.** Excel files are read in a Web Worker, falling back to the main thread only where workers are unavailable.
+
 ## [0.4.2]
 
 ### Changed
