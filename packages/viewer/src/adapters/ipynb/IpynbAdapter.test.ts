@@ -169,3 +169,58 @@ describe('IpynbAdapter highlighting', () => {
     expect(cool).toEqual([]);
   });
 });
+
+describe('IpynbAdapter outline', () => {
+  it('lands each entry on the first heading of its markdown cell', async () => {
+    const nb = JSON.stringify({
+      cells: [
+        { cell_type: 'markdown', source: ['```\n', '# not a heading\n', '```\n', '## First *one*\n', '### Second'] },
+        { cell_type: 'code', source: ['# a comment'], outputs: [] },
+        { cell_type: 'markdown', source: ['plain text'] },
+        { cell_type: 'markdown', source: ['# Last'] },
+      ],
+      metadata: { language_info: { name: 'python' } },
+      nbformat: 4,
+    });
+    const adapter = new IpynbAdapter();
+    const model = await adapter.parse(reader(nb), new AbortController().signal);
+    const target = document.body.appendChild(document.createElement('div'));
+    await adapter.renderPage({
+      page: model.pages[0]!,
+      target,
+      scale: 1,
+      rotation: 0,
+      devicePixelRatio: 1,
+      signal: new AbortController().signal,
+    });
+    target.querySelectorAll('h1, h2, h3').forEach((h) => {
+      h.getBoundingClientRect = () => ({ top: h.textContent === 'Last' ? 900 : 120 }) as DOMRect;
+    });
+    expect(model.outline?.map((n) => [n.title, (n.dest as { scrollOffset?: number }).scrollOffset])).toEqual([
+      ['First one', 120],
+      ['Last', 900],
+    ]);
+    target.remove();
+  });
+});
+
+describe('IpynbAdapter long notebooks', () => {
+  it('renders in pieces of whole cells, split only between two code cells', async () => {
+    const cells = Array.from({ length: 600 }, (_, i) =>
+      i % 3 === 0
+        ? { cell_type: 'markdown', source: [`## Cell ${i}\n`, 'text '.repeat(40)] }
+        : { cell_type: i % 7 === 0 ? 'raw' : 'code', source: [`x = ${i}`], outputs: [{ output_type: 'stream', name: 'stdout', text: ['out\n'.repeat(20)] }] },
+    );
+    const adapter = new IpynbAdapter();
+    const model = await adapter.parse(reader(JSON.stringify({ cells, metadata: {}, nbformat: 4 })), new AbortController().signal);
+    const target = document.createElement('div');
+    await adapter.renderPage({ page: model.pages[0]!, target, scale: 1, rotation: 0, devicePixelRatio: 1, signal: new AbortController().signal });
+    const pieces = Array.from(target.querySelectorAll('.dv-ipynb > .dv-reflow-piece'));
+    expect(pieces.length).toBeGreaterThan(1);
+    expect(pieces.reduce((n, piece) => n + piece.children.length, 0)).toBe(600);
+    for (const piece of pieces.slice(1)) {
+      expect(piece.firstElementChild?.className).toBe('dv-ipynb-cell');
+      expect(piece.previousElementSibling?.lastElementChild?.className).toBe('dv-ipynb-cell');
+    }
+  });
+});

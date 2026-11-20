@@ -1,10 +1,8 @@
 import { decodeText } from '../../core/text-decode';
 import type {
   Adapter,
-  AdapterManifest,
   DocumentModel,
   FileSourceReader,
-  OutlineNode,
   PageRef,
   RenderContext,
   RenderResult,
@@ -13,41 +11,19 @@ import type {
   TextLayer,
 } from '../../core/types';
 import { ViewerError, throwIfCancelled } from '../../core/errors';
-import { loadSanitizer, DOCUMENT_HTML_CONFIG } from '../../core/sanitizer';
-import { EMPTY_HTML, markSanitized, type SafeHtml } from '../../core/safe-html';
+import { DOCUMENT_HTML_CONFIG, sanitizeInPieces } from '../../core/sanitizer';
 import { assertTransformSize } from '../../core/limits';
-import { headingScrollOffsets } from '../../core/reflow-outline';
-import { renderReflowPage } from '../../core/reflow-page';
+import { HeadingOutline, headingsIn } from '../../core/reflow-outline';
+import { detachedReflow, EMPTY_REFLOW, reflowBlockTexts, renderReflowPage } from '../../core/reflow-page';
 import { lineTextLayer } from '../../core/line-text-layer';
 import { estimatedReflowHeight } from '../../core/reflow-height';
-import { blockTexts, markBlockUnits, searchUnits } from '../../core/search-units';
-
-export const htmlManifest: AdapterManifest = {
-  id: 'html',
-  label: 'HTML Document',
-  extensions: ['html', 'htm'],
-  mimeTypes: ['text/html'],
-  icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l-3 6 3 6h8l3-6-3-6H4zm1 2h6l2 4-2 4H5L3 8l2-4z"/></svg>`,
-  features: {
-    search: true,
-    annotations: false,
-    textSelection: true,
-    print: true,
-    thumbnails: false,
-    outline: true,
-    zoom: true,
-    rotation: false,
-    attachments: false,
-    fullscreen: true,
-    download: true,
-  },
-  priority: 90,
-  protocolVersion: 1,
-};
+import { searchUnits } from '../../core/search-units';
+import { htmlManifest } from './manifest';
 
 export class HtmlAdapter implements Adapter {
   readonly manifest = htmlManifest;
-  private htmlContent: SafeHtml = EMPTY_HTML;
+  private content = EMPTY_REFLOW;
+  private outline = new HeadingOutline([]);
   private textContent = '';
   private blocks: string[] | null = null;
 
@@ -62,15 +38,15 @@ export class HtmlAdapter implements Adapter {
     const rawHtml = decodeText(buffer, source.meta.mimeType);
 
     try {
-      const DOMPurify = await loadSanitizer();
-      this.htmlContent = markSanitized(DOMPurify.sanitize(rawHtml, DOCUMENT_HTML_CONFIG));
+      this.content = await sanitizeInPieces(rawHtml, DOCUMENT_HTML_CONFIG, signal);
       this.blocks = null;
     } catch (cause) {
       throw new ViewerError('PARSE_ERROR', 'Failed to sanitize HTML.', { cause });
     }
 
-    const doc = new DOMParser().parseFromString(this.htmlContent, 'text/html');
-    this.textContent = doc.body.textContent ?? '';
+    const root = await detachedReflow(this.content, signal);
+    this.textContent = root.textContent ?? '';
+    this.outline = new HeadingOutline(headingsIn(root));
 
     const page: PageRef = {
       index: 0,
@@ -79,20 +55,18 @@ export class HtmlAdapter implements Adapter {
       rotation: 0,
     };
 
-    const outline = this.extractOutline(doc);
-
     return {
       format: 'html',
       meta: source.meta,
       pageCount: 1,
       pages: [page],
-      ...(outline ? { outline } : {}),
+      ...(this.outline.nodes.length > 0 ? { outline: this.outline.nodes } : {}),
     };
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const result = renderReflowPage(ctx, this.htmlContent, { className: 'dv-html-content' });
-    markBlockUnits(ctx.target.firstElementChild!);
+    if (!ctx.print) this.outline.attach(ctx.target, () => headingsIn(ctx.target));
+    const result = await renderReflowPage(ctx, this.content, { className: 'dv-html-content' });
     return result;
   }
 
@@ -105,24 +79,13 @@ export class HtmlAdapter implements Adapter {
   }
 
   async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
-    this.blocks ??= blockTexts(this.htmlContent);
+    this.blocks ??= await reflowBlockTexts(this.content, signal);
     return searchUnits(this.blocks.map((text, unit) => ({ pageIndex: 0, unit, text })), query, signal);
   }
 
-  private extractOutline(doc: Document): OutlineNode[] | undefined {
-    const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
-    if (headings.length === 0) return undefined;
-
-    const list = Array.from(headings);
-    const offsets = headingScrollOffsets(doc, list);
-    return list.map((h, i) => ({
-      title: h.textContent ?? '',
-      dest: { pageIndex: 0, scrollOffset: offsets[i]! },
-    }));
-  }
-
   dispose(): void {
-    this.htmlContent = EMPTY_HTML;
+    this.content = EMPTY_REFLOW;
+    this.outline = new HeadingOutline([]);
     this.textContent = '';
     this.blocks = null;
   }

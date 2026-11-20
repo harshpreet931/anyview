@@ -1,9 +1,7 @@
 import type {
   Adapter,
-  AdapterManifest,
   DocumentModel,
   FileSourceReader,
-  OutlineNode,
   PageRef,
   RenderContext,
   RenderResult,
@@ -14,37 +12,12 @@ import type {
 } from '../../core/types';
 import { asParseError, throwIfCancelled } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
-import { loadSanitizer } from '../../core/sanitizer';
-import { EMPTY_HTML, markSanitized, type SafeHtml } from '../../core/safe-html';
+import { sanitizeInPieces } from '../../core/sanitizer';
 import { assertTransformSize } from '../../core/limits';
-import { headingScrollOffsets } from '../../core/reflow-outline';
-import { renderReflowPage } from '../../core/reflow-page';
-import { blockTexts, markBlockUnits, searchUnits } from '../../core/search-units';
-
-export const docxManifest: AdapterManifest = {
-  id: 'docx',
-  label: 'Word Document',
-  extensions: ['docx'],
-  mimeTypes: [
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  ],
-  icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h7l4 4v10H3V1zm7 0v4h4l-4-4zM5 7v1h6V7H5zm0 3v1h6v-1H5zm0 3v1h6v-1H5z"/></svg>`,
-  features: {
-    search: true,
-    annotations: false,
-    textSelection: true,
-    print: false,
-    thumbnails: false,
-    outline: true,
-    zoom: true,
-    rotation: false,
-    attachments: false,
-    fullscreen: true,
-    download: true,
-  },
-  priority: 100,
-  protocolVersion: 1,
-};
+import { HeadingOutline, headingsIn } from '../../core/reflow-outline';
+import { detachedReflow, EMPTY_REFLOW, reflowBlockTexts, renderReflowPage } from '../../core/reflow-page';
+import { searchUnits } from '../../core/search-units';
+import { docxManifest } from './manifest';
 
 const CHARS_PER_LINE = 80;
 const LINE_HEIGHT = 24;
@@ -52,7 +25,8 @@ const CHAR_WIDTH = 8;
 
 export class DocxAdapter implements Adapter {
   readonly manifest = docxManifest;
-  private htmlContent: SafeHtml = EMPTY_HTML;
+  private content = EMPTY_REFLOW;
+  private outline = new HeadingOutline([]);
   private textContent = '';
   private blocks: string[] | null = null;
 
@@ -67,8 +41,7 @@ export class DocxAdapter implements Adapter {
     try {
       const mammoth = await loadParser('mammoth', () => import('mammoth'));
       const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
-      const DOMPurify = await loadSanitizer();
-      this.htmlContent = markSanitized(DOMPurify.sanitize(result.value, {
+      this.content = await sanitizeInPieces(result.value, {
         ALLOWED_TAGS: [
           'p', 'br', 'strong', 'em', 'b', 'i', 'u', 's', 'a', 'ul', 'ol',
           'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead',
@@ -78,14 +51,15 @@ export class DocxAdapter implements Adapter {
         ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'colspan', 'rowspan', 'style', 'class', 'id', 'width', 'height'],
         ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data:image):|#)/i,
         SANITIZE_NAMED_PROPS: true,
-      }));
+      }, signal);
       this.blocks = null;
     } catch (cause) {
       throw asParseError(cause, 'Failed to parse DOCX.');
     }
 
-    const doc = new DOMParser().parseFromString(this.htmlContent, 'text/html');
-    this.textContent = doc.body.textContent ?? '';
+    const root = await detachedReflow(this.content, signal);
+    this.textContent = root.textContent ?? '';
+    this.outline = new HeadingOutline(headingsIn(root));
 
     const estimatedHeight = Math.ceil(this.textContent.length / CHARS_PER_LINE) * LINE_HEIGHT + 200;
 
@@ -96,21 +70,19 @@ export class DocxAdapter implements Adapter {
       rotation: 0,
     };
 
-    const outline = extractOutline(doc);
-
     return {
       format: 'docx',
       meta: source.meta,
       pageCount: 1,
       pages: [page],
-      ...(outline ? { outline } : {}),
+      ...(this.outline.nodes.length > 0 ? { outline: this.outline.nodes } : {}),
     };
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const result = renderReflowPage(ctx, this.htmlContent, { className: 'dv-docx-content', padding: '48px 24px' });
+    if (!ctx.print) this.outline.attach(ctx.target, () => headingsIn(ctx.target));
+    const result = await renderReflowPage(ctx, this.content, { className: 'dv-docx-content', padding: '48px 24px' });
     const container = ctx.target.firstElementChild!;
-    markBlockUnits(container);
     container.querySelectorAll('table').forEach((table) => {
       table.style.borderCollapse = 'collapse';
       table.querySelectorAll<HTMLElement>('td, th').forEach((cell) => {
@@ -140,24 +112,14 @@ export class DocxAdapter implements Adapter {
   }
 
   async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
-    this.blocks ??= blockTexts(this.htmlContent);
+    this.blocks ??= await reflowBlockTexts(this.content, signal);
     return searchUnits(this.blocks.map((text, unit) => ({ pageIndex: 0, unit, text })), query, signal);
   }
 
   dispose(): void {
-    this.htmlContent = EMPTY_HTML;
+    this.content = EMPTY_REFLOW;
+    this.outline = new HeadingOutline([]);
     this.textContent = '';
     this.blocks = null;
   }
-}
-
-function extractOutline(doc: Document): OutlineNode[] | undefined {
-  const headings = Array.from(doc.querySelectorAll('h1, h2, h3, h4, h5, h6'));
-  if (headings.length === 0) return undefined;
-
-  const offsets = headingScrollOffsets(doc, headings);
-  return headings.map((h, i) => ({
-    title: h.textContent ?? '',
-    dest: { pageIndex: 0, scrollOffset: offsets[i]! },
-  }));
 }

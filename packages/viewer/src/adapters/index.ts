@@ -1,15 +1,15 @@
 import type { AdapterRegistry } from '../core/types';
 import { pdfManifest } from './pdf/PdfAdapter';
 import { imageManifest } from './image/ImageAdapter';
-import { markdownManifest } from './markdown/MarkdownAdapter';
+import { markdownManifest } from './markdown/manifest';
 import { codeManifest } from './code/manifest';
 import { textManifest } from './text/manifest';
-import { docxManifest } from './docx/DocxAdapter';
+import { docxManifest } from './docx/manifest';
 import { xlsxManifest } from './xlsx/manifest';
 import { pptxManifest } from './pptx/PptxAdapter';
 import { csvManifest } from './csv/manifest';
-import { htmlManifest } from './html/HtmlAdapter';
-import { ipynbManifest } from './ipynb/IpynbAdapter';
+import { htmlManifest } from './html/manifest';
+import { ipynbManifest } from './ipynb/manifest';
 
 export function registerBuiltInAdapters(registry: AdapterRegistry): void {
   registry.register(pdfManifest, () => import('./pdf'));

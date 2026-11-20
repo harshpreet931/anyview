@@ -1,2 +1,3 @@
-export { markdownManifest, MarkdownAdapter } from './MarkdownAdapter';
+export { markdownManifest } from './manifest';
+export { MarkdownAdapter } from './MarkdownAdapter';
 export { MarkdownAdapter as default } from './MarkdownAdapter';

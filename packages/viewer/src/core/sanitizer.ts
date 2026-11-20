@@ -1,4 +1,6 @@
 import type { Config, DOMPurify } from 'dompurify';
+import { EMPTY_HTML, markSanitized, type SafeHtml } from './safe-html';
+import { timeSlices, type ReflowContent } from './reflow-page';
 
 export type Sanitizer = DOMPurify;
 
@@ -122,4 +124,64 @@ export async function loadSanitizer(): Promise<Sanitizer> {
     hookRegistered = true;
   }
   return DOMPurify;
+}
+
+const PARSE_SLICE_CHARS = 256 * 1024;
+const PIECE_TEXT_CHARS = 32 * 1024;
+const WRAPPERS = new Set(['DIV', 'MAIN', 'ARTICLE', 'SECTION']);
+const PIECE_STARTS = new Set(['P', 'UL', 'OL', 'PRE', 'TABLE', 'BLOCKQUOTE', 'FIGURE']);
+
+/**
+ * Sanitizes a document a slice at a time, with the result `sanitize` gives for the whole of it. The document is
+ * parsed in slices (the parser is incremental, so the tree is the one a single parse builds), lone wrappers become
+ * the shell, and the blocks inside them are sanitized in pieces that start with a block with no top margin.
+ */
+export async function sanitizeInPieces(dirty: string, config: Config, signal: AbortSignal): Promise<ReflowContent> {
+  const DOMPurify = await loadSanitizer();
+  const sanitize = (html: string) => markSanitized(DOMPurify.sanitize(html, config));
+  const next = timeSlices(signal);
+  const doc = document.implementation.createHTMLDocument('');
+  doc.open();
+  for (let at = 0; at < dirty.length; at += PARSE_SLICE_CHARS) {
+    doc.write(dirty.slice(at, at + PARSE_SLICE_CHARS));
+    await next();
+  }
+  doc.close();
+
+  let parent: Element = doc.body;
+  let shell: Element | null = null;
+  for (let only = loneWrapper(parent); only; only = loneWrapper(parent)) {
+    const empty = only.cloneNode(false) as Element;
+    if (shell) innermost(shell).append(empty);
+    else shell = empty;
+    parent = only;
+  }
+
+  const pieces: SafeHtml[] = [];
+  let batch = doc.createElement('div');
+  let chars = 0;
+  for (const node of Array.from(parent.childNodes)) {
+    if (chars >= PIECE_TEXT_CHARS && PIECE_STARTS.has(node.nodeName)) {
+      pieces.push(sanitize(batch.innerHTML));
+      batch = doc.createElement('div');
+      chars = 0;
+      await next();
+    }
+    batch.append(node);
+    chars += node.textContent?.length ?? 0;
+  }
+  pieces.push(sanitize(batch.innerHTML));
+  return { shell: shell ? sanitize(shell.outerHTML) : EMPTY_HTML, pieces };
+}
+
+function loneWrapper(el: Element): Element | null {
+  const only = el.firstElementChild;
+  if (!only || only !== el.lastElementChild || !WRAPPERS.has(only.tagName)) return null;
+  const alone = Array.from(el.childNodes).every((n) => n === only || (n.nodeType === Node.TEXT_NODE && !n.textContent!.trim()));
+  return alone ? only : null;
+}
+
+function innermost(el: Element): Element {
+  while (el.firstElementChild) el = el.firstElementChild;
+  return el;
 }

@@ -1,25 +1,32 @@
 import { describe, it, expect } from 'vitest';
 import { HtmlAdapter } from './HtmlAdapter';
 import { textReader } from '../test-reader';
+import type { PageDestination } from '../../core/types';
 
-function offsets(outline: unknown): number[] {
-  return (outline as { dest: { scrollOffset: number } }[]).map(
-    (n) => n.dest.scrollOffset,
-  );
-}
-
-describe('HtmlAdapter outline offsets', () => {
-  it('produces non-zero, increasing offsets for later headings', async () => {
+describe('HtmlAdapter outline', () => {
+  it('lands each heading at its rendered position', async () => {
     const filler = `<p>${'word '.repeat(400)}</p>`;
-    const html = `<h1>First</h1>${filler}<h2>Second</h2>${filler}<h3>Third</h3>`;
+    const html = `<h1>First</h1>${filler}<div><h2>Second</h2></div>${filler}<h3>Third</h3>`;
     const adapter = new HtmlAdapter();
     const model = await adapter.parse(textReader(html, 'doc.html', 'text/html'), new AbortController().signal);
-
-    const o = offsets(model.outline);
-    expect(o).toHaveLength(3);
-    expect(o[0]).toBe(0);
-    expect(o[1]).toBeGreaterThan(0);
-    expect(o[2]).toBeGreaterThan(o[1]!);
+    const target = document.body.appendChild(document.createElement('div'));
+    await adapter.renderPage({
+      page: model.pages[0]!,
+      target,
+      scale: 1,
+      rotation: 0,
+      devicePixelRatio: 1,
+      signal: new AbortController().signal,
+    });
+    target.querySelectorAll('h1, h2, h3').forEach((h, i) => {
+      h.getBoundingClientRect = () => ({ top: [0, 812, 1650][i] }) as DOMRect;
+    });
+    expect(model.outline?.map((n) => [n.title, (n.dest as PageDestination).scrollOffset])).toEqual([
+      ['First', 0],
+      ['Second', 812],
+      ['Third', 1650],
+    ]);
+    target.remove();
   });
 });
 

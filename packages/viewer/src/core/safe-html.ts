@@ -25,9 +25,18 @@ export const EMPTY_HTML = markSanitized('');
  * the nodes only become live once they are adopted below.
  */
 export function setSafeHtml(el: Element, html: SafeHtml): void {
+  el.replaceChildren(parseSafeHtml(html));
+}
+
+/** Append parsed markup after an element's children, parsed inertly like {@link setSafeHtml}. */
+export function appendSafeHtml(el: Element, html: SafeHtml): void {
+  el.append(parseSafeHtml(html));
+}
+
+function parseSafeHtml(html: SafeHtml): DocumentFragment {
   const template = document.createElement('template');
   template.innerHTML = html;
-  el.replaceChildren(template.content);
+  return template.content;
 }
 
 export function escapeHtml(text: string): SafeHtml {

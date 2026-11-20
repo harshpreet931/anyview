@@ -566,6 +566,21 @@
   margin-top: 0;
 }
 
+/* A long flowing page comes in pieces. Off screen, a piece is skipped by layout and paint at the size it was last
+   drawn at; a new piece is drawn in full once, so that size is its real one. */
+.dv-page .dv-reflow-piece {
+  display: flow-root;
+  content-visibility: auto;
+}
+
+.dv-page .dv-reflow-piece-new {
+  content-visibility: visible;
+}
+
+:is(.dv-markdown-content, .dv-html-content, .dv-docx-content) > .dv-reflow-piece:first-child > :where(:first-child) {
+  margin-top: 0;
+}
+
 :is(.dv-markdown-content, .dv-html-content, .dv-docx-content, .dv-ipynb-md)
   :where(p, ul, ol, pre, table, blockquote, figure) {
   margin: 0 0 1em;
@@ -733,6 +748,9 @@
 }
 .dv-ipynb-md:not(:first-child) {
   margin-top: 16px;
+}
+.dv-reflow-piece + .dv-reflow-piece > .dv-ipynb-cell:first-child {
+  margin-top: 0;
 }
 
 @keyframes dv-page-enter {

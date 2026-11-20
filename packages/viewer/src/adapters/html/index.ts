@@ -1,2 +1,3 @@
-export { htmlManifest, HtmlAdapter } from './HtmlAdapter';
+export { htmlManifest } from './manifest';
+export { HtmlAdapter } from './HtmlAdapter';
 export { HtmlAdapter as default } from './HtmlAdapter';

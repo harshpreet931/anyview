@@ -1,27 +1,43 @@
-const CHARS_PER_LINE = 80;
-const LINE_HEIGHT = 24;
+import type { OutlineNode } from './types';
 
-const offsetFor = (chars: number) => Math.ceil(chars / CHARS_PER_LINE) * LINE_HEIGHT;
+export const HEADINGS = 'h1, h2, h3, h4, h5, h6';
 
-export function headingScrollOffset(doc: Document, heading: Element): number {
-  return headingScrollOffsets(doc, [heading])[0]!;
-}
+export const headingsIn = (root: ParentNode): Element[] => Array.from(root.querySelectorAll(HEADINGS));
 
-/** Offsets for many headings (in document order) in one pass over the text, instead of one range per heading. */
-export function headingScrollOffsets(doc: Document, headings: readonly Element[]): number[] {
-  if (!doc.body || headings.length === 0) return headings.map(() => 0);
-  const out: number[] = [];
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-  let chars = 0;
-  let next = 0;
-  for (let node: Node | null = walker.currentNode; node && next < headings.length; node = walker.nextNode()) {
-    if (node === headings[next]) {
-      out.push(offsetFor(chars));
-      next++;
-    } else if (node.nodeType === Node.TEXT_NODE) {
-      chars += (node as Text).data.length;
-    }
+/**
+ * The outline of a flowing page. Each entry's offset is read from its rendered heading when it is followed, so the
+ * jump lands exactly on the heading however the page has laid out; it is the page top until the page is drawn.
+ */
+export class HeadingOutline {
+  readonly nodes: OutlineNode[];
+  private target: HTMLElement | null = null;
+  private find: () => readonly Element[] = () => [];
+
+  /** Entries titled after `headings`, found in the page as built at parse time. */
+  constructor(headings: readonly Element[]) {
+    const offset = (i: number) => this.offset(i);
+    this.nodes = headings.map((heading, i) => ({
+      title: heading.textContent?.trim() ?? '',
+      dest: {
+        pageIndex: 0,
+        get scrollOffset() {
+          return offset(i);
+        },
+      },
+    }));
   }
-  while (out.length < headings.length) out.push(offsetFor(chars));
-  return out;
+
+  /** Points the entries at the headings `find` returns from `target`, in outline order, as the page is drawn. */
+  attach(target: HTMLElement, find: () => readonly Element[]): void {
+    this.target = target;
+    this.find = find;
+  }
+
+  private offset(i: number): number {
+    const heading = this.target?.isConnected && this.find()[i];
+    if (!this.target || !heading) return 0;
+    const page = this.target.getBoundingClientRect();
+    const zoom = this.target.offsetWidth ? page.width / this.target.offsetWidth : 1;
+    return (heading.getBoundingClientRect().top - page.top) / zoom;
+  }
 }

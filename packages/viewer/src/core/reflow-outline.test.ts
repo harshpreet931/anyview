@@ -1,56 +1,53 @@
 import { describe, it, expect } from 'vitest';
-import { headingScrollOffset, headingScrollOffsets } from './reflow-outline';
+import { HeadingOutline } from './reflow-outline';
+import type { PageDestination } from './types';
 
-function parse(html: string): Document {
-  return new DOMParser().parseFromString(html, 'text/html');
+function box(el: Element, top: number, height: number, width = 800) {
+  el.getBoundingClientRect = () => ({ top, height, width, left: 0, right: width, bottom: top + height, x: 0, y: top, toJSON: () => ({}) });
 }
 
-describe('headingScrollOffset', () => {
-  it('is 0 for a heading at the very top', () => {
-    const doc = parse('<h1>Top</h1><p>body</p>');
-    const h = doc.querySelector('h1')!;
-    expect(headingScrollOffset(doc, h)).toBe(0);
+function page(zoom: number) {
+  const target = document.createElement('div');
+  target.innerHTML = '<h1>Notes</h1><p>text</p><h1>Notes</h1><p>more</p><h2>End</h2>';
+  document.body.appendChild(target);
+  Object.defineProperty(target, 'offsetWidth', { value: 800 });
+  box(target, 100, 3000 * zoom, 800 * zoom);
+  const [a, b, c] = Array.from(target.querySelectorAll('h1, h2'));
+  box(a!, 100 + 24 * zoom, 30 * zoom);
+  box(b!, 100 + 1200 * zoom, 30 * zoom);
+  box(c!, 100 + 2500 * zoom, 30 * zoom);
+  return { target, headings: [a!, b!, c!] };
+}
+
+const titled = (...titles: string[]) =>
+  titles.map((title) => Object.assign(document.createElement('h2'), { textContent: ` ${title} ` }));
+
+const offsets = (outline: HeadingOutline) => outline.nodes.map((n) => (n.dest as PageDestination).scrollOffset);
+
+describe('HeadingOutline', () => {
+  it('reads each offset from its own rendered heading, in page units at any zoom', () => {
+    const outline = new HeadingOutline(titled('Notes', 'Notes', 'End'));
+    const { target, headings } = page(1.5);
+    outline.attach(target, () => headings);
+    expect(outline.nodes.map((n) => n.title)).toEqual(['Notes', 'Notes', 'End']);
+    expect(offsets(outline)).toEqual([24, 1200, 2500]);
+    target.remove();
   });
 
-  it('produces increasing, non-zero offsets for later headings', () => {
-    const filler = 'x'.repeat(2000);
-    const doc = parse(
-      `<h1>A</h1><p>${filler}</p><h2>B</h2><p>${filler}</p><h3>C</h3>`,
-    );
-    const [a, b, c] = Array.from(doc.querySelectorAll('h1, h2, h3'));
-    const oa = headingScrollOffset(doc, a!);
-    const ob = headingScrollOffset(doc, b!);
-    const oc = headingScrollOffset(doc, c!);
-    expect(oa).toBe(0);
-    expect(ob).toBeGreaterThan(0);
-    expect(oc).toBeGreaterThan(ob);
+  it('follows the page when it is drawn again', () => {
+    const outline = new HeadingOutline(titled('Notes', 'Notes', 'End'));
+    const first = page(1);
+    outline.attach(first.target, () => first.headings);
+    first.target.remove();
+    const second = page(2);
+    box(second.headings[2]!, 100 + 2600 * 2, 60);
+    outline.attach(second.target, () => second.headings);
+    expect(offsets(outline)).toEqual([24, 1200, 2600]);
+    second.target.remove();
   });
 
-  it('orders duplicate heading text by document position', () => {
-    const filler = 'y'.repeat(1600);
-    const doc = parse(`<h2>Same</h2><p>${filler}</p><h2>Same</h2>`);
-    const [first, second] = Array.from(doc.querySelectorAll('h2'));
-    expect(headingScrollOffset(doc, second!)).toBeGreaterThan(
-      headingScrollOffset(doc, first!),
-    );
-  });
-});
-
-describe('headingScrollOffsets', () => {
-  it('matches the per-heading offsets', () => {
-    const filler = 'z'.repeat(900);
-    const doc = parse(`<h1>A</h1><p>${filler}</p><div><h2>B</h2><p>${filler}<b>${filler}</b></p></div><h3>C</h3>`);
-    const headings = Array.from(doc.querySelectorAll('h1, h2, h3'));
-    expect(headingScrollOffsets(doc, headings)).toEqual(headings.map((h) => headingScrollOffset(doc, h)));
-  });
-
-  it('stays linear for documents with tens of thousands of headings', () => {
-    const doc = parse('<h2>x</h2><p>body text</p>'.repeat(40_000));
-    const headings = Array.from(doc.querySelectorAll('h2'));
-    const t0 = performance.now();
-    const offsets = headingScrollOffsets(doc, headings);
-    expect(performance.now() - t0).toBeLessThan(2000);
-    expect(offsets).toHaveLength(40_000);
-    expect(offsets[39_999]).toBeGreaterThan(offsets[1]!);
+  it('points at the top of the page until the page is drawn', () => {
+    const outline = new HeadingOutline(titled('A', 'B'));
+    expect(offsets(outline)).toEqual([0, 0]);
   });
 });

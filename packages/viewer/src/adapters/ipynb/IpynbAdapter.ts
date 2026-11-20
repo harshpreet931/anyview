@@ -1,10 +1,8 @@
 import { decodeText } from '../../core/text-decode';
 import type {
   Adapter,
-  AdapterManifest,
   DocumentModel,
   FileSourceReader,
-  OutlineNode,
   PageRef,
   RenderContext,
   RenderResult,
@@ -14,36 +12,22 @@ import type {
 } from '../../core/types';
 import { ViewerError, asParseError, throwIfCancelled } from '../../core/errors';
 import { loadSanitizer, DOCUMENT_HTML_CONFIG, type Sanitizer } from '../../core/sanitizer';
-import { EMPTY_HTML, escapeHtml, markSanitized, type SafeHtml } from '../../core/safe-html';
+import { escapeHtml, markSanitized, type SafeHtml } from '../../core/safe-html';
 import { assertTransformSize } from '../../core/limits';
-import { loadMarkdownRenderer, MARKDOWN_HEADING } from '../../core/markdown-render';
+import { loadMarkdownRenderer } from '../../core/markdown-render';
 import { loadHighlighter } from '../../core/highlighter';
-import { renderReflowPage } from '../../core/reflow-page';
+import {
+  detachedReflow,
+  EMPTY_REFLOW,
+  reflowBlockTexts,
+  renderReflowPage,
+  timeSlices,
+  type ReflowContent,
+} from '../../core/reflow-page';
+import { HEADINGS, HeadingOutline } from '../../core/reflow-outline';
 import { lineTextLayer } from '../../core/line-text-layer';
-import { blockTexts, markBlockUnits, searchUnits } from '../../core/search-units';
-
-export const ipynbManifest: AdapterManifest = {
-  id: 'ipynb',
-  label: 'Jupyter Notebook',
-  extensions: ['ipynb'],
-  mimeTypes: ['application/x-ipynb+json'],
-  icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10v14H3V1zm1 1v12h8V2H4zm1 2h6v1H5V4zm0 3h6v1H5V7zm0 3h4v1H5v-1z"/></svg>`,
-  features: {
-    search: true,
-    annotations: false,
-    textSelection: true,
-    print: true,
-    thumbnails: false,
-    outline: true,
-    zoom: true,
-    rotation: false,
-    attachments: false,
-    fullscreen: true,
-    download: true,
-  },
-  priority: 100,
-  protocolVersion: 1,
-};
+import { searchUnits } from '../../core/search-units';
+import { ipynbManifest } from './manifest';
 
 interface NbOutput {
   output_type: string;
@@ -93,9 +77,17 @@ const BASE64_IMAGE_TYPES = ['image/png', 'image/jpeg'];
 
 const plainCode = (code: string) => `<pre class="dv-ipynb-code"><code>${escapeHtml(code)}</code></pre>`;
 
+const NOTEBOOK_SHELL = markSanitized('<div class="dv-ipynb"></div>');
+const PIECE_CHARS = 32 * 1024;
+
+/** The first heading of each markdown cell: the notebook's outline. */
+const cellHeadings = (root: ParentNode): Element[] =>
+  Array.from(root.querySelectorAll('.dv-ipynb-md'), (cell) => cell.querySelector(HEADINGS)).filter((h) => h !== null);
+
 export class IpynbAdapter implements Adapter {
   readonly manifest = ipynbManifest;
-  private htmlContent: SafeHtml = EMPTY_HTML;
+  private content = EMPTY_REFLOW;
+  private outline = new HeadingOutline([]);
   private textContent = '';
   private blocks: string[] | null = null;
 
@@ -126,7 +118,7 @@ export class IpynbAdapter implements Adapter {
       .join('\n\n');
 
     try {
-      this.htmlContent = await this.buildHtml(cells, language);
+      this.content = await this.buildContent(cells, language, signal);
       this.blocks = null;
     } catch (cause) {
       throw asParseError(cause, 'Failed to render notebook.');
@@ -139,41 +131,51 @@ export class IpynbAdapter implements Adapter {
       height: estimatedHeight,
       rotation: 0,
     };
-    const outline = this.buildOutline(cells);
+    this.outline = new HeadingOutline(cellHeadings(await detachedReflow(this.content, signal)));
 
     return {
       format: 'ipynb',
       meta: source.meta,
       pageCount: 1,
       pages: [page],
-      ...(outline ? { outline } : {}),
+      ...(this.outline.nodes.length > 0 ? { outline: this.outline.nodes } : {}),
     };
   }
 
-  private async buildHtml(cells: NbCell[], language: string): Promise<SafeHtml> {
+  private async buildContent(cells: NbCell[], language: string, signal: AbortSignal): Promise<ReflowContent> {
     const [renderMarkdown, DOMPurify, highlight] = await Promise.all([
       loadMarkdownRenderer(),
       loadSanitizer(),
       loadHighlighter(language, plainCode),
     ]);
 
-    let html = '<div class="dv-ipynb">';
+    const next = timeSlices(signal);
+    const pieces: SafeHtml[] = [];
+    let piece = '';
+    let previous = '';
     for (const cell of cells) {
+      // Pieces split only between two code cells, where the gap is one cell margin either way.
+      if (piece.length >= PIECE_CHARS && cell.cell_type === 'code' && previous === 'code') {
+        pieces.push(markSanitized(piece));
+        piece = '';
+      }
+      previous = cell.cell_type;
       const src = joinSource(cell.source);
       if (cell.cell_type === 'markdown') {
-        html += `<div class="dv-ipynb-md">${renderMarkdown(src)}</div>`;
+        piece += `<div class="dv-ipynb-md">${renderMarkdown(src)}</div>`;
       } else if (cell.cell_type === 'code') {
-        html += `<div class="dv-ipynb-cell"><div class="dv-ipynb-input">${highlight(src)}</div>`;
+        piece += `<div class="dv-ipynb-cell"><div class="dv-ipynb-input">${highlight(src)}</div>`;
         for (const out of cell.outputs ?? []) {
-          html += this.renderOutput(out, DOMPurify);
+          piece += this.renderOutput(out, DOMPurify);
         }
-        html += '</div>';
+        piece += '</div>';
       } else {
-        html += `<pre class="dv-ipynb-raw">${escapeHtml(src)}</pre>`;
+        piece += `<pre class="dv-ipynb-raw">${escapeHtml(src)}</pre>`;
       }
+      await next();
     }
-    html += '</div>';
-    return markSanitized(html);
+    pieces.push(markSanitized(piece));
+    return { shell: NOTEBOOK_SHELL, pieces };
   }
 
   private renderOutput(out: NbOutput, DOMPurify: Sanitizer): string {
@@ -211,33 +213,18 @@ export class IpynbAdapter implements Adapter {
     return '';
   }
 
-  private buildOutline(cells: NbCell[]): OutlineNode[] | undefined {
-    const outline: OutlineNode[] = [];
-    for (const cell of cells) {
-      if (cell.cell_type !== 'markdown') continue;
-      for (const line of joinSource(cell.source).split('\n')) {
-        const m = MARKDOWN_HEADING.exec(line);
-        if (m) {
-          outline.push({ title: m[2]!.trim(), dest: { pageIndex: 0 } });
-          break;
-        }
-      }
-    }
-    return outline.length > 0 ? outline : undefined;
-  }
-
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const result = renderReflowPage(ctx, this.htmlContent, {
+    if (!ctx.print) this.outline.attach(ctx.target, () => cellHeadings(ctx.target));
+    const result = await renderReflowPage(ctx, this.content, {
       className: 'dv-ipynb-content',
       maxWidth: 900,
       fontSize: 15,
     });
-    markBlockUnits(ctx.target.firstElementChild!);
     return result;
   }
 
   async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
-    this.blocks ??= blockTexts(this.htmlContent);
+    this.blocks ??= await reflowBlockTexts(this.content, signal);
     return searchUnits(this.blocks.map((text, unit) => ({ pageIndex: 0, unit, text })), query, signal);
   }
 
@@ -249,7 +236,8 @@ export class IpynbAdapter implements Adapter {
   }
 
   dispose(): void {
-    this.htmlContent = EMPTY_HTML;
+    this.content = EMPTY_REFLOW;
+    this.outline = new HeadingOutline([]);
     this.textContent = '';
     this.blocks = null;
   }
