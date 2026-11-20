@@ -1,14 +1,6 @@
-type Sanitizer = {
-  sanitize: (dirty: string, config?: Record<string, unknown>) => string;
-  addHook: (entry: string, cb: (node: unknown) => void) => void;
-};
+import type { Config, DOMPurify } from 'dompurify';
 
-type MutableEl = {
-  tagName?: string;
-  getAttribute?: (name: string) => string | null;
-  setAttribute?: (name: string, value: string) => void;
-  removeAttribute?: (name: string) => void;
-};
+export type Sanitizer = DOMPurify;
 
 export const DOCUMENT_HTML_CONFIG = {
   ALLOWED_TAGS: [
@@ -28,13 +20,13 @@ export const DOCUMENT_HTML_CONFIG = {
   ],
   ALLOW_DATA_ATTR: true,
   SANITIZE_NAMED_PROPS: true,
-};
+} satisfies Config;
 
 const NAMED_PROP_PREFIX = 'user-content-';
 
 let hookRegistered = false;
 
-function isInlineRef(url: string): boolean {
+export function isInlineRef(url: string): boolean {
   const u = url.trim().toLowerCase();
   return u.startsWith('data:') || u.startsWith('#');
 }
@@ -73,45 +65,59 @@ export function hasNetworkCss(style: string): boolean {
     const rest = css.slice(i, i + 20);
     if (/^@import/i.test(rest) || NETWORK_FUNCTIONS.test(rest)) return true;
     if (/^url\(/i.test(rest)) {
-      const target = readUrlArgument(css, i + 4).trim().toLowerCase();
-      if (!target.startsWith('data:') && !target.startsWith('#')) return true;
+      if (!isInlineRef(readUrlArgument(css, i + 4))) return true;
     }
   }
   return false;
 }
 
+function stripNetworkStyle(el: Element): void {
+  const style = el.getAttribute('style');
+  if (style && hasNetworkCss(style)) el.removeAttribute('style');
+}
+
+function scopeFragmentHref(el: Element): void {
+  const href = el.getAttribute('href');
+  if (
+    el.tagName === 'A' &&
+    href &&
+    href.length > 1 &&
+    href.startsWith('#') &&
+    !href.startsWith(`#${NAMED_PROP_PREFIX}`)
+  ) {
+    el.setAttribute('href', `#${NAMED_PROP_PREFIX}${href.slice(1)}`);
+  }
+}
+
+function hardenBlankTarget(el: Element): void {
+  if (el.tagName === 'A' && el.getAttribute('target') === '_blank') {
+    el.setAttribute('rel', 'noopener noreferrer');
+  }
+}
+
+function stripRemoteImageSrc(el: Element): void {
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'img') {
+    const src = el.getAttribute('src');
+    if (src && !isInlineRef(src)) el.removeAttribute('src');
+  } else if (tag === 'image') {
+    // SVG <image> can load via href or the legacy xlink:href.
+    for (const attr of ['href', 'xlink:href']) {
+      const v = el.getAttribute(attr);
+      if (v && !isInlineRef(v)) el.removeAttribute(attr);
+    }
+  }
+}
+
 /** Load DOMPurify with the style-attribute CSS guard installed. */
 export async function loadSanitizer(): Promise<Sanitizer> {
-  const DOMPurify = (await import('dompurify')).default as unknown as Sanitizer;
+  const DOMPurify = (await import('dompurify')).default;
   if (!hookRegistered) {
-    DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-      const el = node as MutableEl;
-      const style = el.getAttribute?.('style');
-      if (style && hasNetworkCss(style)) el.removeAttribute?.('style');
-      const href = el.getAttribute?.('href');
-      if (
-        el.tagName === 'A' &&
-        href &&
-        href.length > 1 &&
-        href.startsWith('#') &&
-        !href.startsWith(`#${NAMED_PROP_PREFIX}`)
-      ) {
-        el.setAttribute?.('href', `#${NAMED_PROP_PREFIX}${href.slice(1)}`);
-      }
-      if (el.tagName === 'A' && el.getAttribute?.('target') === '_blank') {
-        el.setAttribute?.('rel', 'noopener noreferrer');
-      }
-      const tag = el.tagName?.toLowerCase();
-      if (tag === 'img') {
-        const src = el.getAttribute?.('src');
-        if (src && !isInlineRef(src)) el.removeAttribute?.('src');
-      } else if (tag === 'image') {
-        // SVG <image> can load via href or the legacy xlink:href.
-        for (const attr of ['href', 'xlink:href']) {
-          const v = el.getAttribute?.(attr);
-          if (v && !isInlineRef(v)) el.removeAttribute?.(attr);
-        }
-      }
+    DOMPurify.addHook('afterSanitizeAttributes', (el) => {
+      stripNetworkStyle(el);
+      scopeFragmentHref(el);
+      hardenBlankTarget(el);
+      stripRemoteImageSrc(el);
     });
     hookRegistered = true;
   }

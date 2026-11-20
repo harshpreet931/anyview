@@ -29,3 +29,9 @@ export function setSafeHtml(el: Element, html: SafeHtml): void {
   template.innerHTML = html;
   el.replaceChildren(template.content);
 }
+
+export function escapeHtml(text: string): SafeHtml {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return markSanitized(div.innerHTML);
+}

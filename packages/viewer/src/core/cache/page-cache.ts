@@ -33,16 +33,8 @@ export class PageCache {
       this.cache.delete(key);
     }
 
-    while (
-      this.totalBytes + page.byteSize > this.maxBytes &&
-      this.cache.size > 0
-    ) {
-      const entry = this.cache.entries().next();
-      if (!entry || entry.done || !entry.value) break;
-      const [oldestKey, oldest] = entry.value;
-      this.dispose(oldest);
-      this.cache.delete(oldestKey);
-      this.totalBytes -= oldest.byteSize;
+    while (this.totalBytes + page.byteSize > this.maxBytes && this.cache.size > 0) {
+      this.evictOldest();
     }
 
     this.cache.set(key, page);
@@ -77,18 +69,18 @@ export class PageCache {
 
   shrinkTo(targetBytes: number): void {
     while (this.totalBytes > targetBytes && this.cache.size > 0) {
-      const entry = this.cache.entries().next();
-      if (!entry || entry.done || !entry.value) break;
-      const [oldestKey, oldest] = entry.value;
-      this.dispose(oldest);
-      this.cache.delete(oldestKey);
-      this.totalBytes -= oldest.byteSize;
+      this.evictOldest();
     }
   }
 
   /** Drop least-recently-used pages down to a fraction of the budget. */
   trim(fraction: number = 0.25): void {
     this.shrinkTo(Math.floor(this.maxBytes * fraction));
+  }
+
+  private evictOldest(): void {
+    const oldestKey = this.cache.keys().next().value;
+    if (oldestKey !== undefined) this.delete(oldestKey);
   }
 
   private dispose(page: CachedPage): void {
@@ -101,9 +93,6 @@ export class PageCache {
   }
 }
 
-/**
- * Build a cache key for a rendered page.
- */
 export function makeCacheKey(
   format: string,
   pageIndex: number,
@@ -114,7 +103,6 @@ export function makeCacheKey(
   return `${format}:${pageIndex}:${zoom}:${rotation}:${dpr}`;
 }
 
-/** Estimate the byte size of an ImageBitmap or canvas. */
 export function estimateBitmapByteSize(
   width: number,
   height: number,

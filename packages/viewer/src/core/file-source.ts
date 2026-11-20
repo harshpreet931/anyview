@@ -1,24 +1,23 @@
 import type { FileSource, FileSourceReader } from './types';
 import { ViewerError } from './errors';
 
+const UNKNOWN_MIME = 'application/octet-stream';
+
 export function isSameSource(a: FileSource | undefined, b: FileSource | undefined): boolean {
   if (a === b) return true;
-  if (!a || !b || a.kind !== b.kind) return false;
+  if (!a || !b) return false;
   switch (a.kind) {
     case 'file':
-      return a.file === (b as typeof a).file;
+      return b.kind === 'file' && a.file === b.file;
     case 'handle':
-      return a.handle === (b as typeof a).handle;
+      return b.kind === 'handle' && a.handle === b.handle;
     case 'url':
-      return a.url === (b as typeof a).url && a.filename === (b as typeof a).filename;
-    case 'buffer': {
-      const o = b as typeof a;
-      return a.buffer === o.buffer && a.name === o.name && a.type === o.type;
-    }
+      return b.kind === 'url' && a.url === b.url && a.filename === b.filename;
+    case 'buffer':
+      return b.kind === 'buffer' && a.buffer === b.buffer && a.name === b.name && a.type === b.type;
   }
 }
 
-/** Normalize any FileSource into a FileSourceReader. */
 export async function normalizeFileSource(
   source: FileSource,
 ): Promise<FileSourceReader> {
@@ -39,7 +38,7 @@ function createFileReader(file: File): FileSourceReader {
     meta: {
       name: file.name,
       size: file.size,
-      mimeType: file.type || 'application/octet-stream',
+      mimeType: file.type || UNKNOWN_MIME,
       lastModified: file.lastModified,
     },
     arrayBuffer: () => file.arrayBuffer(),
@@ -53,28 +52,14 @@ function createBufferReader(
   type: string,
 ): FileSourceReader {
   return {
-    meta: { name, size: buffer.byteLength, mimeType: type || 'application/octet-stream' },
+    meta: { name, size: buffer.byteLength, mimeType: type || UNKNOWN_MIME },
     arrayBuffer: async () => buffer,
     stream: () => null,
   };
 }
 
-function createHandleReader(
-  handle: FileSystemFileHandle,
-): Promise<FileSourceReader> {
-  return (async () => {
-    const file = await handle.getFile();
-    return {
-      meta: {
-        name: file.name,
-        size: file.size,
-        mimeType: file.type || 'application/octet-stream',
-        lastModified: file.lastModified,
-      },
-      arrayBuffer: () => file.arrayBuffer(),
-      stream: () => file.stream() as ReadableStream<Uint8Array>,
-    };
-  })();
+async function createHandleReader(handle: FileSystemFileHandle): Promise<FileSourceReader> {
+  return createFileReader(await handle.getFile());
 }
 
 async function createUrlReader(
@@ -99,7 +84,7 @@ async function createUrlReader(
 
   const blob = await response.blob();
   const name = filename || extractFilenameFromUrl(url);
-  const type = blob.type || 'application/octet-stream';
+  const type = blob.type || UNKNOWN_MIME;
 
   return {
     meta: { name, size: blob.size, mimeType: type },

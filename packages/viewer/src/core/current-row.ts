@@ -1,9 +1,12 @@
+const START_TOLERANCE = 1;
 const END_TOLERANCE = 2;
 
-export function rowAtOffset(items: { index: number; start: number }[], offset: number): number {
-  let row = items.length > 0 ? items[0].index : 0;
+type RowStart = { index: number; start: number };
+
+export function rowAtOffset(items: RowStart[], offset: number): number {
+  let row = items[0]?.index ?? 0;
   for (const it of items) {
-    if (it.start <= offset + 1) row = it.index;
+    if (it.start <= offset + START_TOLERANCE) row = it.index;
     else break;
   }
   return row;
@@ -14,7 +17,7 @@ export function rowAtOffset(items: { index: number; start: number }[], offset: n
  * bring its top to the top of the scroller, so reaching the end counts as being on it.
  */
 export function currentRow(
-  items: { index: number; start: number }[],
+  items: RowStart[],
   offset: number,
   { viewport, total, count }: { viewport: number; total: number; count: number },
 ): number {

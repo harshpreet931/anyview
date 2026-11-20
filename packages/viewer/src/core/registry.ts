@@ -6,7 +6,7 @@ import type {
   AdapterRegistry,
   FormatId,
 } from './types';
-import { detectFormat as detectFormatByExt, extractExtension, getFormatSpecs } from './format-detect';
+import { bareMimeType, detectFormat as detectFormatByExt, extractExtension, getFormatSpecs } from './format-detect';
 
 const BUILT_IN = new Set<string>(getFormatSpecs().map((s) => s.id));
 
@@ -49,7 +49,7 @@ export function createRegistry(): AdapterRegistry {
 
     detectFormat(filename: string, mimeType?: string, head?: Uint8Array): FormatId | null {
       const ext = extractExtension(filename);
-      const mime = (mimeType ?? '').split(';')[0]!.trim().toLowerCase();
+      const mime = bareMimeType(mimeType);
       let custom: AdapterManifest | null = null;
       for (const m of manifests.values()) {
         if (BUILT_IN.has(m.id)) continue;

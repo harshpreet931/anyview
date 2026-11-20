@@ -85,23 +85,12 @@ const FORMAT_SPECS: readonly FormatSpec[] = [
   },
 ];
 
-const EXTENSION_MAP = new Map<string, FormatId>();
-const MIME_MAP = new Map<string, FormatId>();
-
-for (const spec of FORMAT_SPECS) {
-  for (const ext of spec.extensions) {
-    const lower = ext.toLowerCase();
-    if (!EXTENSION_MAP.has(lower)) {
-      EXTENSION_MAP.set(lower, spec.id);
-    }
-  }
-  for (const mime of spec.mimeTypes) {
-    const lower = mime.toLowerCase();
-    if (!MIME_MAP.has(lower)) {
-      MIME_MAP.set(lower, spec.id);
-    }
-  }
-}
+const EXTENSION_MAP = new Map<string, FormatId>(
+  FORMAT_SPECS.flatMap((spec) => spec.extensions.map((ext) => [ext, spec.id] as const)),
+);
+const MIME_MAP = new Map<string, FormatId>(
+  FORMAT_SPECS.flatMap((spec) => spec.mimeTypes.map((mime) => [mime, spec.id] as const)),
+);
 
 const EXTENSIONLESS_MAP = new Map<string, FormatId>([
   ['dockerfile', 'code'],
@@ -121,9 +110,8 @@ const startsWith = (head: Uint8Array, sig: readonly number[], at = 0) =>
 const ascii = (s: string) => Array.from(s, (c) => c.charCodeAt(0));
 
 function includes(head: Uint8Array, needle: readonly number[]): boolean {
-  outer: for (let i = 0; i + needle.length <= head.length; i++) {
-    for (let j = 0; j < needle.length; j++) if (head[i + j] !== needle[j]) continue outer;
-    return true;
+  for (let i = 0; i + needle.length <= head.length; i++) {
+    if (startsWith(head, needle, i)) return true;
   }
   return false;
 }
@@ -135,7 +123,7 @@ const OOXML_ENTRIES: ReadonlyArray<[number[], FormatId]> = [
 ];
 
 /** Identifies a format from its leading bytes, for formats with a reliable signature. */
-export function sniffFormat(head: Uint8Array): FormatId | null {
+function sniffFormat(head: Uint8Array): FormatId | null {
   if (startsWith(head, ascii('%PDF-'))) return 'pdf';
   if (
     startsWith(head, [0x89, 0x50, 0x4e, 0x47]) ||
@@ -150,6 +138,10 @@ export function sniffFormat(head: Uint8Array): FormatId | null {
     for (const [entry, format] of OOXML_ENTRIES) if (includes(head, entry)) return format;
   }
   return null;
+}
+
+export function bareMimeType(mimeType: string | undefined): string {
+  return (mimeType ?? '').split(';')[0]!.trim().toLowerCase();
 }
 
 function looksLikeText(head: Uint8Array): boolean {
@@ -181,10 +173,10 @@ export function detectFormat(
     ? (EXTENSION_MAP.get(ext) ?? null)
     : (EXTENSIONLESS_MAP.get((filename.split(/[\\/]/).pop() ?? '').toLowerCase()) ?? null);
 
-  const bareMime = (mimeType ?? '').split(';')[0]!.trim().toLowerCase();
-  const byMime = MIME_MAP.get(bareMime) ?? null;
+  const mime = bareMimeType(mimeType);
+  const byMime = MIME_MAP.get(mime) ?? null;
 
-  if (byName && byMime && byMime !== byName && NAME_ONLY_FORMATS.has(byName) && !GENERIC_MIMES.has(bareMime)) {
+  if (byName && byMime && byMime !== byName && NAME_ONLY_FORMATS.has(byName) && !GENERIC_MIMES.has(mime)) {
     return byMime;
   }
   if (byName) return byName;
@@ -193,16 +185,10 @@ export function detectFormat(
   return null;
 }
 
-/**
- * Get all registered format specs.
- */
 export function getFormatSpecs(): readonly FormatSpec[] {
   return FORMAT_SPECS;
 }
 
-/**
- * Get the format spec for a specific FormatId.
- */
 export function getFormatSpec(id: FormatId): FormatSpec | undefined {
   return FORMAT_SPECS.find((s) => s.id === id);
 }

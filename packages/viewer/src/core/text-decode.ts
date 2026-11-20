@@ -1,6 +1,6 @@
-function decoder(label: string, fatal = false): TextDecoder | null {
+function decoder(label: string): TextDecoder | null {
   try {
-    return new TextDecoder(label, { fatal });
+    return new TextDecoder(label);
   } catch {
     return null;
   }

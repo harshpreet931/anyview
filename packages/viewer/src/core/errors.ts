@@ -39,3 +39,11 @@ export class ViewerError extends Error {
 export function isViewerError(value: unknown): value is ViewerError {
   return value instanceof ViewerError;
 }
+
+export function throwIfCancelled(signal: AbortSignal): void {
+  if (signal.aborted) throw new Error('Parse cancelled');
+}
+
+export function asParseError(cause: unknown, message: string): ViewerError {
+  return isViewerError(cause) ? cause : new ViewerError('PARSE_ERROR', message, { cause });
+}

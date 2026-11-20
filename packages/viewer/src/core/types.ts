@@ -1,3 +1,8 @@
+import type { ReactNode } from 'react';
+import type { SerializedAnnotations } from './annotations';
+import type { ViewerError } from './errors';
+import type { Rotation } from './rotation';
+
 /** The formats anyview ships adapters for. */
 export type BuiltInFormatId =
   | 'pdf'
@@ -15,21 +20,18 @@ export type BuiltInFormatId =
 /** A built-in format, or the id of a custom adapter registered at runtime. */
 export type FormatId = BuiltInFormatId | (string & {});
 
-/** Each FormatId maps to one or more MIME types and extensions. */
 export interface FormatSpec {
   readonly id: FormatId;
   readonly extensions: readonly string[];
   readonly mimeTypes: readonly string[];
 }
 
-/** Unified file input abstraction produced by every entry point. */
 export type FileSource =
   | { kind: 'file'; file: File }
   | { kind: 'handle'; handle: FileSystemFileHandle }
   | { kind: 'url'; url: string; filename?: string }
   | { kind: 'buffer'; buffer: ArrayBuffer; name: string; type: string };
 
-/** Normalized metadata extracted from any FileSource. */
 export interface FileMeta {
   readonly name: string;
   readonly size: number;
@@ -37,7 +39,6 @@ export interface FileMeta {
   readonly lastModified?: number;
 }
 
-/** Convert any FileSource to an ArrayBuffer or a ReadableStream. */
 export interface FileSourceReader {
   readonly meta: FileMeta;
   arrayBuffer(): Promise<ArrayBuffer>;
@@ -60,7 +61,7 @@ export interface PageRef {
   readonly index: number;
   readonly width: number;
   readonly height: number;
-  readonly rotation: 0 | 90 | 180 | 270;
+  readonly rotation: Rotation;
   readonly label?: string;
 }
 
@@ -124,7 +125,7 @@ export interface RenderContext {
   readonly page: PageRef;
   readonly target: RenderTarget;
   readonly scale: number;
-  readonly rotation: 0 | 90 | 180 | 270;
+  readonly rotation: Rotation;
   readonly devicePixelRatio: number;
   readonly signal: AbortSignal;
 }
@@ -230,7 +231,9 @@ export interface StickyNoteAnnotation extends BaseAnnotation<'sticky-note'> {
   };
 }
 
-export type ShapeKind = 'rectangle' | 'ellipse' | 'line' | 'arrow';
+export const SHAPE_KINDS = ['rectangle', 'ellipse', 'line', 'arrow'] as const;
+
+export type ShapeKind = (typeof SHAPE_KINDS)[number];
 
 export interface ShapeAnnotation extends BaseAnnotation<'shape'> {
   readonly data: {
@@ -296,7 +299,7 @@ export interface Adapter {
     options?: ParseOptions,
   ): Promise<DocumentModel>;
   renderPage(ctx: RenderContext): Promise<RenderResult>;
-  // `rotation` is the interactively-applied rotation; adapters compose it with any intrinsic rotation of their own.
+  /** `rotation` is the interactively-applied rotation; adapters compose it with any intrinsic rotation of their own. */
   getTextLayer?(
     pageIndex: number,
     signal?: AbortSignal,
@@ -350,9 +353,9 @@ export interface DocViewerSelection {
 export interface DocViewerProps {
   source?: FileSource;
   /** Rendered inside the viewer, so components here can use the viewer hooks (useNavigation, useZoom, ...). */
-  children?: import('react').ReactNode;
+  children?: ReactNode;
   onDocumentLoad?: (model: DocumentModel) => void;
-  onError?: (error: import('./errors').ViewerError) => void;
+  onError?: (error: ViewerError) => void;
   onAnnotationChange?: (annotations: Annotation[]) => void;
   /** Controlled current page - driving this prop navigates the viewer. */
   page?: number;
@@ -394,8 +397,8 @@ export interface DocViewerRef {
   setAnnotations: (annotations: Annotation[]) => void;
   clearAnnotations: () => void;
   setActiveTool: (tool: AnnotationTool | null) => void;
-  exportAnnotations: () => import('./annotations').SerializedAnnotations;
+  exportAnnotations: () => SerializedAnnotations;
   importAnnotations: (
-    data: import('./annotations').SerializedAnnotations | string,
+    data: SerializedAnnotations | string,
   ) => void;
 }

@@ -25,18 +25,18 @@ async function renderPages(adapter: Adapter, model: DocumentModel, into: Documen
     const wrap = into.createElement('div');
     wrap.className = 'dv-print-page';
     root.appendChild(wrap);
-    if (model.format === 'image') {
-      const canvas = document.createElement('canvas');
-      await adapter.renderPage({ page, target: canvas, scale: 1, rotation: 0, devicePixelRatio: 2, signal });
-      const img = into.createElement('img');
-      img.src = canvas.toDataURL('image/png');
-      img.alt = model.meta.name;
-      wrap.appendChild(img);
-    } else {
-      const target = into.createElement('div');
+    const isImage = model.format === 'image';
+    const target = isImage ? document.createElement('canvas') : into.createElement('div');
+    if (!isImage) {
       target.className = 'dv-reflow-target';
       wrap.appendChild(target);
-      await adapter.renderPage({ page, target, scale: 1, rotation: 0, devicePixelRatio: 1, signal });
+    }
+    await adapter.renderPage({ page, target, scale: 1, rotation: 0, devicePixelRatio: isImage ? 2 : 1, signal });
+    if (target instanceof HTMLCanvasElement) {
+      const img = into.createElement('img');
+      img.src = target.toDataURL('image/png');
+      img.alt = model.meta.name;
+      wrap.appendChild(img);
     }
   }
   return root;

@@ -40,11 +40,7 @@ export class LRUCache<K, V> {
       (this.totalBytes + byteSize > this.maxBytes || this.cache.size >= this.maxEntries) &&
       this.cache.size > 0
     ) {
-      const entry = this.cache.entries().next();
-      if (!entry || entry.done || !entry.value) break;
-      const [oldestKey, oldest] = entry.value;
-      this.cache.delete(oldestKey);
-      this.totalBytes -= oldest.byteSize;
+      this.evictOldest();
     }
 
     const newEntry: LRUEntry<K, V> = {
@@ -86,16 +82,16 @@ export class LRUCache<K, V> {
     return this.maxBytes;
   }
 
-  /**
-   * Shrink the cache to a target byte size by evicting LRU entries.
-   */
   shrinkTo(targetBytes: number): void {
     while (this.totalBytes > targetBytes && this.cache.size > 0) {
-      const entry = this.cache.entries().next();
-      if (!entry || entry.done || !entry.value) break;
-      const [oldestKey, oldest] = entry.value;
-      this.cache.delete(oldestKey);
-      this.totalBytes -= oldest.byteSize;
+      this.evictOldest();
     }
+  }
+
+  private evictOldest(): void {
+    const oldest = this.cache.values().next().value;
+    if (!oldest) return;
+    this.cache.delete(oldest.key);
+    this.totalBytes -= oldest.byteSize;
   }
 }

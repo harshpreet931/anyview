@@ -10,16 +10,17 @@ const umber = '#5c4a3a';
 const muted = '#6b635a';
 const comment = '#756a5e';
 const red = '#b42318';
+const background = '#f6f6f6';
 
 export const CODE_THEME: ThemeRegistration = {
   name: 'anyview-sand',
   type: 'light',
   colors: {
-    'editor.background': '#f6f6f6',
+    'editor.background': background,
     'editor.foreground': ink,
   },
   tokenColors: [
-    { settings: { foreground: ink, background: '#f6f6f6' } },
+    { settings: { foreground: ink, background } },
     { scope: ['comment', 'punctuation.definition.comment', 'string.comment'], settings: { foreground: comment, fontStyle: 'italic' } },
     {
       scope: ['keyword', 'storage', 'storage.type', 'storage.modifier', 'keyword.operator.new', 'keyword.operator.expression', 'keyword.operator.logical', 'keyword.control'],
