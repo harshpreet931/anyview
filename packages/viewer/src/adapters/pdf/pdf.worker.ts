@@ -1,30 +1,17 @@
 /// <reference types="vite/client" />
 
 import * as Comlink from 'comlink';
+import * as pdfjsLib from 'pdfjs-dist';
+import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import type { DocumentMetadata, OutlineNode } from '../../core/types';
 import type { ParsedPdf, PdfTextRun, PdfWorkerApi } from './types';
 import { pdfMetadata } from './metadata';
 import { totalRotation, type Rotation } from '../../core/rotation';
-import { loadParser } from '../../core/load-parser';
 
-let pdfjsPromise: Promise<typeof import('pdfjs-dist')> | null = null;
-
-function loadPdfjs() {
-  pdfjsPromise ??= loadParser('pdfjs-dist', async () => {
-    const [lib, worker] = await Promise.all([
-      import('pdfjs-dist'),
-      import('pdfjs-dist/build/pdf.worker.min.mjs'),
-    ]);
-    (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = worker;
-    return lib;
-  }).catch((err) => {
-    pdfjsPromise = null;
-    throw err;
-  });
-  return pdfjsPromise;
-}
+// Static imports keep the worker one bundle, which classic (iife) workers such as Vite 7's default require.
+(globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = pdfjsWorker;
 
 class OffscreenCanvasFactory {
   create(width: number, height: number) {
@@ -200,7 +187,6 @@ const api: PdfWorkerApi = {
     password?: string,
     assetBase?: string,
   ): Promise<ParsedPdf> {
-    const pdfjsLib = await loadPdfjs();
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(data),
       password,
@@ -260,7 +246,6 @@ const api: PdfWorkerApi = {
   },
 
   async getTextContent(docId: number, pageIndex: number, rotation: Rotation) {
-    const { Util } = await loadPdfjs();
     const page = await getDoc(docId).getPage(pageIndex + 1);
     const total = totalRotation(page.rotate as Rotation, rotation);
     const viewport = page.getViewport({ scale: 1, rotation: total });
@@ -268,7 +253,7 @@ const api: PdfWorkerApi = {
     const items = content.items
       .filter((item): item is TextItem => 'str' in item)
       .map((item): PdfTextRun => {
-        const [a, b, c, d, e, f] = Util.transform(viewport.transform, item.transform);
+        const [a, b, c, d, e, f] = pdfjsLib.Util.transform(viewport.transform, item.transform);
         const fontHeight = Math.hypot(c, d) || item.height || 10;
         const angle = Math.atan2(b, a);
 
@@ -297,8 +282,8 @@ const api: PdfWorkerApi = {
   },
 
   async getMetadata(docId: number): Promise<DocumentMetadata> {
-    const [{ PDFDateString }, meta] = await Promise.all([loadPdfjs(), getDoc(docId).getMetadata()]);
-    return pdfMetadata(meta.info as Record<string, unknown>, (date) => PDFDateString.toDateObject(date));
+    const meta = await getDoc(docId).getMetadata();
+    return pdfMetadata(meta.info as Record<string, unknown>, (date) => pdfjsLib.PDFDateString.toDateObject(date));
   },
 
   async dispose(docId: number): Promise<void> {
