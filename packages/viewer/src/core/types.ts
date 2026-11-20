@@ -128,7 +128,10 @@ export interface RenderContext {
   readonly rotation: Rotation;
   readonly devicePixelRatio: number;
   readonly signal: AbortSignal;
-  /** Rendering into the print frame: draw the whole page, with no virtualization and no interactive controls. */
+  /**
+   * Rendering into the print frame: draw the page in flow, with no virtualization and no interactive controls. A
+   * huge list may stop at a print limit and say so on the page.
+   */
   readonly print?: boolean;
 }
 

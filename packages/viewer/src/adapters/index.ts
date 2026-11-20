@@ -2,12 +2,12 @@ import type { AdapterRegistry } from '../core/types';
 import { pdfManifest } from './pdf/PdfAdapter';
 import { imageManifest } from './image/ImageAdapter';
 import { markdownManifest } from './markdown/MarkdownAdapter';
-import { codeManifest } from './code/CodeAdapter';
-import { textManifest } from './text/TextAdapter';
+import { codeManifest } from './code/manifest';
+import { textManifest } from './text/manifest';
 import { docxManifest } from './docx/DocxAdapter';
-import { xlsxManifest } from './xlsx/XlsxAdapter';
+import { xlsxManifest } from './xlsx/manifest';
 import { pptxManifest } from './pptx/PptxAdapter';
-import { csvManifest } from './csv/CsvAdapter';
+import { csvManifest } from './csv/manifest';
 import { htmlManifest } from './html/HtmlAdapter';
 import { ipynbManifest } from './ipynb/IpynbAdapter';
 

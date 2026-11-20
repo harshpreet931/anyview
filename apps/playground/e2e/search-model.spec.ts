@@ -51,7 +51,6 @@ function currentMatchInView(page: Page) {
   });
 }
 
-const paintedMatches = (page: Page) => page.evaluate(() => CSS.highlights.get('dv-search')?.size ?? 0);
 
 test.describe('search covers the whole document', () => {
   test('XLSX counts matches on every sheet and reveals one on an unmounted sheet', async ({ page }) => {
@@ -113,17 +112,6 @@ test.describe('search covers the whole document', () => {
     await waitForReflow(page);
     await search(page, 'name2001');
     await expect(count(page)).toHaveText('Not found');
-  });
-
-  test('CSV "Show more" paints the matches in the rows it adds', async ({ page }) => {
-    await openCsv(page, csv(5_000));
-    await waitForReflow(page);
-    await search(page, 'regular');
-    await expect(count(page)).toHaveText('1 of 5000');
-    await expect.poll(() => paintedMatches(page)).toBe(2_000);
-    await page.locator('.dv-viewer-container .dv-csv-more').click();
-    await expect.poll(() => paintedMatches(page)).toBe(4_000);
-    await expect(count(page)).toHaveText('1 of 5000');
   });
 
   test('a capped match count says so', async ({ page }) => {

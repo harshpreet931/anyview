@@ -423,35 +423,105 @@
   overflow-wrap: anywhere;
 }
 
-.dv-csv-table {
-  border-collapse: collapse;
-  width: 100%;
+/* Row lists render only the rows in view; rows are a fixed height so any row's place is known. */
+.dv-rows {
+  position: relative;
+  contain: size layout style;
+}
+
+.dv-rows-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.dv-rows[data-static] {
+  contain: none;
+}
+
+.dv-rows[data-static] > * {
+  position: static;
+  transform: none !important;
+}
+
+.dv-line {
+  display: block;
+  height: 20px;
+  white-space: pre;
+}
+
+.dv-grid {
+  padding: 16px;
   font-family: var(--dv-font-mono);
+  font-size: 14px;
 }
 
-.dv-csv-table th,
-.dv-csv-table td {
-  border: 1px solid var(--dv-page-border);
-  padding: 4px 10px;
+.dv-grid-table {
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.dv-grid-table :is(th, td) {
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 10px;
+  line-height: 27px;
+  border-right: 1px solid var(--dv-page-border);
+  border-bottom: 1px solid var(--dv-page-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: left;
+  font-weight: inherit;
 }
 
-.dv-csv-table th {
-  padding: 6px 10px;
+.dv-grid-table :is(th, td):first-child {
+  border-left: 1px solid var(--dv-page-border);
+}
+
+.dv-grid-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.dv-grid-head + .dv-rows-layer {
+  top: 32px;
+}
+
+.dv-grid-head th {
+  height: 32px;
+  line-height: 30px;
+  border-top: 1px solid var(--dv-page-border);
   background: var(--dv-page-header-bg);
   font-weight: 600;
 }
 
-.dv-csv-more {
-  margin: 12px 0 4px;
-  padding: 6px 12px;
-  font: inherit;
-  font-size: 0.9em;
-  border: 1px solid var(--dv-page-border);
-  border-radius: var(--dv-radius-sm);
-  background: var(--dv-page-bg);
-  color: inherit;
-  cursor: pointer;
+.dv-grid-table .dv-grid-num {
+  background: var(--dv-page-header-bg);
+  color: var(--dv-page-ink-soft);
+  text-align: right;
+  font-weight: inherit;
+  user-select: none;
+}
+
+.dv-grid-table .dv-grid-number {
+  text-align: right;
+}
+
+.dv-text {
+  padding: 16px;
+}
+
+.dv-text pre {
+  margin: 0;
+  font-family: var(--dv-font-mono);
+  font-size: 14px;
+  line-height: 20px;
+  tab-size: 4;
+  color: var(--dv-page-ink);
 }
 
 .dv-reflow-target {

@@ -1,7 +1,6 @@
 import { decodeText } from '../../core/text-decode';
 import type {
   Adapter,
-  AdapterManifest,
   DocumentModel,
   FileSourceReader,
   PageRef,
@@ -16,42 +15,44 @@ import type {
 import { asParseError, throwIfCancelled } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
 import { searchUnits, type SearchUnit } from '../../core/search-units';
+import { gridLayout, renderGrid, type GridLayout, type GridSource } from '../../core/rows/grid';
+import type { RowList } from '../../core/rows/virtual-rows';
+import { csvManifest } from './manifest';
 
-export const csvManifest: AdapterManifest = {
-  id: 'csv',
-  label: 'CSV Data',
-  extensions: ['csv', 'tsv'],
-  mimeTypes: ['text/csv', 'text/tab-separated-values'],
-  icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v3h3V3H3zm4 0v3h3V3H7zm4 0v3h2V3h-2zM3 7v3h3V7H3zm4 0v3h3V7H7zm4 0v3h2V7h-2zM3 11v2h3v-2H3zm4 0v2h3v-2H7zm4 0v2h2v-2h-2z"/></svg>`,
-  features: {
-    search: true,
-    annotations: false,
-    textSelection: true,
-    print: true,
-    thumbnails: false,
-    outline: false,
-    zoom: true,
-    rotation: false,
-    attachments: false,
-    fullscreen: true,
-    download: true,
-  },
-  priority: 90,
-  protocolVersion: 1,
-};
-
-const ROW_CHUNK = 2000;
-const PRINT_ROW_LIMIT = 10_000;
-const TABLE_ROW_HEIGHT = 32;
+const PARSE_SLICE = 1 << 20;
 const TEXT_ROW_HEIGHT = 20;
 const CHAR_WIDTH = 8;
+
+/**
+ * Cuts CSV text into slices of about `size` characters, each ending at a line break outside quotes (an even
+ * number of quote marks so far), so no row is split. Slices share the text's memory.
+ */
+function* slices(text: string, size: number): Generator<string> {
+  let quote = text.indexOf('"');
+  let quotes = 0;
+  const countQuotes = (to: number) => {
+    for (; quote >= 0 && quote < to; quote = text.indexOf('"', quote + 1)) quotes++;
+  };
+  for (let start = 0; start < text.length; ) {
+    let end = Math.min(text.length, start + size);
+    countQuotes(end);
+    while (end < text.length) {
+      const newline = text.indexOf('\n', end);
+      end = newline < 0 ? text.length : newline + 1;
+      countQuotes(end);
+      if (quotes % 2 === 0) break;
+    }
+    yield text.slice(start, end);
+    start = end;
+  }
+}
 
 export class CsvAdapter implements Adapter {
   readonly manifest = csvManifest;
   private rows: string[][] = [];
   private headers: string[] = [];
-  /** Grows a rendered table to hold at least the given number of data rows. */
-  private readonly growTo = new WeakMap<HTMLElement, (rows: number) => void>();
+  private layout: GridLayout | null = null;
+  private readonly lists = new WeakMap<HTMLElement, RowList>();
 
   async parse(
     source: FileSourceReader,
@@ -65,23 +66,28 @@ export class CsvAdapter implements Adapter {
 
     try {
       const Papa = (await loadParser('papaparse', () => import('papaparse'))).default;
-      const result = Papa.parse<string[]>(text, {
-        delimiter,
-        skipEmptyLines: true,
-      });
-
-      this.rows = result.data;
-      this.headers = this.rows.shift() ?? [];
+      const rows: string[][] = [];
+      let found = delimiter;
+      // A slice at a time, yielding in between, so a big file never blocks the page for long.
+      for (const slice of slices(text, PARSE_SLICE)) {
+        const result = Papa.parse<string[]>(slice, { delimiter: found, skipEmptyLines: true });
+        found = result.meta.delimiter;
+        for (const row of result.data) rows.push(row);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        throwIfCancelled(signal);
+      }
+      throwIfCancelled(signal);
+      this.headers = rows.shift() ?? [];
+      this.rows = rows;
     } catch (cause) {
       throw asParseError(cause, 'Failed to parse CSV.');
     }
 
-    const height = Math.max((Math.min(this.rows.length, ROW_CHUNK) + 2) * TABLE_ROW_HEIGHT + 48, 400);
-
+    this.layout = gridLayout(this.grid());
     const page: PageRef = {
       index: 0,
-      width: 1000,
-      height,
+      width: this.layout.width,
+      height: this.layout.height,
       rotation: 0,
     };
 
@@ -93,76 +99,36 @@ export class CsvAdapter implements Adapter {
     };
   }
 
-  async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const container = document.createElement('div');
-    container.style.padding = '16px';
-    container.style.overflow = 'auto';
-    container.style.fontSize = `${14 * ctx.scale}px`;
-
-    const table = document.createElement('table');
-    table.className = 'dv-csv-table';
-    if (this.headers.length > 0) {
-      const head = table.createTHead().insertRow();
-      head.dataset.dvUnit = '0';
-      this.headers.forEach((h, i) => {
-        const th = document.createElement('th');
-        th.textContent = h;
-        th.dataset.dvCell = String(i);
-        head.appendChild(th);
-      });
-    }
-    const body = table.createTBody();
-    container.appendChild(table);
-
-    const rows = this.rows;
-    let shown = 0;
-    const appendRows = (end: number) => {
-      const frag = document.createDocumentFragment();
-      for (let i = shown; i < end; i++) {
-        const tr = document.createElement('tr');
-        tr.dataset.dvUnit = String(i + 1);
-        rows[i]!.forEach((cell, c) => {
-          const td = document.createElement('td');
-          td.textContent = cell;
-          td.dataset.dvCell = String(c);
-          tr.appendChild(td);
-        });
-        frag.appendChild(tr);
-      }
-      body.appendChild(frag);
-      shown = end;
+  /** The header is unit 0 and data row `i` is unit `i + 1`, numbered `i + 1` in the gutter. */
+  private grid(): GridSource {
+    const { rows, headers } = this;
+    let columnCount = headers.length;
+    for (const row of rows) if (row.length > columnCount) columnCount = row.length;
+    return {
+      rowCount: rows.length,
+      columnCount,
+      headerUnit: 0,
+      header: (c) => headers[c] ?? '',
+      cell: (r, c) => rows[r]![c] ?? '',
+      rowUnit: (r) => r + 1,
+      rowLabel: (r) => String(r + 1),
+      cellId: (c) => c,
     };
+  }
 
-    if (ctx.print) {
-      appendRows(Math.min(rows.length, PRINT_ROW_LIMIT));
-      if (shown < rows.length) {
-        const note = document.createElement('p');
-        note.textContent = `Printed the first ${shown.toLocaleString()} of ${rows.length.toLocaleString()} rows.`;
-        container.appendChild(note);
-      }
-    } else {
-      const more = document.createElement('button');
-      more.type = 'button';
-      more.className = 'dv-csv-more';
-      const grow = (end: number) => {
-        appendRows(Math.min(rows.length, Math.max(end, shown + ROW_CHUNK)));
-        const left = rows.length - shown;
-        if (left > 0) more.textContent = `Show ${Math.min(left, ROW_CHUNK).toLocaleString()} more rows (${left.toLocaleString()} remaining)`;
-        else more.remove();
-      };
-      more.addEventListener('click', () => grow(0));
-      grow(0);
-      if (shown < rows.length) container.appendChild(more);
-      this.growTo.set(ctx.target as HTMLElement, (end) => {
-        if (end > shown) grow(end);
-      });
+  async renderPage(ctx: RenderContext): Promise<RenderResult> {
+    const target = ctx.target as HTMLElement;
+    const layout = this.layout ?? gridLayout(this.grid());
+    const { root, rows } = renderGrid(target, this.grid(), layout, ctx.signal, ctx.print);
+    this.lists.set(target, rows);
+    if (ctx.print && rows.to < this.rows.length) {
+      const note = root.appendChild(document.createElement('p'));
+      note.textContent = `Printed the first ${rows.to.toLocaleString()} of ${this.rows.length.toLocaleString()} rows.`;
     }
-
-    ctx.target.replaceChildren(container);
 
     return {
       width: ctx.page.width * ctx.scale,
-      height: container.scrollHeight || ctx.page.height * ctx.scale,
+      height: target.offsetHeight || ctx.page.height * ctx.scale,
     };
   }
 
@@ -194,11 +160,13 @@ export class CsvAdapter implements Adapter {
   }
 
   revealMatch(match: SearchMatch, target: HTMLElement): void {
-    if (match.locator) this.growTo.get(target)?.(match.locator.unit);
+    const unit = match.locator?.unit ?? 0;
+    if (unit > 0) this.lists.get(target)?.scrollToRow(unit - 1);
   }
 
   dispose(): void {
     this.rows = [];
     this.headers = [];
+    this.layout = null;
   }
 }

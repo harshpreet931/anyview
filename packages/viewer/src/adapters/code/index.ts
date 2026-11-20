@@ -1,2 +1,3 @@
-export { codeManifest, CodeAdapter } from './CodeAdapter';
+export { codeManifest } from './manifest';
+export { CodeAdapter } from './CodeAdapter';
 export { CodeAdapter as default } from './CodeAdapter';

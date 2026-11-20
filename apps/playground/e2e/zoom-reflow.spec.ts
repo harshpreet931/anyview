@@ -59,7 +59,7 @@ test('zooming a big table does not lay it out again', async ({ page }) => {
     .concat(Array.from({ length: 2000 }, (_, i) => `${i},Item ${i},City ${i % 40},${i * 3},open,User ${i % 9},Row note ${i},2026-01-${(i % 28) + 1}`))
     .join('\n');
   await open(page, { name: 'big.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
-  await expect(page.locator('.dv-reflow-target').first()).toContainText('Item 1999');
+  await expect(page.locator('.dv-reflow-target').first()).toContainText('Item 0');
   await zoomTo(page, '1');
   const before = await page.evaluate(() => {
     const t = document.querySelector<HTMLElement>('.dv-reflow-target')!;
