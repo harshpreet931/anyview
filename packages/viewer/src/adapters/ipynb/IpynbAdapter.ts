@@ -8,6 +8,8 @@ import type {
   PageRef,
   RenderContext,
   RenderResult,
+  SearchQuery,
+  SearchResult,
   TextLayer,
 } from '../../core/types';
 import { ViewerError, asParseError, throwIfCancelled } from '../../core/errors';
@@ -18,6 +20,7 @@ import { loadMarkdownRenderer, MARKDOWN_HEADING } from '../../core/markdown-rend
 import { loadHighlighter } from '../../core/highlighter';
 import { renderReflowPage } from '../../core/reflow-page';
 import { lineTextLayer } from '../../core/line-text-layer';
+import { blockTexts, markBlockUnits, searchUnits } from '../../core/search-units';
 
 export const ipynbManifest: AdapterManifest = {
   id: 'ipynb',
@@ -94,6 +97,7 @@ export class IpynbAdapter implements Adapter {
   readonly manifest = ipynbManifest;
   private htmlContent: SafeHtml = EMPTY_HTML;
   private textContent = '';
+  private blocks: string[] | null = null;
 
   async parse(
     source: FileSourceReader,
@@ -123,6 +127,7 @@ export class IpynbAdapter implements Adapter {
 
     try {
       this.htmlContent = await this.buildHtml(cells, language);
+      this.blocks = null;
     } catch (cause) {
       throw asParseError(cause, 'Failed to render notebook.');
     }
@@ -222,11 +227,18 @@ export class IpynbAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    return renderReflowPage(ctx, this.htmlContent, {
+    const result = renderReflowPage(ctx, this.htmlContent, {
       className: 'dv-ipynb-content',
       maxWidth: 900,
       fontSize: 15,
     });
+    markBlockUnits(ctx.target.firstElementChild!);
+    return result;
+  }
+
+  async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
+    this.blocks ??= blockTexts(this.htmlContent);
+    return searchUnits(this.blocks.map((text, unit) => ({ pageIndex: 0, unit, text })), query, signal);
   }
 
   async getTextLayer(
@@ -239,5 +251,6 @@ export class IpynbAdapter implements Adapter {
   dispose(): void {
     this.htmlContent = EMPTY_HTML;
     this.textContent = '';
+    this.blocks = null;
   }
 }

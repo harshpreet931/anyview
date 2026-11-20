@@ -83,4 +83,27 @@ describe('search slice', () => {
     expect(store.getState().searchResult).toBeNull();
     expect(store.getState().searchQuery).toBeNull();
   });
+
+  it('searches the model of any format whose adapter can search', async () => {
+    const store = createViewerStore();
+    store.setState({ adapter: new FakeAdapter(), document: { ...makeDoc(5), format: 'xlsx' } });
+    store.getState().search(QUERY);
+    await flush();
+    expect(store.getState().searchResult?.totalMatches).toBe(3);
+  });
+
+  it('reveals DOM matches once per search, not every time a page publishes them', () => {
+    const store = createViewerStore();
+    store.setState({ document: makeDoc(3) });
+    store.getState().search(QUERY);
+    const match = (pageIndex: number): SearchMatch => ({ pageIndex, text: 'a', x: 0, y: 0, width: 0, height: 0 });
+    store.getState().applySearchMatches([match(0)]);
+    const revealed = store.getState().matchNonce;
+    store.getState().applySearchMatches([match(0), match(1)]);
+    store.getState().applySearchMatches([match(0), match(1), match(2)]);
+    expect(store.getState().matchNonce).toBe(revealed);
+    store.getState().nextMatch();
+    expect(store.getState().matchNonce).toBe(revealed + 1);
+  });
 });
+

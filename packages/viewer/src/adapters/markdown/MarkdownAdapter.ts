@@ -8,6 +8,8 @@ import type {
   PageRef,
   RenderContext,
   RenderResult,
+  SearchQuery,
+  SearchResult,
   TextLayer,
 } from '../../core/types';
 import { assertTransformSize } from '../../core/limits';
@@ -17,6 +19,7 @@ import { loadMarkdownRenderer, MARKDOWN_HEADING } from '../../core/markdown-rend
 import { renderReflowPage } from '../../core/reflow-page';
 import { lineTextLayer } from '../../core/line-text-layer';
 import { estimatedReflowHeight } from '../../core/reflow-height';
+import { blockTexts, markBlockUnits, searchUnits } from '../../core/search-units';
 
 export const markdownManifest: AdapterManifest = {
   id: 'markdown',
@@ -47,6 +50,7 @@ export class MarkdownAdapter implements Adapter {
   readonly manifest = markdownManifest;
   private markdownText = '';
   private htmlContent: SafeHtml = EMPTY_HTML;
+  private blocks: string[] | null = null;
 
   async parse(
     source: FileSourceReader,
@@ -59,6 +63,7 @@ export class MarkdownAdapter implements Adapter {
     this.markdownText = decodeText(buffer, source.meta.mimeType);
     const renderMarkdown = await loadMarkdownRenderer();
     this.htmlContent = renderMarkdown(this.markdownText);
+    this.blocks = null;
 
     const page: PageRef = {
       index: 0,
@@ -79,7 +84,14 @@ export class MarkdownAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    return renderReflowPage(ctx, this.htmlContent, { className: 'dv-markdown-content' });
+    const result = renderReflowPage(ctx, this.htmlContent, { className: 'dv-markdown-content' });
+    markBlockUnits(ctx.target.firstElementChild!);
+    return result;
+  }
+
+  async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
+    this.blocks ??= blockTexts(this.htmlContent);
+    return searchUnits(this.blocks.map((text, unit) => ({ pageIndex: 0, unit, text })), query, signal);
   }
 
   async getTextLayer(
@@ -92,6 +104,7 @@ export class MarkdownAdapter implements Adapter {
   dispose(): void {
     this.markdownText = '';
     this.htmlContent = EMPTY_HTML;
+    this.blocks = null;
   }
 }
 

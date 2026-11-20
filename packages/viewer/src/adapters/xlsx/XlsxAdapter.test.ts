@@ -54,4 +54,41 @@ describe('XlsxAdapter', () => {
     expect(target.textContent).toContain('row 0');
     expect(target.querySelector('.dv-sheet-truncated')?.textContent).toMatch(/6,001/);
   }, 30_000);
+
+  it('searches every sheet, rendered or not', async () => {
+    const sheets: Record<string, unknown[][]> = {};
+    for (let s = 0; s < 12; s++) {
+      sheets[`Sheet${s + 1}`] = [['a', 'b'], ...Array.from({ length: 5 }, (_, r) => [`s${s}r${r}`, s === 10 && r === 3 ? 'ELEVEN' : 'apple'])];
+    }
+    const adapter = new XlsxAdapter();
+    await adapter.parse(workbookReader(sheets), new AbortController().signal);
+    const signal = new AbortController().signal;
+    expect((await adapter.search(query('apple'), signal)).matches).toHaveLength(59);
+    const [eleven] = (await adapter.search(query('eleven'), signal)).matches;
+    expect(eleven).toMatchObject({ pageIndex: 10, text: 'ELEVEN', locator: { unit: 4, cell: 1, start: 0, end: 6 } });
+
+    const target = document.createElement('div');
+    await adapter.renderPage(ctx(10, target));
+    expect(target.querySelector('[data-dv-unit="4"] [data-dv-cell="1"]')?.textContent).toBe('ELEVEN');
+  });
+
+  it('finds rows past the render cap and renders them when revealed', async () => {
+    const rows = Array.from({ length: 6_000 }, (_, i) => [`row ${i}`, i === 5_500 ? 'FARROW' : 'x']);
+    const adapter = new XlsxAdapter();
+    await adapter.parse(workbookReader({ Big: [['name', 'n'], ...rows] }), new AbortController().signal);
+    const [match] = (await adapter.search(query('farrow'), new AbortController().signal)).matches;
+    expect(match?.locator).toEqual({ unit: 5_501, cell: 1, start: 0, end: 6 });
+
+    const target = document.createElement('div');
+    await adapter.renderPage(ctx(0, target));
+    expect(target.querySelector('[data-dv-unit="5501"]')).toBeNull();
+    await adapter.revealMatch(match!, target);
+    expect(target.querySelector('[data-dv-unit="5501"] [data-dv-cell="1"]')?.textContent).toBe('FARROW');
+    expect(target.querySelector('.dv-sheet-truncated')?.textContent).not.toMatch(/first 5,000/);
+  }, 30_000);
 });
+
+function query(text: string) {
+  return { text, caseSensitive: false, wholeWord: false, regex: false, diacritics: false };
+}
+

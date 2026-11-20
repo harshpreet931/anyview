@@ -51,4 +51,17 @@ describe('PptxAdapter', () => {
     expect(target.querySelector('img')).toBeNull();
     expect(target.querySelector('p')?.textContent).toBe('Body');
   });
+
+  it('searches every slide and marks each text it renders', async () => {
+    const adapter = new PptxAdapter();
+    await adapter.parse(await deckReader(), new AbortController().signal);
+    const q = { text: 'second', caseSensitive: false, wholeWord: false, regex: false, diacritics: false };
+    const [match] = (await adapter.search(q, new AbortController().signal)).matches;
+    expect(match).toMatchObject({ pageIndex: 1, locator: { unit: 0, start: 0, end: 6 } });
+
+    const target = document.createElement('div');
+    await adapter.renderPage(ctx(1, target));
+    expect(target.querySelector('[data-dv-unit="0"]')?.textContent).toBe('Second');
+  });
 });
+

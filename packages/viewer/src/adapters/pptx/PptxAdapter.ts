@@ -7,6 +7,8 @@ import type {
   PageRef,
   RenderContext,
   RenderResult,
+  SearchQuery,
+  SearchResult,
   TextLayer,
   TextLayerItem,
 } from '../../core/types';
@@ -14,6 +16,7 @@ import type JSZip from 'jszip';
 import { ViewerError, asParseError, throwIfCancelled } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
 import { escapeHtml, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
+import { searchUnits } from '../../core/search-units';
 
 export const pptxManifest: AdapterManifest = {
   id: 'pptx',
@@ -158,6 +161,11 @@ export class PptxAdapter implements Adapter {
     return { pageIndex, items };
   }
 
+  async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
+    const units = this.slides.flatMap((slide, pageIndex) => slide.texts.map((text, unit) => ({ pageIndex, unit, text })));
+    return searchUnits(units, query, signal);
+  }
+
   dispose(): void {
     this.slides = [];
   }
@@ -229,10 +237,10 @@ function parseSlideXml(xml: string): SlideContent {
   let html = '<div style="font-family:Calibri,Arial,sans-serif;">';
   const title = texts[0];
   if (title) {
-    html += `<h1 style="font-size:28px;font-weight:600;margin-bottom:16px;color:#333;">${escapeHtml(title)}</h1>`;
+    html += `<h1 data-dv-unit="0" style="font-size:28px;font-weight:600;margin-bottom:16px;color:#333;">${escapeHtml(title)}</h1>`;
   }
   for (let i = 1; i < texts.length; i++) {
-    html += `<p style="font-size:18px;margin:8px 0;color:#444;">${escapeHtml(texts[i])}</p>`;
+    html += `<p data-dv-unit="${i}" style="font-size:18px;margin:8px 0;color:#444;">${escapeHtml(texts[i])}</p>`;
   }
   html += '</div>';
 

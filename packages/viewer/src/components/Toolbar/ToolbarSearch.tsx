@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, type KeyboardEvent, type RefObject } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
-import { useStrings } from '../../i18n/I18nProvider';
+import { useLocale, useStrings } from '../../i18n/I18nProvider';
 import { formatString } from '../../i18n/strings';
+import { formatNumber } from '../../i18n/format';
 import { IconButton } from './IconButton';
 
 const SEARCH_DEBOUNCE_MS = 180;
@@ -17,6 +18,7 @@ function cancelPending(timer: RefObject<Timer>): boolean {
 
 export function ToolbarSearch() {
   const strings = useStrings();
+  const locale = useLocale();
   const search = useViewerStore((s) => s.search);
   const clearSearch = useViewerStore((s) => s.clearSearch);
   const nextMatch = useViewerStore((s) => s.nextMatch);
@@ -89,6 +91,7 @@ export function ToolbarSearch() {
 
   let matchStatus = '';
   if (searchState === 'searching') matchStatus = '…';
+  else if (searchResult?.truncated) matchStatus = formatString(strings.search.resultsCountCapped, currentMatchIndex + 1, formatNumber(matchCount, locale));
   else if (matchCount > 0) matchStatus = formatString(strings.search.resultsCount, currentMatchIndex + 1, matchCount);
   else if (searchText) matchStatus = strings.search.noResults;
 

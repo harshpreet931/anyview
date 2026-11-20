@@ -68,6 +68,7 @@ export const en: ViewerStrings = {
     prevMatch: 'Previous match',
     close: 'Close search',
     resultsCount: '{0} of {1}',
+    resultsCountCapped: '{0} of {1}+',
     noResults: 'Not found',
   },
   sidebar: {

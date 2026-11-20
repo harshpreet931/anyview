@@ -10,7 +10,6 @@ import type {
   RenderResult,
   SearchQuery,
   SearchResult,
-  SearchMatch,
   TextLayer,
 } from '../../core/types';
 import { ViewerError, throwIfCancelled } from '../../core/errors';
@@ -19,9 +18,9 @@ import { EMPTY_HTML, markSanitized, type SafeHtml } from '../../core/safe-html';
 import { assertTransformSize } from '../../core/limits';
 import { headingScrollOffsets } from '../../core/reflow-outline';
 import { renderReflowPage } from '../../core/reflow-page';
-import { searchPattern } from '../../core/search-pattern';
 import { lineTextLayer } from '../../core/line-text-layer';
 import { estimatedReflowHeight } from '../../core/reflow-height';
+import { blockTexts, markBlockUnits, searchUnits } from '../../core/search-units';
 
 export const htmlManifest: AdapterManifest = {
   id: 'html',
@@ -50,6 +49,7 @@ export class HtmlAdapter implements Adapter {
   readonly manifest = htmlManifest;
   private htmlContent: SafeHtml = EMPTY_HTML;
   private textContent = '';
+  private blocks: string[] | null = null;
 
   async parse(
     source: FileSourceReader,
@@ -64,6 +64,7 @@ export class HtmlAdapter implements Adapter {
     try {
       const DOMPurify = await loadSanitizer();
       this.htmlContent = markSanitized(DOMPurify.sanitize(rawHtml, DOCUMENT_HTML_CONFIG));
+      this.blocks = null;
     } catch (cause) {
       throw new ViewerError('PARSE_ERROR', 'Failed to sanitize HTML.', { cause });
     }
@@ -90,7 +91,9 @@ export class HtmlAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    return renderReflowPage(ctx, this.htmlContent, { className: 'dv-html-content' });
+    const result = renderReflowPage(ctx, this.htmlContent, { className: 'dv-html-content' });
+    markBlockUnits(ctx.target.firstElementChild!);
+    return result;
   }
 
   async getTextLayer(
@@ -101,29 +104,9 @@ export class HtmlAdapter implements Adapter {
     return lineTextLayer(lines, 24);
   }
 
-  async search(
-    query: SearchQuery,
-    _signal: AbortSignal,
-  ): Promise<SearchResult> {
-    const matches: SearchMatch[] = [];
-    const re = searchPattern(query);
-    if (!re) return { query, matches, totalMatches: 0 };
-    const text = this.textContent;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(text)) !== null) {
-      const before = text.slice(0, m.index);
-      const line = before.split('\n').length - 1;
-      matches.push({
-        pageIndex: 0,
-        text: m[0],
-        x: 0,
-        y: line * 24,
-        width: m[0].length * 8,
-        height: 24,
-      });
-      if (m.index === re.lastIndex) re.lastIndex++;
-    }
-    return { query, matches, totalMatches: matches.length };
+  async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
+    this.blocks ??= blockTexts(this.htmlContent);
+    return searchUnits(this.blocks.map((text, unit) => ({ pageIndex: 0, unit, text })), query, signal);
   }
 
   private extractOutline(doc: Document): OutlineNode[] | undefined {
@@ -141,5 +124,6 @@ export class HtmlAdapter implements Adapter {
   dispose(): void {
     this.htmlContent = EMPTY_HTML;
     this.textContent = '';
+    this.blocks = null;
   }
 }

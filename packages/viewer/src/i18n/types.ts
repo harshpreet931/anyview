@@ -69,6 +69,8 @@ export interface ViewerStrings {
     prevMatch: string;
     close: string;
     resultsCount: string;
+    /** Shown when the search stopped at its match limit: `{1}` is that limit. */
+    resultsCountCapped: string;
     noResults: string;
   };
   sidebar: {

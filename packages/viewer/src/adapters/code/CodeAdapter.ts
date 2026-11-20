@@ -7,6 +7,8 @@ import type {
   PageRef,
   RenderContext,
   RenderResult,
+  SearchQuery,
+  SearchResult,
   TextLayer,
 } from '../../core/types';
 import { assertTransformSize } from '../../core/limits';
@@ -14,6 +16,7 @@ import { throwIfCancelled } from '../../core/errors';
 import { escapeHtml } from '../../core/safe-html';
 import { loadHighlighter } from '../../core/highlighter';
 import { lineTextLayer, widestLine } from '../../core/line-text-layer';
+import { searchUnits } from '../../core/search-units';
 
 const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
@@ -78,6 +81,7 @@ const plainHtml = (code: string) => `<pre><code>${escapeHtml(code)}</code></pre>
 
 export class CodeAdapter implements Adapter {
   readonly manifest = codeManifest;
+  private code = '';
   private lines: string[] = [];
   private highlightedHtml = '';
 
@@ -90,6 +94,7 @@ export class CodeAdapter implements Adapter {
     assertTransformSize(buffer.byteLength);
 
     const code = decodeText(buffer, source.meta.mimeType);
+    this.code = code;
     this.lines = code.split('\n');
     if (code.length > HIGHLIGHT_MAX_CHARS) {
       this.highlightedHtml = plainHtml(code);
@@ -121,6 +126,7 @@ export class CodeAdapter implements Adapter {
     container.className = 'dv-code';
     container.style.fontSize = `${FONT_SIZE * ctx.scale}px`;
     container.innerHTML = this.highlightedHtml;
+    container.querySelector('code')?.setAttribute('data-dv-unit', '0');
     target.appendChild(container);
 
     return {
@@ -136,7 +142,13 @@ export class CodeAdapter implements Adapter {
     return lineTextLayer(this.lines, LINE_HEIGHT, lineWidth);
   }
 
+  /** The whole file is one unit, the rendered `<code>`, so a locator's offsets index the source text. */
+  async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
+    return searchUnits([{ pageIndex: 0, unit: 0, text: this.code }], query, signal);
+  }
+
   dispose(): void {
+    this.code = '';
     this.lines = [];
     this.highlightedHtml = '';
   }

@@ -1,8 +1,9 @@
-import { useEffect, useId, type RefObject } from 'react';
+import { useEffect, useId, useState, type RefObject } from 'react';
 import type { SearchMatch, SearchQuery } from '../core/types';
 import { useViewerStore } from './useDocViewer';
-import { revealMatch } from '../core/reveal-match';
-import { findOccurrences } from './dom-search';
+import { isRevealed, revealMatch } from '../core/reveal-match';
+import { findOccurrences } from '../core/search-pattern';
+import { locateMatch, matchRanges, textRange, unitText } from '../core/search-units';
 
 function supportsHighlights(): boolean {
   return 'highlights' in CSS && typeof Highlight !== 'undefined';
@@ -10,8 +11,10 @@ function supportsHighlights(): boolean {
 
 interface OwnerEntry {
   pageIndex: number;
-  ranges: Range[];
-  matches: SearchMatch[];
+  /** Ranges by match index, or in page order when the page found its own matches. */
+  ranges: Map<number, Range> | Range[];
+  /** Matches the page found in its DOM, for an adapter that cannot search its model. */
+  matches: SearchMatch[] | null;
 }
 
 interface InstanceState {
@@ -37,12 +40,18 @@ function orderedOwners(state: InstanceState): OwnerEntry[] {
   return Array.from(state.owners.values()).sort((a, b) => a.pageIndex - b.pageIndex);
 }
 
-function orderedRanges(state: InstanceState): Range[] {
-  return orderedOwners(state).flatMap((o) => o.ranges);
+function indexedRanges(state: InstanceState): Map<number, Range> {
+  const indexed = new Map<number, Range>();
+  let next = 0;
+  for (const owner of orderedOwners(state)) {
+    if (owner.ranges instanceof Map) owner.ranges.forEach((range, i) => indexed.set(i, range));
+    else for (const range of owner.ranges) indexed.set(next++, range);
+  }
+  return indexed;
 }
 
 function orderedMatches(state: InstanceState): SearchMatch[] {
-  return orderedOwners(state).flatMap((o) => o.matches);
+  return orderedOwners(state).flatMap((o) => o.matches ?? []);
 }
 
 function paintHighlights(): void {
@@ -53,9 +62,9 @@ function paintHighlights(): void {
   const all: Range[] = [];
   const current: Range[] = [];
   for (const state of instances.values()) {
-    const ranges = orderedRanges(state);
-    all.push(...ranges);
-    const cur = ranges[state.currentIndex];
+    const ranges = indexedRanges(state);
+    all.push(...ranges.values());
+    const cur = ranges.get(state.currentIndex);
     if (cur) current.push(cur);
   }
   if (all.length > 0) reg.set('dv-search', new Highlight(...all));
@@ -81,7 +90,7 @@ function setOwner(id: string, ownerId: string, entry: OwnerEntry): void {
   const s = getInstance(id);
   s.owners.set(ownerId, entry);
   paintHighlights();
-  schedulePublish(id);
+  if (s.apply) schedulePublish(id);
 }
 
 function clearOwner(id: string, ownerId: string): void {
@@ -95,30 +104,7 @@ function clearOwner(id: string, ownerId: string): void {
     return;
   }
   paintHighlights();
-  schedulePublish(id);
-}
-
-function collectText(container: HTMLElement): { nodes: Text[]; starts: number[]; full: string } {
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      const parent = node.parentElement;
-      if (!parent) return NodeFilter.FILTER_REJECT;
-      const tag = parent.tagName;
-      if (tag === 'SCRIPT' || tag === 'STYLE') return NodeFilter.FILTER_REJECT;
-      return node.nodeValue ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-    },
-  });
-
-  const nodes: Text[] = [];
-  const starts: number[] = [];
-  let full = '';
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    const text = n as Text;
-    starts.push(full.length);
-    nodes.push(text);
-    full += text.nodeValue ?? '';
-  }
-  return { nodes, starts, full };
+  if (s.apply) schedulePublish(id);
 }
 
 function findRanges(
@@ -126,75 +112,92 @@ function findRanges(
   query: SearchQuery,
   pageIndex: number,
 ): { ranges: Range[]; matches: SearchMatch[] } {
+  const unit = unitText(container);
   const ranges: Range[] = [];
   const matches: SearchMatch[] = [];
-  const { nodes, starts, full } = collectText(container);
-
-  const locate = (globalOffset: number): { node: Text; offset: number } => {
-    let lo = 0;
-    let hi = nodes.length - 1;
-    while (lo < hi) {
-      const mid = (lo + hi + 1) >> 1;
-      if (starts[mid]! <= globalOffset) lo = mid;
-      else hi = mid - 1;
-    }
-    return { node: nodes[lo]!, offset: globalOffset - starts[lo]! };
-  };
-
-  for (const [start, end] of findOccurrences(full, query)) {
-    const a = locate(start);
-    const b = locate(end);
-    const range = document.createRange();
-    try {
-      range.setStart(a.node, a.offset);
-      range.setEnd(b.node, b.offset);
-    } catch {
-      continue;
-    }
+  for (const [start, end] of findOccurrences(unit.text, query)) {
+    const range = textRange(unit, start, end);
+    if (!range) continue;
     ranges.push(range);
-    matches.push({ pageIndex, text: full.slice(start, end), x: 0, y: 0, width: 0, height: 0 });
+    matches.push({ pageIndex, text: unit.text.slice(start, end), x: 0, y: 0, width: 0, height: 0 });
   }
-
   return { ranges, matches };
 }
 
+/**
+ * Paints and reveals search matches on a flowing page. Matches come from the adapter's model search and are
+ * located by their `locator`; an adapter that cannot search has the page's DOM searched instead.
+ */
 export function useDomSearch(
   containerRef: RefObject<HTMLElement | null>,
   active: boolean,
   domVersion: unknown,
   pageIndex: number,
 ): void {
+  const adapter = useViewerStore((s) => s.adapter);
   const searchQuery = useViewerStore((s) => s.searchQuery);
+  const searchResult = useViewerStore((s) => s.searchResult);
   const currentMatchIndex = useViewerStore((s) => s.currentMatchIndex);
   const matchNonce = useViewerStore((s) => s.matchNonce);
   const applySearchMatches = useViewerStore((s) => s.applySearchMatches);
   const instanceId = useViewerStore((s) => s.instanceId);
   const ownerId = useId();
+  const [mutations, setMutations] = useState(0);
+  const modelSearch = !!adapter?.search;
+  const modelResult = modelSearch ? searchResult : null;
+  const searching = !!searchQuery?.text.trim();
+
+  // Units that mount later (more rows, virtualized lines) need painting too.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!active || !searching || !el) return;
+    const observer = new MutationObserver(() => setMutations((n) => n + 1));
+    observer.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [active, searching, containerRef]);
 
   useEffect(() => {
     if (!active) return;
-    getInstance(instanceId).apply = applySearchMatches;
+    getInstance(instanceId).apply = modelSearch ? null : applySearchMatches;
     const container = containerRef.current;
     if (!container) return;
 
-    if (!searchQuery || !searchQuery.text.trim()) {
+    if (!searchQuery || !searching) {
       clearOwner(instanceId, ownerId);
       return;
     }
 
-    const { ranges, matches } = findRanges(container, searchQuery, pageIndex);
-    setOwner(instanceId, ownerId, { pageIndex, ranges, matches });
+    if (modelResult) {
+      setOwner(instanceId, ownerId, { pageIndex, ranges: matchRanges(container, modelResult.matches, pageIndex), matches: null });
+    } else if (!modelSearch) {
+      setOwner(instanceId, ownerId, { pageIndex, ...findRanges(container, searchQuery, pageIndex) });
+    }
 
     return () => clearOwner(instanceId, ownerId);
-  }, [active, searchQuery, domVersion, applySearchMatches, containerRef, ownerId, pageIndex, instanceId]);
+  }, [active, modelSearch, modelResult, searchQuery, searching, domVersion, mutations, applySearchMatches, containerRef, ownerId, pageIndex, instanceId]);
 
   useEffect(() => {
     if (!active) return;
     const state = getInstance(instanceId);
     state.currentIndex = currentMatchIndex;
     paintHighlights();
-    const current = orderedRanges(state)[currentMatchIndex];
-    const node = current?.startContainer;
-    revealMatch(node instanceof Element ? node : node?.parentElement, matchNonce);
-  }, [active, currentMatchIndex, matchNonce, instanceId]);
+    const container = containerRef.current;
+    if (!container || isRevealed(container, matchNonce)) return;
+    if (!modelSearch) {
+      revealMatch(indexedRanges(state).get(currentMatchIndex), matchNonce, true);
+      return;
+    }
+    const match = searchResult?.matches[currentMatchIndex];
+    if (!match || match.pageIndex !== pageIndex) return;
+    let cancelled = false;
+    const reveal = () => {
+      if (!cancelled) revealMatch(locateMatch(container, match), matchNonce, true);
+    };
+    const rendering = adapter?.revealMatch?.(match, container);
+    if (rendering) rendering.then(reveal, () => {});
+    else reveal();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, modelSearch, adapter, searchResult, currentMatchIndex, matchNonce, domVersion, mutations, instanceId, containerRef, pageIndex]);
 }

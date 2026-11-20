@@ -128,11 +128,14 @@ export interface RenderContext {
   readonly rotation: Rotation;
   readonly devicePixelRatio: number;
   readonly signal: AbortSignal;
+  /** Rendering into the print frame: draw the whole page, with no virtualization and no interactive controls. */
+  readonly print?: boolean;
 }
 
 export interface RenderResult {
   readonly width: number;
   readonly height: number;
+  /** A copy of the rendered page, owned by the caller: cache it or close() it. */
   readonly bitmap?: ImageBitmap;
 }
 
@@ -171,12 +174,29 @@ export interface SearchMatch {
   readonly runIndex?: number;
   readonly start?: number;
   readonly end?: number;
+  /** Where the match sits in a flowing or tabular page; formats that paint search with boxes leave it out. */
+  readonly locator?: MatchLocator;
+}
+
+/**
+ * The position of a match in an adapter's own model, so it can be found and revealed whether or not that part
+ * of the page is rendered. `unit` is a row, a line or a block of the page. The rendered page marks that unit
+ * with `data-dv-unit="<unit>"` and, for a table, the cell inside it with `data-dv-cell="<cell>"`. `start` and
+ * `end` index the text of that element, where a `<br>` or the start of a block or cell inside it counts as one "\n".
+ */
+export interface MatchLocator {
+  readonly unit: number;
+  readonly cell?: number;
+  readonly start: number;
+  readonly end: number;
 }
 
 export interface SearchResult {
   readonly query: SearchQuery;
   readonly matches: ReadonlyArray<SearchMatch>;
   readonly totalMatches: number;
+  /** The search stopped at its match limit, so there are more matches than `matches` holds. */
+  readonly truncated?: boolean;
 }
 
 export type AnnotationType =
@@ -305,11 +325,18 @@ export interface Adapter {
     signal?: AbortSignal,
     rotation?: number,
   ): Promise<TextLayer>;
+  /** Searches the whole document, rendered or not. Matches on flowing and tabular pages carry a `locator`. */
   search?(
     query: SearchQuery,
     signal: AbortSignal,
     rotation?: number,
   ): Promise<SearchResult>;
+  /**
+   * Makes the unit holding `match.locator` exist in `target`, the element `renderPage` drew the page into: a
+   * virtualizer scrolls to the row and renders it, a capped table renders more rows. The viewer then centres the
+   * match and highlights it. Leave it out when every unit is always rendered.
+   */
+  revealMatch?(match: SearchMatch, target: HTMLElement): void | Promise<void>;
   exportDocument?(format: 'original' | 'pdf'): Promise<Blob>;
   dispose?(): void;
 }

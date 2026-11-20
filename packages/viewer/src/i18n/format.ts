@@ -24,6 +24,11 @@ export function formatFileSize(bytes: number, locale: string): string {
   }).format(value);
 }
 
+/** A count in the reader's locale, e.g. "10,000" or "10.000". */
+export function formatNumber(value: number, locale: string): string {
+  return new Intl.NumberFormat(safeLocale(locale)).format(value);
+}
+
 export function formatDateTime(value: Date | string | number, locale: string): string {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);

@@ -7,10 +7,13 @@ import type {
   PageRef,
   RenderContext,
   RenderResult,
+  SearchQuery,
+  SearchResult,
   TextLayer,
 } from '../../core/types';
 import { throwIfCancelled } from '../../core/errors';
 import { lineTextLayer, widestLine } from '../../core/line-text-layer';
+import { searchUnits } from '../../core/search-units';
 
 export const textManifest: AdapterManifest = {
   id: 'text',
@@ -73,6 +76,7 @@ export class TextAdapter implements Adapter {
 
     const pre = document.createElement('pre');
     pre.textContent = this.text;
+    pre.dataset.dvUnit = '0';
     pre.style.fontFamily = 'var(--dv-font-mono)';
     pre.style.fontSize = `${14 * ctx.scale}px`;
     pre.style.lineHeight = '1.5';
@@ -96,6 +100,11 @@ export class TextAdapter implements Adapter {
     _signal?: AbortSignal,
   ): Promise<TextLayer> {
     return lineTextLayer(this.lines, LINE_HEIGHT);
+  }
+
+  /** The whole text is one unit, so a locator's offsets index the file's text. */
+  async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
+    return searchUnits([{ pageIndex: 0, unit: 0, text: this.text }], query, signal);
   }
 
   dispose(): void {

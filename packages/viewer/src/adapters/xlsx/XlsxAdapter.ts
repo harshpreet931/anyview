@@ -7,6 +7,9 @@ import type {
   PageRef,
   RenderContext,
   RenderResult,
+  SearchMatch,
+  SearchQuery,
+  SearchResult,
   TextLayer,
   TextLayerItem,
 } from '../../core/types';
@@ -14,6 +17,7 @@ import { ViewerError, asParseError, throwIfCancelled } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
 import { loadSanitizer, type Sanitizer } from '../../core/sanitizer';
 import { markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
+import { searchUnits, type SearchUnit } from '../../core/search-units';
 
 export const xlsxManifest: AdapterManifest = {
   id: 'xlsx',
@@ -46,8 +50,10 @@ const SHEET_ROW_LIMIT = 5000;
 interface Sheet {
   name: string;
   html: SafeHtml;
-  text: string;
-  totalRows: number | null;
+  /** Every row of the sheet as displayed text, starting at sheet row `firstRow`, column `firstCol`. */
+  rows: string[][];
+  firstRow: number;
+  firstCol: number;
 }
 
 export class XlsxAdapter implements Adapter {
@@ -70,31 +76,26 @@ export class XlsxAdapter implements Adapter {
 
       for (const name of workbook.SheetNames) {
         const sheet = workbook.Sheets[name];
-        const hasCells = !!sheet?.['!ref'];
-        let shown = sheet;
-        let totalRows: number | null = null;
-        if (hasCells) {
-          const range = XLSX.utils.decode_range(sheet['!ref']!);
-          const rows = range.e.r - range.s.r + 1;
-          if (rows > SHEET_ROW_LIMIT) {
-            totalRows = rows;
-            shown = {
+        if (!sheet?.['!ref']) {
+          this.sheets.push({ name, html: markSanitized('<table></table>'), rows: [], firstRow: 0, firstCol: 0 });
+          continue;
+        }
+        const range = XLSX.utils.decode_range(sheet['!ref']);
+        const shown = range.e.r - range.s.r + 1 > SHEET_ROW_LIMIT
+          ? {
               ...sheet,
               '!ref': XLSX.utils.encode_range({
                 s: range.s,
                 e: { r: range.s.r + SHEET_ROW_LIMIT - 1, c: range.e.c },
               }),
-            };
-          }
-        }
-        const html = hasCells
-          ? XLSX.utils.sheet_to_html(shown, { id: `sheet-${name}` })
-          : '<table></table>';
+            }
+          : sheet;
         this.sheets.push({
           name,
-          html: buildSheetHtml(html, DOMPurify),
-          text: hasCells ? XLSX.utils.sheet_to_csv(sheet) : '',
-          totalRows,
+          html: buildSheetHtml(XLSX.utils.sheet_to_html(shown, { id: `sheet-${name}` }), DOMPurify),
+          rows: XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, raw: false, defval: '', blankrows: true }),
+          firstRow: range.s.r,
+          firstCol: range.s.c,
         });
       }
     } catch (cause) {
@@ -135,11 +136,11 @@ export class XlsxAdapter implements Adapter {
     container.style.overflow = 'auto';
     container.style.fontSize = `${14 * ctx.scale}px`;
     setSafeHtml(container, sheet.html);
-    if (sheet.totalRows) {
+    if (sheet.rows.length > SHEET_ROW_LIMIT) {
       const note = document.createElement('p');
       note.className = 'dv-sheet-truncated';
-      note.textContent = `Showing the first ${SHEET_ROW_LIMIT.toLocaleString()} of ${sheet.totalRows.toLocaleString()} rows.`;
       container.appendChild(note);
+      showTruncation(note, SHEET_ROW_LIMIT, sheet.rows.length);
     }
 
     ctx.target.appendChild(container);
@@ -154,24 +155,76 @@ export class XlsxAdapter implements Adapter {
     pageIndex: number,
     _signal?: AbortSignal,
   ): Promise<TextLayer> {
-    const text = this.sheets[pageIndex]?.text ?? '';
-    const items: TextLayerItem[] = text
-      .split('\n')
-      .map((line, i) => ({
-        str: line,
-        x: 0,
-        y: i * 20,
-        width: line.length * 8,
-        height: 20,
-      }));
+    const rows = this.sheets[pageIndex]?.rows ?? [];
+    const items: TextLayerItem[] = rows.map((row, i) => {
+      const line = row.join(',');
+      return { str: line, x: 0, y: i * 20, width: line.length * 8, height: 20 };
+    });
 
     return { pageIndex, items };
+  }
+
+  async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
+    return searchUnits(this.units(), query, signal);
+  }
+
+  /** A unit is a sheet row and a cell its column, both counted from A1 as the rendered cells' ids give them. */
+  private *units(): Generator<SearchUnit> {
+    for (let pageIndex = 0; pageIndex < this.sheets.length; pageIndex++) {
+      const { rows, firstRow, firstCol } = this.sheets[pageIndex]!;
+      for (let r = 0; r < rows.length; r++) {
+        const row = rows[r]!;
+        for (let c = 0; c < row.length; c++) {
+          if (row[c]) yield { pageIndex, unit: firstRow + r, cell: firstCol + c, text: row[c]! };
+        }
+      }
+    }
+  }
+
+  /** Rows past the render cap are added as plain cells, up to and including the match's row. */
+  revealMatch(match: SearchMatch, target: HTMLElement): void {
+    const sheet = this.sheets[match.pageIndex];
+    const body = target.querySelector('tbody');
+    const rows = body?.rows;
+    if (!sheet || !match.locator || !body || !rows) return;
+    const last = rows[rows.length - 1]?.getAttribute('data-dv-unit');
+    const from = last == null ? 0 : Number(last) - sheet.firstRow + 1;
+    const to = Math.min(sheet.rows.length, match.locator.unit - sheet.firstRow + 1);
+    if (to <= from) return;
+    const frag = document.createDocumentFragment();
+    for (let r = from; r < to; r++) {
+      const tr = document.createElement('tr');
+      tr.dataset.dvUnit = String(sheet.firstRow + r);
+      sheet.rows[r]!.forEach((text, c) => {
+        const td = document.createElement('td');
+        td.textContent = text;
+        td.dataset.dvCell = String(sheet.firstCol + c);
+        styleCell(td);
+        tr.appendChild(td);
+      });
+      frag.appendChild(tr);
+    }
+    body.appendChild(frag);
+    const note = target.querySelector('.dv-sheet-truncated');
+    if (note) showTruncation(note, to, sheet.rows.length);
   }
 
   dispose(): void {
     this.sheets = [];
   }
 }
+
+function showTruncation(note: Element, shown: number, total: number): void {
+  note.textContent = shown < total ? `Showing the first ${shown.toLocaleString()} of ${total.toLocaleString()} rows.` : '';
+}
+
+function styleCell(cell: HTMLElement): void {
+  cell.style.border = '1px solid #ddd';
+  cell.style.padding = '4px 8px';
+  cell.style.whiteSpace = 'nowrap';
+}
+
+const CELL_REF = /-([A-Z]+)(\d+)$/;
 
 function buildSheetHtml(
   rawHtml: string,
@@ -193,9 +246,13 @@ function buildSheetHtml(
     table.style.borderCollapse = 'collapse';
     table.style.width = '100%';
     table.querySelectorAll<HTMLElement>('td, th').forEach((cell) => {
-      cell.style.border = '1px solid #ddd';
-      cell.style.padding = '4px 8px';
-      cell.style.whiteSpace = 'nowrap';
+      styleCell(cell);
+      const ref = CELL_REF.exec(cell.id);
+      if (!ref) return;
+      let col = 0;
+      for (const ch of ref[1]!) col = col * 26 + ch.charCodeAt(0) - 64;
+      cell.dataset.dvCell = String(col - 1);
+      cell.parentElement!.dataset.dvUnit = String(Number(ref[2]) - 1);
     });
   }
   return markSanitized(doc.body.innerHTML);

@@ -19,7 +19,7 @@ import { EMPTY_HTML, markSanitized, type SafeHtml } from '../../core/safe-html';
 import { assertTransformSize } from '../../core/limits';
 import { headingScrollOffsets } from '../../core/reflow-outline';
 import { renderReflowPage } from '../../core/reflow-page';
-import { searchPattern } from '../../core/search-pattern';
+import { blockTexts, markBlockUnits, searchUnits } from '../../core/search-units';
 
 export const docxManifest: AdapterManifest = {
   id: 'docx',
@@ -54,6 +54,7 @@ export class DocxAdapter implements Adapter {
   readonly manifest = docxManifest;
   private htmlContent: SafeHtml = EMPTY_HTML;
   private textContent = '';
+  private blocks: string[] | null = null;
 
   async parse(
     source: FileSourceReader,
@@ -78,6 +79,7 @@ export class DocxAdapter implements Adapter {
         ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data:image):|#)/i,
         SANITIZE_NAMED_PROPS: true,
       }));
+      this.blocks = null;
     } catch (cause) {
       throw asParseError(cause, 'Failed to parse DOCX.');
     }
@@ -108,6 +110,7 @@ export class DocxAdapter implements Adapter {
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
     const result = renderReflowPage(ctx, this.htmlContent, { className: 'dv-docx-content', padding: '48px 24px' });
     const container = ctx.target.firstElementChild!;
+    markBlockUnits(container);
     container.querySelectorAll('table').forEach((table) => {
       table.style.borderCollapse = 'collapse';
       table.querySelectorAll<HTMLElement>('td, th').forEach((cell) => {
@@ -136,28 +139,15 @@ export class DocxAdapter implements Adapter {
     return { pageIndex: 0, items };
   }
 
-  async search(
-    query: SearchQuery,
-    _signal: AbortSignal,
-  ): Promise<SearchResult> {
-    const re = searchPattern(query);
-    const text = this.textContent;
-    const matches = re
-      ? Array.from(text.matchAll(re), (m) => ({
-          pageIndex: 0,
-          text: m[0],
-          x: 0,
-          y: (text.slice(0, m.index).split('\n').length - 1) * LINE_HEIGHT,
-          width: m[0].length * CHAR_WIDTH,
-          height: LINE_HEIGHT,
-        }))
-      : [];
-    return { query, matches, totalMatches: matches.length };
+  async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
+    this.blocks ??= blockTexts(this.htmlContent);
+    return searchUnits(this.blocks.map((text, unit) => ({ pageIndex: 0, unit, text })), query, signal);
   }
 
   dispose(): void {
     this.htmlContent = EMPTY_HTML;
     this.textContent = '';
+    this.blocks = null;
   }
 }
 

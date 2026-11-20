@@ -15,6 +15,7 @@ import type {
 } from '../../core/types';
 import { asParseError, throwIfCancelled } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
+import { searchUnits, type SearchUnit } from '../../core/search-units';
 
 export const csvManifest: AdapterManifest = {
   id: 'csv',
@@ -40,6 +41,7 @@ export const csvManifest: AdapterManifest = {
 };
 
 const ROW_CHUNK = 2000;
+const PRINT_ROW_LIMIT = 10_000;
 const TABLE_ROW_HEIGHT = 32;
 const TEXT_ROW_HEIGHT = 20;
 const CHAR_WIDTH = 8;
@@ -48,6 +50,8 @@ export class CsvAdapter implements Adapter {
   readonly manifest = csvManifest;
   private rows: string[][] = [];
   private headers: string[] = [];
+  /** Grows a rendered table to hold at least the given number of data rows. */
+  private readonly growTo = new WeakMap<HTMLElement, (rows: number) => void>();
 
   async parse(
     source: FileSourceReader,
@@ -99,41 +103,60 @@ export class CsvAdapter implements Adapter {
     table.className = 'dv-csv-table';
     if (this.headers.length > 0) {
       const head = table.createTHead().insertRow();
-      for (const h of this.headers) {
+      head.dataset.dvUnit = '0';
+      this.headers.forEach((h, i) => {
         const th = document.createElement('th');
         th.textContent = h;
+        th.dataset.dvCell = String(i);
         head.appendChild(th);
-      }
+      });
     }
     const body = table.createTBody();
     container.appendChild(table);
 
     const rows = this.rows;
     let shown = 0;
-    const more = document.createElement('button');
-    more.type = 'button';
-    more.className = 'dv-csv-more';
-    const appendChunk = () => {
-      const end = Math.min(rows.length, shown + ROW_CHUNK);
+    const appendRows = (end: number) => {
       const frag = document.createDocumentFragment();
       for (let i = shown; i < end; i++) {
         const tr = document.createElement('tr');
-        for (const cell of rows[i]!) {
+        tr.dataset.dvUnit = String(i + 1);
+        rows[i]!.forEach((cell, c) => {
           const td = document.createElement('td');
           td.textContent = cell;
+          td.dataset.dvCell = String(c);
           tr.appendChild(td);
-        }
+        });
         frag.appendChild(tr);
       }
       body.appendChild(frag);
       shown = end;
-      const left = rows.length - shown;
-      if (left > 0) more.textContent = `Show ${Math.min(left, ROW_CHUNK).toLocaleString()} more rows (${left.toLocaleString()} remaining)`;
-      else more.remove();
     };
-    more.addEventListener('click', appendChunk);
-    appendChunk();
-    if (shown < rows.length) container.appendChild(more);
+
+    if (ctx.print) {
+      appendRows(Math.min(rows.length, PRINT_ROW_LIMIT));
+      if (shown < rows.length) {
+        const note = document.createElement('p');
+        note.textContent = `Printed the first ${shown.toLocaleString()} of ${rows.length.toLocaleString()} rows.`;
+        container.appendChild(note);
+      }
+    } else {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'dv-csv-more';
+      const grow = (end: number) => {
+        appendRows(Math.min(rows.length, Math.max(end, shown + ROW_CHUNK)));
+        const left = rows.length - shown;
+        if (left > 0) more.textContent = `Show ${Math.min(left, ROW_CHUNK).toLocaleString()} more rows (${left.toLocaleString()} remaining)`;
+        else more.remove();
+      };
+      more.addEventListener('click', () => grow(0));
+      grow(0);
+      if (shown < rows.length) container.appendChild(more);
+      this.growTo.set(ctx.target as HTMLElement, (end) => {
+        if (end > shown) grow(end);
+      });
+    }
 
     ctx.target.replaceChildren(container);
 
@@ -157,29 +180,21 @@ export class CsvAdapter implements Adapter {
     return { pageIndex: 0, items };
   }
 
-  async search(
-    query: SearchQuery,
-    _signal: AbortSignal,
-  ): Promise<SearchResult> {
-    const needle = query.caseSensitive ? query.text : query.text.toLowerCase();
-    const allRows = [this.headers, ...this.rows];
-    const matches: SearchMatch[] = [];
-    allRows.forEach((row, rowIdx) => {
-      row.forEach((cell, colIdx) => {
-        const haystack = query.caseSensitive ? cell : cell.toLowerCase();
-        if (!haystack.includes(needle)) return;
-        matches.push({
-          pageIndex: 0,
-          text: cell,
-          x: colIdx / row.length,
-          y: rowIdx / allRows.length,
-          width: cell.length * CHAR_WIDTH / 1000,
-          height: TEXT_ROW_HEIGHT / 1000,
-        });
-      });
-    });
+  async search(query: SearchQuery, signal: AbortSignal): Promise<SearchResult> {
+    return searchUnits(this.units(), query, signal);
+  }
 
-    return { query, matches, totalMatches: matches.length };
+  /** Unit 0 is the header row and unit `i + 1` is data row `i`, as the rendered table marks them. */
+  private *units(): Generator<SearchUnit> {
+    const tables = [this.headers, ...this.rows];
+    for (let unit = 0; unit < tables.length; unit++) {
+      const row = tables[unit]!;
+      for (let cell = 0; cell < row.length; cell++) yield { pageIndex: 0, unit, cell, text: row[cell]! };
+    }
+  }
+
+  revealMatch(match: SearchMatch, target: HTMLElement): void {
+    if (match.locator) this.growTo.get(target)?.(match.locator.unit);
   }
 
   dispose(): void {

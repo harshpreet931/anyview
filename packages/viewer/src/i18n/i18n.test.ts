@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { formatString, resolveStrings, registerStrings } from './strings';
 import { en } from './en';
-import { formatFileSize, formatDateTime } from './format';
+import { formatFileSize, formatDateTime, formatNumber } from './format';
 
 describe('i18n', () => {
   it('formats placeholders', () => {
@@ -60,5 +60,10 @@ describe('i18n', () => {
     const when = new Date(Date.UTC(2026, 0, 31, 12));
     expect(formatDateTime(when, 'de')).toContain('31.01.2026');
     expect(formatDateTime(when, 'not a locale!')).toBe(formatDateTime(when, 'en'));
+  });
+
+  it('formats a capped match count in the reader\'s locale', () => {
+    expect(formatString(en.search.resultsCountCapped, 1, formatNumber(10_000, 'en'))).toBe('1 of 10,000+');
+    expect(formatNumber(10_000, 'de')).toBe('10.000');
   });
 });

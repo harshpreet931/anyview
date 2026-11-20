@@ -31,7 +31,7 @@ async function renderPages(adapter: Adapter, model: DocumentModel, into: Documen
       target.className = 'dv-reflow-target';
       wrap.appendChild(target);
     }
-    await adapter.renderPage({ page, target, scale: 1, rotation: 0, devicePixelRatio: isImage ? 2 : 1, signal });
+    await adapter.renderPage({ page, target, scale: 1, rotation: 0, devicePixelRatio: isImage ? 2 : 1, signal, print: true });
     if (target instanceof HTMLCanvasElement) {
       const img = into.createElement('img');
       img.src = target.toDataURL('image/png');
@@ -39,6 +39,7 @@ async function renderPages(adapter: Adapter, model: DocumentModel, into: Documen
       wrap.appendChild(img);
     }
   }
+  root.querySelectorAll('button').forEach((control) => control.remove());
   return root;
 }
 

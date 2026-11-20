@@ -11,7 +11,7 @@ export interface SearchSlice {
   searchState: SearchState;
   searchResult: SearchResult | null;
   currentMatchIndex: number;
-  /** Bumped every time the active match changes so UI layers can re-scroll it into view. */
+  /** Bumped when the user moves to a match (a new search, next, previous), so UI layers scroll it into view once. */
   matchNonce: number;
 
   search: (query: SearchQuery) => void;
@@ -24,6 +24,8 @@ export interface SearchSlice {
   /** Recomputes match boxes for the current query after the page geometry changed (e.g. rotation). */
   _refreshSearchGeometry: () => void;
   _searchController: AbortController | null;
+  /** DOM matches for the latest search have not been revealed yet. */
+  _revealPending: boolean;
 }
 
 export const createSearchSlice: StateCreator<
@@ -33,10 +35,8 @@ export const createSearchSlice: StateCreator<
   SearchSlice
 > = (set, get) => {
   const adapterSearch = () => {
-    const { adapter, document } = get();
-    const format = document?.format;
-    if (!adapter?.search || (format !== 'pdf' && format !== 'image')) return null;
-    return adapter.search.bind(adapter);
+    const { adapter } = get();
+    return adapter?.search ? adapter.search.bind(adapter) : null;
   };
 
   const bumpMatchNonce = () => set((s) => ({ matchNonce: s.matchNonce + 1 }));
@@ -58,6 +58,7 @@ export const createSearchSlice: StateCreator<
     currentMatchIndex: 0,
     matchNonce: 0,
     _searchController: null,
+    _revealPending: false,
 
     search: (query) => {
       const run = adapterSearch();
@@ -71,6 +72,7 @@ export const createSearchSlice: StateCreator<
         searchResult: null,
         currentMatchIndex: 0,
         _searchController: controller,
+        _revealPending: !run,
       });
 
       if (!run) return;
@@ -123,6 +125,7 @@ export const createSearchSlice: StateCreator<
         searchState: 'idle',
         currentMatchIndex: 0,
         _searchController: null,
+        _revealPending: false,
       });
     },
 
@@ -155,7 +158,10 @@ export const createSearchSlice: StateCreator<
         searchState: 'done',
         currentMatchIndex: clampedIndex,
       });
-      if (matches.length > 0) bumpMatchNonce();
+      if (matches.length > 0 && get()._revealPending) {
+        set({ _revealPending: false });
+        bumpMatchNonce();
+      }
     },
   };
 };
