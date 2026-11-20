@@ -2,18 +2,10 @@ import { useEffect, useId, type RefObject } from 'react';
 import type { SearchMatch, SearchQuery } from '../core/types';
 import { useViewerStore } from './useDocViewer';
 import { revealMatch } from '../core/reveal-match';
+import { findOccurrences } from './dom-search';
 
-interface CustomHighlightCtor {
-  new (...ranges: Range[]): unknown;
-}
-
-function highlightRegistry(): Map<string, unknown> | null {
-  const reg = (CSS as unknown as { highlights?: Map<string, unknown> }).highlights;
-  return reg ?? null;
-}
-
-function HighlightCtor(): CustomHighlightCtor | null {
-  return (globalThis as unknown as { Highlight?: CustomHighlightCtor }).Highlight ?? null;
+function supportsHighlights(): boolean {
+  return 'highlights' in CSS && typeof Highlight !== 'undefined';
 }
 
 interface OwnerEntry {
@@ -46,21 +38,16 @@ function orderedOwners(state: InstanceState): OwnerEntry[] {
 }
 
 function orderedRanges(state: InstanceState): Range[] {
-  const all: Range[] = [];
-  for (const o of orderedOwners(state)) all.push(...o.ranges);
-  return all;
+  return orderedOwners(state).flatMap((o) => o.ranges);
 }
 
 function orderedMatches(state: InstanceState): SearchMatch[] {
-  const all: SearchMatch[] = [];
-  for (const o of orderedOwners(state)) all.push(...o.matches);
-  return all;
+  return orderedOwners(state).flatMap((o) => o.matches);
 }
 
 function paintHighlights(): void {
-  const reg = highlightRegistry();
-  const Ctor = HighlightCtor();
-  if (!reg || !Ctor) return;
+  if (!supportsHighlights()) return;
+  const reg = CSS.highlights;
   reg.delete('dv-search');
   reg.delete('dv-search-current');
   const all: Range[] = [];
@@ -71,8 +58,8 @@ function paintHighlights(): void {
     const cur = ranges[state.currentIndex];
     if (cur) current.push(cur);
   }
-  if (all.length > 0) reg.set('dv-search', new Ctor(...all) as unknown);
-  if (current.length > 0) reg.set('dv-search-current', new Ctor(...current) as unknown);
+  if (all.length > 0) reg.set('dv-search', new Highlight(...all));
+  if (current.length > 0) reg.set('dv-search-current', new Highlight(...current));
 }
 
 function schedulePublish(id: string): void {
@@ -111,25 +98,14 @@ function clearOwner(id: string, ownerId: string): void {
   schedulePublish(id);
 }
 
-const MAX_QUERY_LENGTH = 1000;
-const MAX_MATCHES = 10_000;
-
-function findRanges(
-  container: HTMLElement,
-  query: SearchQuery,
-  pageIndex: number,
-): { ranges: Range[]; matches: SearchMatch[] } {
-  if (query.text.length > MAX_QUERY_LENGTH) return { ranges: [], matches: [] };
-
+function collectText(container: HTMLElement): { nodes: Text[]; starts: number[]; full: string } {
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       const parent = node.parentElement;
       if (!parent) return NodeFilter.FILTER_REJECT;
       const tag = parent.tagName;
       if (tag === 'SCRIPT' || tag === 'STYLE') return NodeFilter.FILTER_REJECT;
-      return node.nodeValue && node.nodeValue.length > 0
-        ? NodeFilter.FILTER_ACCEPT
-        : NodeFilter.FILTER_REJECT;
+      return node.nodeValue ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
     },
   });
 
@@ -142,42 +118,17 @@ function findRanges(
     nodes.push(text);
     full += text.nodeValue ?? '';
   }
+  return { nodes, starts, full };
+}
 
+function findRanges(
+  container: HTMLElement,
+  query: SearchQuery,
+  pageIndex: number,
+): { ranges: Range[]; matches: SearchMatch[] } {
   const ranges: Range[] = [];
   const matches: SearchMatch[] = [];
-  if (!full) return { ranges, matches };
-
-  const needle = query.text;
-  const occurrences: Array<[number, number]> = [];
-
-  if (query.regex) {
-    try {
-      const re = new RegExp(needle, query.caseSensitive ? 'g' : 'gi');
-      for (let m = re.exec(full); m; m = re.exec(full)) {
-        if (m[0].length === 0) {
-          re.lastIndex++;
-          continue;
-        }
-        occurrences.push([m.index, m.index + m[0].length]);
-        if (occurrences.length >= MAX_MATCHES) break;
-      }
-    } catch {
-      return { ranges, matches };
-    }
-  } else {
-    const hay = query.caseSensitive ? full : full.toLowerCase();
-    const ndl = query.caseSensitive ? needle : needle.toLowerCase();
-    if (!ndl) return { ranges, matches };
-    let from = 0;
-    for (let idx = hay.indexOf(ndl, from); idx !== -1; idx = hay.indexOf(ndl, from)) {
-      const end = idx + ndl.length;
-      if (!query.wholeWord || isWholeWord(full, idx, end)) {
-        occurrences.push([idx, end]);
-        if (occurrences.length >= MAX_MATCHES) break;
-      }
-      from = end;
-    }
-  }
+  const { nodes, starts, full } = collectText(container);
 
   const locate = (globalOffset: number): { node: Text; offset: number } => {
     let lo = 0;
@@ -190,43 +141,27 @@ function findRanges(
     return { node: nodes[lo]!, offset: globalOffset - starts[lo]! };
   };
 
-  for (const [start, end] of occurrences) {
+  for (const [start, end] of findOccurrences(full, query)) {
+    const a = locate(start);
+    const b = locate(end);
+    const range = document.createRange();
     try {
-      const a = locate(start);
-      const b = locate(end);
-      const range = document.createRange();
       range.setStart(a.node, a.offset);
       range.setEnd(b.node, b.offset);
-      ranges.push(range);
-      matches.push({
-        pageIndex,
-        text: full.slice(start, end),
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
-      });
     } catch {
+      continue;
     }
+    ranges.push(range);
+    matches.push({ pageIndex, text: full.slice(start, end), x: 0, y: 0, width: 0, height: 0 });
   }
 
   return { ranges, matches };
 }
 
-function isWholeWord(text: string, start: number, end: number): boolean {
-  const before = start > 0 ? text[start - 1]! : ' ';
-  const after = end < text.length ? text[end]! : ' ';
-  return !/\w/.test(before) && !/\w/.test(after);
-}
-
-/**
- * @param contentKey changes whenever the container's rendered content changes,
- *   so the search re-runs against fresh DOM.
- */
 export function useDomSearch(
   containerRef: RefObject<HTMLElement | null>,
   active: boolean,
-  contentKey: unknown,
+  domVersion: unknown,
   pageIndex: number,
 ): void {
   const searchQuery = useViewerStore((s) => s.searchQuery);
@@ -236,10 +171,8 @@ export function useDomSearch(
   const instanceId = useViewerStore((s) => s.instanceId);
   const ownerId = useId();
 
-  const enabled = active;
-
   useEffect(() => {
-    if (!enabled) return;
+    if (!active) return;
     getInstance(instanceId).apply = applySearchMatches;
     const container = containerRef.current;
     if (!container) return;
@@ -253,17 +186,15 @@ export function useDomSearch(
     setOwner(instanceId, ownerId, { pageIndex, ranges, matches });
 
     return () => clearOwner(instanceId, ownerId);
-  }, [enabled, searchQuery, contentKey, applySearchMatches, containerRef, ownerId, pageIndex, instanceId]);
+  }, [active, searchQuery, domVersion, applySearchMatches, containerRef, ownerId, pageIndex, instanceId]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!active) return;
     const state = getInstance(instanceId);
     state.currentIndex = currentMatchIndex;
     paintHighlights();
     const current = orderedRanges(state)[currentMatchIndex];
-    const el =
-      current?.startContainer.parentElement ??
-      (current?.startContainer as HTMLElement | null);
-    revealMatch(el, matchNonce);
-  }, [enabled, currentMatchIndex, matchNonce, ownerId, instanceId]);
+    const node = current?.startContainer;
+    revealMatch(node instanceof Element ? node : node?.parentElement, matchNonce);
+  }, [active, currentMatchIndex, matchNonce, instanceId]);
 }

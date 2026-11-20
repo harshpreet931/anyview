@@ -20,30 +20,25 @@ export function ViewerStoreProvider({
   );
 }
 
+function useStoreContext(hookName: string): ViewerStoreInstance {
+  const store = useContext(ViewerStoreContext);
+  if (!store) throw new Error(`${hookName} must be used within a ViewerStoreProvider`);
+  return store;
+}
+
 export function useViewerStore(): ViewerStore;
 export function useViewerStore<T>(selector: (s: ViewerStore) => T): T;
 export function useViewerStore<T>(selector?: (s: ViewerStore) => T): T | ViewerStore {
-  const store = useContext(ViewerStoreContext);
-  if (!store) {
-    throw new Error('useViewerStore must be used within a ViewerStoreProvider');
-  }
+  const store = useStoreContext('useViewerStore');
   return useStore(store, selector as (s: ViewerStore) => T);
 }
 
 export function useViewerStoreApi(): ViewerStoreInstance {
-  const store = useContext(ViewerStoreContext);
-  if (!store) {
-    throw new Error('useViewerStoreApi must be used within a ViewerStoreProvider');
-  }
-  return store;
+  return useStoreContext('useViewerStoreApi');
 }
 
 export function useDocViewer() {
-  const store = useContext(ViewerStoreContext);
-  if (!store) {
-    throw new Error('useDocViewer must be used within a ViewerStoreProvider');
-  }
-
+  const store = useStoreContext('useDocViewer');
   const document = useStore(store, (s) => s.document);
   const loadState = useStore(store, (s) => s.loadState);
   const loadError = useStore(store, (s) => s.loadError);

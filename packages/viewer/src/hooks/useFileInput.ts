@@ -6,6 +6,11 @@ interface UseFileInputOptions {
   onFile: (source: FileSource) => void;
 }
 
+function accepts(file: File, accept: string[]): boolean {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return accept.some((a) => (a.startsWith('.') ? ext === a.slice(1) : file.type === a));
+}
+
 export function useFileInput(options: UseFileInputOptions) {
   const { accept, onFile } = options;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,22 +55,8 @@ export function useFileInput(options: UseFileInputOptions) {
       setIsDragging(false);
 
       const files = Array.from(e.dataTransfer.files);
-      if (files.length === 0) return;
-
-      if (accept) {
-        const filtered = files.filter((f) => {
-          const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-          return accept.some((a) => {
-            if (a.startsWith('.')) return ext === a.slice(1);
-            return f.type === a;
-          });
-        });
-        if (filtered.length > 0) {
-          onFile({ kind: 'file', file: filtered[0] });
-        }
-      } else {
-        onFile({ kind: 'file', file: files[0] });
-      }
+      const file = accept ? files.find((f) => accepts(f, accept)) : files[0];
+      if (file) onFile({ kind: 'file', file });
     },
     [accept, onFile],
   );
