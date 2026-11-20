@@ -203,7 +203,7 @@ test.describe('row lists', () => {
     await expect(page.locator('.dv-grid-head th')).toHaveText(['', 'A', 'B']);
     expect(await page.locator('.dv-sheet-truncated').count()).toBe(0);
     await scrollTo(page, 1);
-    expect(await visibleUnits(page)).toContain(20_000);
+    await expect.poll(() => visibleUnits(page)).toContain(20_000);
     const last = page.locator('.dv-rows-layer tr[data-dv-unit="20000"]');
     await expect(last.locator('th')).toHaveText('20001');
     await expect(last.locator('[data-dv-cell="1"]')).toHaveText('v20000');

@@ -27,4 +27,9 @@ describe('gridLayout', () => {
     expect(layout.tableWidth).toBeLessThanOrEqual(1000 - 32);
     expect(layout.tableWidth).toBeGreaterThan(1000 - 32 - 4);
   });
+
+  it('makes the table exactly as wide as its columns, so the browser adds no width to any of them', () => {
+    const layout = gridLayout(source([['a', 'b'], ['ccc', 'dddd']]));
+    expect(layout.tableWidth).toBe(layout.gutter + layout.widths.reduce((a, b) => a + b, 0));
+  });
 });

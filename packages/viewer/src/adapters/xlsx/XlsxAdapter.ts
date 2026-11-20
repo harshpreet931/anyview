@@ -14,30 +14,54 @@ import type {
 } from '../../core/types';
 import { ViewerError, asParseError, throwIfCancelled } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
-import type { CellObject } from 'xlsx';
 import { searchUnits, type SearchUnit } from '../../core/search-units';
 import { gridLayout, renderGrid, type GridLayout, type GridSource } from '../../core/rows/grid';
+import { MergeIndex } from '../../core/rows/merges';
 import type { RowList } from '../../core/rows/virtual-rows';
+import { readSheets, type SheetCells } from './read-sheets';
 import { xlsxManifest } from './manifest';
 
-interface Sheet {
-  name: string;
-  /** The displayed text of each cell, indexed by sheet row and column from A1; empty rows are left out. */
-  cells: ReadonlyArray<readonly string[] | undefined>;
-  firstRow: number;
-  firstCol: number;
-  rowCount: number;
-  columnCount: number;
+interface Sheet extends SheetCells {
+  index: MergeIndex;
   layout: GridLayout;
 }
 
-const cellText = (cell: CellObject | null | undefined) => (cell == null ? '' : (cell.w ?? (cell.v == null ? '' : String(cell.v))));
-const NUMBER = /^[-+]?[$€£¥]?\(?\d[\d,]*(\.\d+)?\)?%?$/;
+type WorkerReply = { sheets: SheetCells[] } | { error: string };
 
-/** Keeps only the text of each cell, so the workbook's cell objects can be freed. */
-function cellTexts(dense: ReadonlyArray<ReadonlyArray<CellObject | null | undefined> | null | undefined>): Array<string[] | undefined> {
-  return Array.from(dense, (row) => (row ? Array.from(row, cellText) : undefined));
+/** Reads the workbook off the main thread; null when no worker can run here, so the caller reads it itself. */
+function readInWorker(data: ArrayBuffer, signal: AbortSignal): Promise<SheetCells[] | null> {
+  if (typeof Worker === 'undefined') return Promise.resolve(null);
+  let worker: Worker;
+  try {
+    worker = new Worker(new URL('./xlsx.worker.ts', import.meta.url), { type: 'module' });
+  } catch {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve, reject) => {
+    const finish = () => {
+      worker.terminate();
+      signal.removeEventListener('abort', cancel);
+    };
+    const cancel = () => {
+      finish();
+      reject(new Error('Parse cancelled'));
+    };
+    signal.addEventListener('abort', cancel);
+    worker.onmessage = ({ data: reply }: MessageEvent<WorkerReply>) => {
+      finish();
+      if ('error' in reply) reject(new Error(reply.error));
+      else resolve(reply.sheets);
+    };
+    worker.onerror = (event) => {
+      event.preventDefault();
+      finish();
+      resolve(null);
+    };
+    worker.postMessage(data);
+  });
 }
+
+const NUMBER = /^[-+]?[$€£¥]?\(?\d[\d,]*(\.\d+)?\)?%?$/;
 
 function columnName(col: number): string {
   let name = '';
@@ -47,8 +71,11 @@ function columnName(col: number): string {
 
 /** A unit is a sheet row and a cell its column, both counted from A1; the gutter shows the sheet's row numbers. */
 function sheetGrid(sheet: Omit<Sheet, 'layout'>): GridSource {
-  const { cells, firstRow, firstCol } = sheet;
-  const cell = (r: number, c: number) => cells[firstRow + r]?.[firstCol + c] ?? '';
+  const { text, rows, cells, firstRow, firstCol } = sheet;
+  const cell = (r: number, c: number) => {
+    const i = rows[r]! + c;
+    return i < rows[r + 1]! ? text.slice(cells[i], cells[i + 1]) : '';
+  };
   return {
     rowCount: sheet.rowCount,
     columnCount: sheet.columnCount,
@@ -58,6 +85,7 @@ function sheetGrid(sheet: Omit<Sheet, 'layout'>): GridSource {
     rowUnit: (r) => firstRow + r,
     rowLabel: (r) => String(firstRow + r + 1),
     cellId: (c) => firstCol + c,
+    merges: sheet.index,
   };
 }
 
@@ -74,25 +102,13 @@ export class XlsxAdapter implements Adapter {
     throwIfCancelled(signal);
 
     try {
-      const XLSX = await loadParser('xlsx', () => import('xlsx'));
-      // Dense cells and no HTML, formulas or styles: only the displayed text is read.
-      const workbook = XLSX.read(buffer, { type: 'array', dense: true, cellHTML: false, cellFormula: false, cellStyles: false });
-
-      this.sheets = workbook.SheetNames.map((name) => {
-        const sheet = workbook.Sheets[name];
-        const ref = sheet?.['!ref'];
-        const range = ref ? XLSX.utils.decode_range(ref) : null;
-        const shape = {
-          name,
-          cells: range && sheet?.['!data'] ? cellTexts(sheet['!data']) : [],
-          firstRow: range?.s.r ?? 0,
-          firstCol: range?.s.c ?? 0,
-          rowCount: range ? range.e.r - range.s.r + 1 : 0,
-          columnCount: range ? range.e.c - range.s.c + 1 : 0,
-        };
-        return { ...shape, layout: gridLayout(sheetGrid(shape)) };
+      const sheets = (await readInWorker(buffer, signal)) ?? readSheets(await loadParser('xlsx', () => import('xlsx')), buffer);
+      this.sheets = sheets.map((cells) => {
+        const sheet = { ...cells, index: new MergeIndex(cells.merges) };
+        return { ...sheet, layout: gridLayout(sheetGrid(sheet)) };
       });
     } catch (cause) {
+      throwIfCancelled(signal);
       throw asParseError(cause, 'Failed to parse spreadsheet.');
     }
 
@@ -160,13 +176,12 @@ export class XlsxAdapter implements Adapter {
 
   private *units(): Generator<SearchUnit> {
     for (let pageIndex = 0; pageIndex < this.sheets.length; pageIndex++) {
-      const { cells, firstRow, firstCol, rowCount, columnCount } = this.sheets[pageIndex]!;
-      for (let r = firstRow; r < firstRow + rowCount; r++) {
-        const row = cells[r];
-        if (!row) continue;
-        for (let c = firstCol; c < Math.min(row.length, firstCol + columnCount); c++) {
-          const text = row[c];
-          if (text) yield { pageIndex, unit: r, cell: c, text };
+      const { text, rows, cells, firstRow, firstCol, rowCount } = this.sheets[pageIndex]!;
+      for (let r = 0; r < rowCount; r++) {
+        for (let i = rows[r]!; i < rows[r + 1]!; i++) {
+          if (cells[i]! < cells[i + 1]!) {
+            yield { pageIndex, unit: firstRow + r, cell: firstCol + i - rows[r]!, text: text.slice(cells[i], cells[i + 1]) };
+          }
         }
       }
     }

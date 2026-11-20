@@ -58,7 +58,11 @@ function copyPdfjsAssets(): Plugin {
   };
 }
 
-const PDF_WORKER_ENTRY = 'adapters/pdf/pdf.worker';
+/** Each worker ships as its own entry; its adapter's `new URL('./x.worker.ts', import.meta.url)` is pointed at it. */
+const WORKERS = [
+  { adapter: '/adapters/pdf/PdfAdapter.ts', entry: 'adapters/pdf/pdf.worker', placeholder: '__ANYVIEW_PDF_WORKER__' },
+  { adapter: '/adapters/xlsx/XlsxAdapter.ts', entry: 'adapters/xlsx/xlsx.worker', placeholder: '__ANYVIEW_XLSX_WORKER__' },
+];
 const PDFJS_BASE_URL = /new URL\("\.\.\/pdfjs\/",\s*""\s*\+\s*import\.meta\.url\)/g;
 const PDF_ASSET_FILES: Record<string, RegExp> = {
   cmaps: /\.bcmap$/,
@@ -71,7 +75,7 @@ function relativeFrom(chunkFile: string, target: string): string {
   return rel.startsWith('.') ? rel : `./${rel}`;
 }
 
-function pdfWorkerForBundlers(): Plugin {
+function workersForBundlers(): Plugin {
   const assetPaths = Object.entries(PDF_ASSET_FILES).flatMap(([dir, re]) =>
     fs
       .readdirSync(path.join(PDFJS_ROOT, dir))
@@ -79,25 +83,27 @@ function pdfWorkerForBundlers(): Plugin {
       .map((f) => `${dir}/${f}`),
   );
   return {
-    name: 'pdf-worker-for-bundlers',
+    name: 'workers-for-bundlers',
     apply: 'build',
     enforce: 'pre',
     transform(code, id) {
-      if (!id.endsWith('/adapters/pdf/PdfAdapter.ts')) return null;
-      const from = "new URL('./pdf.worker.ts', import.meta.url)";
-      if (!code.includes(from)) this.error('PdfAdapter worker URL not found');
-      return code.replace(from, 'new URL(__ANYVIEW_PDF_WORKER__, import.meta.url)');
+      const worker = WORKERS.find((w) => id.endsWith(w.adapter));
+      if (!worker) return null;
+      const from = `new URL('./${path.posix.basename(worker.entry)}.ts', import.meta.url)`;
+      if (!code.includes(from)) this.error(`${worker.adapter} worker URL not found`);
+      return code.replace(from, `new URL(${worker.placeholder}, import.meta.url)`);
     },
     generateBundle(options, bundle) {
       const isEsm = options.format === 'es';
       for (const chunk of Object.values(bundle)) {
         if (chunk.type !== 'chunk') continue;
-        if (chunk.code.includes('__ANYVIEW_PDF_WORKER__')) {
-          const url = JSON.stringify(relativeFrom(chunk.fileName, `${PDF_WORKER_ENTRY}.js`));
+        for (const { entry, placeholder } of WORKERS) {
+          if (!chunk.code.includes(placeholder)) continue;
+          const url = JSON.stringify(relativeFrom(chunk.fileName, `${entry}.js`));
           chunk.code = isEsm
-            ? chunk.code.replaceAll('__ANYVIEW_PDF_WORKER__', url)
+            ? chunk.code.replaceAll(placeholder, url)
             : chunk.code.replace(
-                /new URL\(__ANYVIEW_PDF_WORKER__,[^)]*\)/g,
+                new RegExp(`new URL\\(${placeholder},[^)]*\\)`, 'g'),
                 `new URL(${url},typeof document>"u"?require("url").pathToFileURL(__filename).href:document.currentScript&&document.currentScript.src||document.baseURI)`,
               );
         }
@@ -145,7 +151,7 @@ export default defineConfig({
       },
     }),
     copyPdfjsAssets(),
-    pdfWorkerForBundlers(),
+    workersForBundlers(),
   ],
   worker: {
     format: 'es',
@@ -155,7 +161,7 @@ export default defineConfig({
       entry: {
         index: 'src/index.ts',
         ...Object.fromEntries(ADAPTERS.map((a) => [`adapters/${a}/index`, `src/adapters/${a}/index.ts`])),
-        [PDF_WORKER_ENTRY]: 'src/adapters/pdf/pdf.worker.ts',
+        ...Object.fromEntries(WORKERS.map((w) => [w.entry, `src/${w.entry}.ts`])),
         'core/index': 'src/core/index.ts',
       },
     },

@@ -1,5 +1,6 @@
 import { CHAR_WIDTH } from './lines';
 import { listHeight, mountRows, type RowList } from './virtual-rows';
+import { mergeAt, type GridMerge, type MergeIndex } from './merges';
 
 export const GRID_ROW_HEIGHT = 28;
 export const GRID_HEADER_HEIGHT = 32;
@@ -31,6 +32,8 @@ export interface GridSource {
   rowUnit(row: number): number;
   rowLabel(row: number): string;
   cellId(col: number): number;
+  /** Blocks of cells drawn as one cell, holding the text of their first cell. */
+  readonly merges?: MergeIndex;
 }
 
 export interface GridLayout {
@@ -47,17 +50,21 @@ const textWidth = (text: string) => text.length * CHAR_WIDTH + 2 * CELL_PADDING 
 export function gridLayout(source: GridSource): GridLayout {
   const widths: number[] = [];
   const sample = sampleRows(source.rowCount);
+  // Text that spans several columns does not widen the first of them.
+  const spanned = sample.map((r) => source.merges?.within(r, r + 1).filter((m) => m.right > m.left) ?? []);
   for (let c = 0; c < source.columnCount; c++) {
     let widest = textWidth(source.header(c));
-    for (const r of sample) widest = Math.max(widest, textWidth(source.cell(r, c)));
+    sample.forEach((r, i) => {
+      if (!mergeAt(spanned[i]!, c)) widest = Math.max(widest, textWidth(source.cell(r, c)));
+    });
     widths.push(Math.ceil(Math.min(Math.max(widest, MIN_COLUMN), MAX_COLUMN)));
   }
   const gutter = Math.ceil(textWidth(source.rowLabel(Math.max(0, source.rowCount - 1))));
   const natural = gutter + widths.reduce((a, b) => a + b, 0);
-  const room = MIN_WIDTH - 2 * PADDING - 1;
+  const room = MIN_WIDTH - 2 * PADDING;
   const stretch = natural < room && natural > gutter ? (room - gutter) / (natural - gutter) : 1;
   const stretched = widths.map((w) => Math.floor(w * stretch));
-  const tableWidth = gutter + stretched.reduce((a, b) => a + b, 0) + 1;
+  const tableWidth = gutter + stretched.reduce((a, b) => a + b, 0);
   return {
     widths: stretched,
     gutter,
@@ -106,9 +113,16 @@ export function renderGrid(
     if (source.headerUnit != null) th.dataset.dvCell = String(source.cellId(c));
   }
 
-  const body = spacer.appendChild(table(layout, 'dv-grid-table dv-rows-layer'));
-  const tbody = body.createTBody();
-  const capacity = layout.widths.map((w) => (w - 2 * CELL_PADDING) / CHAR_WIDTH);
+  const layer = spacer.appendChild(document.createElement('div'));
+  layer.className = 'dv-rows-layer';
+  const tbody = layer.appendChild(table(layout, 'dv-grid-table')).createTBody();
+  const fill = (el: HTMLElement, r: number, c: number, width: number) => {
+    const text = source.cell(r, c);
+    el.textContent = text;
+    el.dataset.dvCell = String(source.cellId(c));
+    if (text.length * CHAR_WIDTH > width - 2 * CELL_PADDING) el.title = text;
+    if (source.numeric?.(r, c)) el.classList.add('dv-grid-number');
+  };
   const renderRow = (r: number) => {
     const tr = document.createElement('tr');
     tr.dataset.dvUnit = String(source.rowUnit(r));
@@ -116,15 +130,41 @@ export function renderGrid(
     num.className = 'dv-grid-num';
     num.scope = 'row';
     num.textContent = source.rowLabel(r);
+    const merges = source.merges?.within(r, r + 1) ?? [];
     for (let c = 0; c < source.columnCount; c++) {
       const td = tr.appendChild(document.createElement('td'));
-      const text = source.cell(r, c);
-      td.textContent = text;
-      td.dataset.dvCell = String(source.cellId(c));
-      if (text.length > capacity[c]!) td.title = text;
-      if (source.numeric?.(r, c)) td.className = 'dv-grid-number';
+      const merge = mergeAt(merges, c);
+      if (merge) {
+        td.colSpan = merge.right - c + 1;
+        c = merge.right;
+      } else {
+        fill(td, r, c, layout.widths[c]!);
+      }
     }
     return tr;
+  };
+
+  // A merge is drawn over the cells it covers, from its first rendered row, whichever rows are in view.
+  const lefts = [layout.gutter];
+  for (const w of layout.widths) lefts.push(lefts.at(-1)! + w);
+  const blocks = layer.appendChild(document.createElement('div'));
+  const drawMerge = (m: GridMerge, from: number, to: number) => {
+    const first = Math.max(m.top, from);
+    const box = document.createElement('div');
+    box.className = 'dv-grid-merge';
+    box.dataset.dvUnit = String(source.rowUnit(m.top));
+    box.style.left = `${lefts[m.left]}px`;
+    box.style.top = `${(first - from) * GRID_ROW_HEIGHT}px`;
+    box.style.width = `${lefts[m.right + 1]! - lefts[m.left]!}px`;
+    box.style.height = `${(Math.min(m.bottom + 1, to) - first) * GRID_ROW_HEIGHT}px`;
+    const cell = box.appendChild(document.createElement('div'));
+    cell.className = 'dv-grid-merge-cell';
+    cell.style.top = `${((m.top + m.bottom + 1) / 2 - first) * GRID_ROW_HEIGHT - GRID_ROW_HEIGHT / 2}px`;
+    fill(cell, m.top, m.left, lefts[m.right + 1]! - lefts[m.left]!);
+    return box;
+  };
+  const drawMerges = (from: number, to: number) => {
+    if (source.merges) blocks.replaceChildren(...source.merges.within(from, to).map((m) => drawMerge(m, from, to)));
   };
 
   target.replaceChildren(root);
@@ -133,14 +173,17 @@ export function renderGrid(
       count: source.rowCount,
       rowHeight: GRID_ROW_HEIGHT,
       spacer,
-      layer: body,
+      layer,
       parent: tbody,
       header: head,
       headerHeight: GRID_HEADER_HEIGHT,
       renderRow,
+      onWindow: drawMerges,
     },
     signal,
     print,
   );
+  // Static rows (print, thumbnails) never report a window.
+  drawMerges(rows.from, rows.to);
   return { root, rows };
 }

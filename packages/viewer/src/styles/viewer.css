@@ -507,8 +507,33 @@
   user-select: none;
 }
 
-.dv-grid-table .dv-grid-number {
+:is(.dv-grid-table, .dv-grid-merge) .dv-grid-number {
   text-align: right;
+}
+
+/* A merged cell is drawn over the cells it covers, as one cell of the same look. */
+.dv-grid-merge {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-right: 1px solid var(--dv-page-border);
+  border-bottom: 1px solid var(--dv-page-border);
+  background: var(--dv-page-bg);
+}
+
+.dv-grid-merge-cell {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 0 10px;
+  line-height: 27px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dv-grid .dv-rows[data-static] > .dv-rows-layer {
+  position: relative;
 }
 
 .dv-text {

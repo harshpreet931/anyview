@@ -115,17 +115,20 @@ export function locateMatch(container: Element, match: SearchMatch): Range | Ele
 /** Ranges of the rendered matches on one page, keyed by the match's index in `matches`. */
 export function matchRanges(container: Element, matches: ReadonlyArray<SearchMatch>, pageIndex: number): Map<number, Range> {
   const ranges = new Map<number, Range>();
-  const units = new Map<string, Element>();
+  // A unit may be drawn in more than one element, as a table row is around a merged cell drawn over it.
+  const units = new Map<string, Element[]>();
   container.querySelectorAll('[data-dv-unit]').forEach((el) => {
     const unit = el.getAttribute('data-dv-unit')!;
-    if (!units.has(unit)) units.set(unit, el);
+    const els = units.get(unit);
+    if (els) els.push(el);
+    else units.set(unit, [el]);
   });
   const texts = new Map<Element, UnitText>();
   matches.forEach((match, i) => {
     const loc = match.locator;
     if (match.pageIndex !== pageIndex || !loc) return;
-    const unitEl = units.get(String(loc.unit));
-    const el = unitEl && (loc.cell == null ? unitEl : cellElement(unitEl, loc.cell));
+    const els = units.get(String(loc.unit));
+    const el = els && (loc.cell == null ? els[0] : cellElement(els, loc.cell));
     if (!el) return;
     let text = texts.get(el);
     if (!text) texts.set(el, (text = unitText(el)));
@@ -138,13 +141,15 @@ export function matchRanges(container: Element, matches: ReadonlyArray<SearchMat
 function unitElement(container: Element, match: SearchMatch): Element | null {
   const loc = match.locator;
   if (!loc) return null;
-  const unitEl = container.querySelector(`[data-dv-unit="${loc.unit}"]`);
-  if (!unitEl || loc.cell == null) return unitEl;
-  return cellElement(unitEl, loc.cell);
+  const unit = `[data-dv-unit="${loc.unit}"]`;
+  return container.querySelector(loc.cell == null ? unit : `${unit} [data-dv-cell="${loc.cell}"]`);
 }
 
-function cellElement(unitEl: Element, cell: number): Element | null {
-  return unitEl.querySelector(`[data-dv-cell="${cell}"]`);
+function cellElement(unitEls: readonly Element[], cell: number): Element | undefined {
+  for (const el of unitEls) {
+    const found = el.querySelector(`[data-dv-cell="${cell}"]`);
+    if (found) return found;
+  }
 }
 
 function rangeIn(unit: UnitText, match: SearchMatch): Range | null {
