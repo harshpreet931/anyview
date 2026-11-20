@@ -14,6 +14,9 @@ const PDFJS_ROOT = path.dirname(
   }),
 );
 const PDFJS_ASSET_DIRS = ['cmaps', 'standard_fonts', 'wasm', 'iccs'];
+const PDFJS_ASSET_URL = new RegExp(`/pdfjs/(${PDFJS_ASSET_DIRS.join('|')})/(.+)$`);
+const VIEWER_SRC = path.resolve(__dirname, '../../packages/viewer/src');
+const ADAPTERS = ['pdf', 'docx', 'xlsx', 'pptx', 'image', 'markdown', 'code', 'csv', 'html', 'ipynb', 'text'];
 
 function copyPdfjsAssets(): Plugin {
   return {
@@ -21,7 +24,7 @@ function copyPdfjsAssets(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = (req.url ?? '').split('?')[0];
-        const m = url.match(/\/pdfjs\/(cmaps|standard_fonts|wasm|iccs)\/(.+)$/);
+        const m = url.match(PDFJS_ASSET_URL);
         if (!m) return next();
         fs.promises
           .readFile(path.join(PDFJS_ROOT, m[1], m[2]))
@@ -46,7 +49,6 @@ function copyPdfjsAssets(): Plugin {
 }
 
 export default defineConfig({
-  base: process.env.PAGES_BASE ?? '/',
   plugins: [react(), copyPdfjsAssets()],
   server: {
     port: 5173,
@@ -66,19 +68,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'anyview/core': path.resolve(__dirname, '../../packages/viewer/src/core/index.ts'),
-      'anyview/pdf': path.resolve(__dirname, '../../packages/viewer/src/adapters/pdf/index.ts'),
-      'anyview/docx': path.resolve(__dirname, '../../packages/viewer/src/adapters/docx/index.ts'),
-      'anyview/xlsx': path.resolve(__dirname, '../../packages/viewer/src/adapters/xlsx/index.ts'),
-      'anyview/pptx': path.resolve(__dirname, '../../packages/viewer/src/adapters/pptx/index.ts'),
-      'anyview/image': path.resolve(__dirname, '../../packages/viewer/src/adapters/image/index.ts'),
-      'anyview/markdown': path.resolve(__dirname, '../../packages/viewer/src/adapters/markdown/index.ts'),
-      'anyview/code': path.resolve(__dirname, '../../packages/viewer/src/adapters/code/index.ts'),
-      'anyview/csv': path.resolve(__dirname, '../../packages/viewer/src/adapters/csv/index.ts'),
-      'anyview/html': path.resolve(__dirname, '../../packages/viewer/src/adapters/html/index.ts'),
-      'anyview/ipynb': path.resolve(__dirname, '../../packages/viewer/src/adapters/ipynb/index.ts'),
-      'anyview/text': path.resolve(__dirname, '../../packages/viewer/src/adapters/text/index.ts'),
-      'anyview': path.resolve(__dirname, '../../packages/viewer/src/index.ts'),
+      'anyview/core': path.join(VIEWER_SRC, 'core/index.ts'),
+      ...Object.fromEntries(ADAPTERS.map((a) => [`anyview/${a}`, path.join(VIEWER_SRC, `adapters/${a}/index.ts`)])),
+      'anyview': path.join(VIEWER_SRC, 'index.ts'),
     },
   },
 });

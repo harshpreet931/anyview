@@ -124,22 +124,12 @@ docs: clarify custom adapter guide
 refactor: simplify page cache eviction
 ```
 
-## Changesets
-
-We use [Changesets](https://github.com/changesets/changesets) for versioning:
-
-```bash
-pnpm changeset      # create a changeset
-pnpm changeset version  # apply changesets to package.json
-```
-
 ## Pull Requests
 
 1. Fork the repo and create a branch: `git checkout -b feat/my-feature`
 2. Make your changes
-3. Ensure `pnpm typecheck` and `pnpm build` pass
-4. Add a changeset: `pnpm changeset`
-5. Open a PR with a clear description
+3. Ensure `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm build` pass
+4. Open a PR with a clear description
 
 ## License
 

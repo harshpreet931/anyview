@@ -14,8 +14,8 @@ const clientBanner = (chunk: { isEntry?: boolean; name?: string }) =>
 const require = createRequire(import.meta.url);
 const PDFJS_ROOT = path.dirname(require.resolve('pdfjs-dist/package.json'));
 const PDFJS_ASSET_DIRS = ['cmaps', 'standard_fonts', 'wasm', 'iccs'];
+const ADAPTERS = ['pdf', 'docx', 'xlsx', 'pptx', 'image', 'markdown', 'code', 'csv', 'html', 'ipynb', 'text'];
 
-// pdf.js CMaps/standard-fonts/wasm/iccs must ship in the package (dist/pdfjs/) or CJK/non-embedded glyphs render blank.
 function addDeclarationExtensions(
   content: string,
   fromDir: string,
@@ -28,7 +28,7 @@ function addDeclarationExtensions(
       spec.startsWith('./') ||
       spec.startsWith('../');
     if (!isRelative) return spec;
-    if (/\.(m?js|c?js|json|css|node)$/.test(spec)) return spec;
+    if (/\.([cm]?js|json|css|node)$/.test(spec)) return spec;
     const abs = path.resolve(fromDir, spec);
     if (emitted.has(path.resolve(`${abs}.d.ts`))) return `${spec}.js`;
     if (emitted.has(path.resolve(path.join(abs, 'index.d.ts')))) return `${spec}/index.js`;
@@ -39,6 +39,7 @@ function addDeclarationExtensions(
     .replace(/(\bimport\s*\(\s*['"])(\.[^'"]*)(['"]\s*\))/g, (_m, a, s, b) => a + rewrite(s) + b);
 }
 
+// pdf.js CMaps/standard-fonts/wasm/iccs must ship in the package (dist/pdfjs/) or CJK/non-embedded glyphs render blank.
 function copyPdfjsAssets(): Plugin {
   return {
     name: 'copy-pdfjs-assets',
@@ -58,6 +59,7 @@ function copyPdfjsAssets(): Plugin {
 }
 
 const PDF_WORKER_ENTRY = 'adapters/pdf/pdf.worker';
+const PDFJS_BASE_URL = /new URL\("\.\.\/pdfjs\/",\s*""\s*\+\s*import\.meta\.url\)/g;
 const PDF_ASSET_FILES: Record<string, RegExp> = {
   cmaps: /\.bcmap$/,
   standard_fonts: /\.(pfb|ttf)$/,
@@ -99,12 +101,9 @@ function pdfWorkerForBundlers(): Plugin {
                 `new URL(${url},typeof document>"u"?require("url").pathToFileURL(__filename).href:document.currentScript&&document.currentScript.src||document.baseURI)`,
               );
         }
-        if (isEsm && /new URL\("\.\.\/pdfjs\/",\s*""\s*\+\s*import\.meta\.url\)/.test(chunk.code)) {
+        if (isEsm) {
           const base = JSON.stringify(`${relativeFrom(chunk.fileName, 'pdfjs')}/`);
-          chunk.code = chunk.code.replace(
-            /new URL\("\.\.\/pdfjs\/",\s*""\s*\+\s*import\.meta\.url\)/g,
-            `new URL(import.meta.url.replace(/[^/]*$/, "") + ${base})`,
-          );
+          chunk.code = chunk.code.replace(PDFJS_BASE_URL, `new URL(import.meta.url.replace(/[^/]*$/, "") + ${base})`);
         }
         if (isEsm && chunk.code.includes('__ANYVIEW_PDF_ASSETS__')) {
           const entries = assetPaths.map(
@@ -126,7 +125,7 @@ export default defineConfig({
     react(),
     dts({
       include: ['src'],
-      exclude: ['**/*.test.*', 'apps/**'],
+      exclude: ['**/*.test.*', '**/test-*.ts'],
       afterBuild: async (emittedFiles: Map<string, string>) => {
         const emitted = new Set(
           [...emittedFiles.keys()].map((p) => path.resolve(p)),
@@ -155,18 +154,8 @@ export default defineConfig({
     lib: {
       entry: {
         index: 'src/index.ts',
-        'adapters/pdf/index': 'src/adapters/pdf/index.ts',
+        ...Object.fromEntries(ADAPTERS.map((a) => [`adapters/${a}/index`, `src/adapters/${a}/index.ts`])),
         [PDF_WORKER_ENTRY]: 'src/adapters/pdf/pdf.worker.ts',
-        'adapters/docx/index': 'src/adapters/docx/index.ts',
-        'adapters/xlsx/index': 'src/adapters/xlsx/index.ts',
-        'adapters/pptx/index': 'src/adapters/pptx/index.ts',
-        'adapters/image/index': 'src/adapters/image/index.ts',
-        'adapters/markdown/index': 'src/adapters/markdown/index.ts',
-        'adapters/code/index': 'src/adapters/code/index.ts',
-        'adapters/csv/index': 'src/adapters/csv/index.ts',
-        'adapters/html/index': 'src/adapters/html/index.ts',
-        'adapters/ipynb/index': 'src/adapters/ipynb/index.ts',
-        'adapters/text/index': 'src/adapters/text/index.ts',
         'core/index': 'src/core/index.ts',
       },
     },
