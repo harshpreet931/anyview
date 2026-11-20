@@ -4,9 +4,7 @@ import { useViewerStore } from '../../hooks/useDocViewer';
 
 export interface TextLayerProps {
   pageIndex: number;
-  /** Rendered page width in CSS px (page.width * zoom). */
   width: number;
-  /** Rendered page height in CSS px. */
   height: number;
 }
 
@@ -21,20 +19,16 @@ export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
       setItems([]);
       return;
     }
-    let cancelled = false;
     const controller = new AbortController();
     adapter
       .getTextLayer(pageIndex, controller.signal, rotation)
       .then((layer) => {
-        if (!cancelled) setItems(layer.items);
+        if (!controller.signal.aborted) setItems(layer.items);
       })
       .catch(() => {
-        if (!cancelled) setItems([]);
+        if (!controller.signal.aborted) setItems([]);
       });
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [adapter, pageIndex, rotation]);
 
   // Match each span to the source run width (pdf.js technique) so selection aligns with the bitmap glyphs.
@@ -90,7 +84,6 @@ export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
       ref={containerRef}
       className="dv-text-layer"
       style={{ width, height, '--dv-text-h': `${height}px` } as CSSProperties}
-      aria-hidden="false"
     >
       {runs}
     </div>

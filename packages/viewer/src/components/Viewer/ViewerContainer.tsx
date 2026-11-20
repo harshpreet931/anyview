@@ -3,32 +3,14 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
 import { useZoomGestures } from '../../hooks/useZoomGestures';
-import {
-  totalRotation,
-  isSidewaysRotation,
-  displayedPageSize,
-  type Rotation,
-} from '../../core/rotation';
-import { rowAtOffset, currentRow } from '../../core/current-row';
+import { displayedPageSize } from '../../core/rotation';
+import { rowAtOffset } from '../../core/current-row';
+import { groupRows } from '../../core/group-rows';
 import { PageRenderer } from './PageRenderer';
 import { EmptyState, LoadingState, ErrorState } from '../States';
-
-const PAGE_VERTICAL_GAP = 48;
-const PAGE_SPREAD_GAP = 16;
-const FIXED_PAGE_FORMATS = new Set(['pdf', 'image', 'pptx']);
-
-function rowInView(
-  el: HTMLElement,
-  items: { index: number; start: number }[],
-  horizontal: boolean,
-  count: number,
-): number {
-  return currentRow(items, horizontal ? el.scrollLeft : el.scrollTop, {
-    viewport: horizontal ? el.clientWidth : el.clientHeight,
-    total: horizontal ? el.scrollWidth : el.scrollHeight,
-    count,
-  });
-}
+import { PAGE_SPREAD_GAP, PAGE_VERTICAL_GAP } from './layout';
+import { useFitZoom } from './useFitZoom';
+import { rowInView, useTrackCurrentPage } from './useTrackCurrentPage';
 
 function pageInRow(
   content: HTMLElement | null,
@@ -74,13 +56,10 @@ export function ViewerContainer() {
   const scrollMode = useViewerStore((s) => s.scrollMode);
   const spreadMode = useViewerStore((s) => s.spreadMode);
   const currentPage = useViewerStore((s) => s.currentPage);
-  const setCurrentPage = useViewerStore((s) => s.setCurrentPage);
   const scrollOffset = useViewerStore((s) => s.scrollOffset);
   const isScrolling = useViewerStore((s) => s.isScrolling);
   const setScrolling = useViewerStore((s) => s.setScrolling);
   const setVisiblePages = useViewerStore((s) => s.setVisiblePages);
-  const fitMode = useViewerStore((s) => s.fitMode);
-  const applyFitZoom = useViewerStore((s) => s._applyFitZoom);
   const cursorMode = useViewerStore((s) => s.cursorMode);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -91,22 +70,10 @@ export function ViewerContainer() {
   const isHorizontal = scrollMode === 'horizontal';
   const pageCount = document?.pages.length ?? 0;
 
-  const rows = useMemo<number[][]>(() => {
-    if (pageCount === 0) return [];
-    if (isHorizontal || spreadMode === 'none') {
-      return Array.from({ length: pageCount }, (_, i) => [i]);
-    }
-    const out: number[][] = [];
-    let i = 0;
-    if (spreadMode === 'odd') {
-      out.push([0]);
-      i = 1;
-    }
-    for (; i < pageCount; i += 2) {
-      out.push(i + 1 < pageCount ? [i, i + 1] : [i]);
-    }
-    return out;
-  }, [pageCount, isHorizontal, spreadMode]);
+  const rows = useMemo(
+    () => groupRows(pageCount, spreadMode, isHorizontal),
+    [pageCount, isHorizontal, spreadMode],
+  );
 
   const pageToRow = useMemo<number[]>(() => {
     const map: number[] = [];
@@ -119,19 +86,14 @@ export function ViewerContainer() {
     getScrollElement: () => scrollRef.current,
     estimateSize: (rowIndex) => {
       const gap = isHorizontal ? 0 : PAGE_VERTICAL_GAP;
-      const row = document ? rows[rowIndex] : undefined;
-      if (!row) return 400 + gap;
+      const pages = document?.pages;
+      const row = rows[rowIndex];
+      if (!pages || !row) return 400 + gap;
       let main = 0;
       for (const p of row) {
-        const page = document!.pages[p];
+        const page = pages[p];
         if (!page) continue;
-        const size = displayedPageSize(
-          page.width,
-          page.height,
-          page.rotation as Rotation,
-          rotation as Rotation,
-          zoom,
-        );
+        const size = displayedPageSize(page.width, page.height, page.rotation, rotation, zoom);
         const m = isHorizontal ? size.width : size.height;
         if (m > main) main = m;
       }
@@ -175,6 +137,7 @@ export function ViewerContainer() {
       if (!el) return;
       holdAnchor();
       virtualizer.measure();
+      // getVirtualItems() is called for its side effect: it makes the virtualizer recompute its measurements.
       virtualizer.getVirtualItems();
       const gap = isHorizontal ? 0 : PAGE_VERTICAL_GAP;
       for (const [key, size] of at.sizes) {
@@ -233,41 +196,7 @@ export function ViewerContainer() {
     });
   }, [isScrolling, scrollOffset, zoom, currentPage, virtualizer, pageToRow, setScrolling]);
 
-  useEffect(() => {
-    const scrollEl = scrollRef.current;
-    if (!scrollEl || pageCount === 0) return;
-
-    let ticking = false;
-    let settleTimer: ReturnType<typeof setTimeout> | undefined;
-    const track = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const row = rowInView(scrollEl, virtualizer.getVirtualItems(), isHorizontal, rows.length);
-        setCurrentPage(rows[row]?.[0] ?? 0);
-        ticking = false;
-      });
-    };
-    // Scrolls we caused are ignored for a fixed window from the first one, not one that re-arms on every
-    // event, or a user who keeps scrolling straight after a zoom would never get the page number back.
-    const onScroll = () => {
-      if (isProgrammaticScrollRef.current) {
-        settleTimer ??= setTimeout(() => {
-          settleTimer = undefined;
-          isProgrammaticScrollRef.current = false;
-          track();
-        }, 150);
-        return;
-      }
-      track();
-    };
-
-    scrollEl.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      scrollEl.removeEventListener('scroll', onScroll);
-      if (settleTimer) clearTimeout(settleTimer);
-    };
-  }, [virtualizer, pageCount, setCurrentPage, isHorizontal, rows]);
+  useTrackCurrentPage(scrollRef, virtualizer, rows, isHorizontal, isProgrammaticScrollRef);
 
   useEffect(() => {
     const pages = virtualizer
@@ -276,42 +205,9 @@ export function ViewerContainer() {
     setVisiblePages(pages);
   });
 
-  useEffect(() => {
-    if (fitMode === 'custom') return;
-    const el = scrollRef.current;
-    const page = document?.pages[0];
-    if (!el || !page) return;
+  useFitZoom(scrollRef);
 
-    const recompute = () => {
-      const isSideways = isSidewaysRotation(
-        totalRotation(page.rotation as Rotation, rotation as Rotation),
-      );
-      const pw = isSideways ? page.height : page.width;
-      const ph = isSideways ? page.width : page.height;
-      const cols = spreadMode !== 'none' && !isHorizontal ? 2 : 1;
-      const rowWidth = cols * pw + (cols - 1) * PAGE_SPREAD_GAP;
-      const availW = el.clientWidth - PAGE_VERTICAL_GAP;
-      const availH = el.clientHeight - PAGE_VERTICAL_GAP;
-      if (availW <= 0 || availH <= 0 || rowWidth <= 0 || ph <= 0) return;
-      const flowing = !FIXED_PAGE_FORMATS.has(document!.format);
-      let z = 1;
-      if (fitMode === 'page-width' || (fitMode === 'page-fit' && flowing)) z = availW / rowWidth;
-      else if (fitMode === 'page-fit') z = Math.min(availW / rowWidth, availH / ph);
-      else if (fitMode === 'actual-size') z = 1;
-      if (Number.isFinite(z) && z > 0) applyFitZoom(z);
-    };
-
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [fitMode, document, rotation, spreadMode, isHorizontal, applyFitZoom]);
-
-  const showState =
-    loadState === 'idle' ||
-    loadState === 'loading' ||
-    loadState === 'error' ||
-    !document;
+  const showState = loadState !== 'loaded' || !document;
 
   return (
     <div

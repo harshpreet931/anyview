@@ -1,7 +1,6 @@
 import {
   useEffect,
   useRef,
-  useMemo,
   useState,
   useImperativeHandle,
   forwardRef,
@@ -16,11 +15,12 @@ import { createRegistry } from '../core/registry';
 import { parseAnnotations, validAnnotations } from '../core/annotations';
 import { isSameSource } from '../core/file-source';
 import { registerBuiltInAdapters } from '../adapters';
-import { createViewerStore } from '../core/store';
+import { createViewerStore, type ViewerStore } from '../core/store';
 import { ViewerStoreProvider, useViewerStore } from '../hooks/useDocViewer';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useStoreListener } from '../hooks/useStoreListener';
 import { I18nProvider, useStrings } from '../i18n/I18nProvider';
-import { formatString, resolveStrings } from '../i18n/strings';
+import { formatString } from '../i18n/strings';
 import { Toolbar } from './Toolbar/Toolbar';
 import { Sidebar, NARROW_VIEWER_WIDTH } from './Sidebar/Sidebar';
 import { ViewerContainer } from './Viewer/ViewerContainer';
@@ -38,6 +38,14 @@ const COLLAPSED_ROOT_STYLE: CSSProperties = {
   height: 'var(--dv-fallback-height, 70vh)',
 };
 
+const selectCurrentPage = (s: ViewerStore) => s.currentPage;
+const selectZoom = (s: ViewerStore) => s.zoom;
+const selectSearchResult = (s: ViewerStore) => s.searchResult;
+const selectVisiblePages = (s: ViewerStore) => s.visiblePages;
+const samePages = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((p, i) => p === b[i]);
+const selectLoadedDocument = (s: ViewerStore) => (s.loadState === 'loaded' ? s.document : null);
+const selectLoadError = (s: ViewerStore) => (s.loadState === 'error' ? s.loadError : null);
+
 function PageAnnouncer() {
   const strings = useStrings();
   const currentPage = useViewerStore((s) => s.currentPage);
@@ -51,28 +59,27 @@ function PageAnnouncer() {
   );
 }
 
-function DocViewerInner(
-  props: DocViewerProps & { store: ReturnType<typeof createViewerStore> },
-) {
-  const {
-    source: sourceProp,
-    onDocumentLoad,
-    onError,
-    onAnnotationChange,
-    page,
-    onPageChange,
-    onZoom,
-    onSearchResult,
-    onVisiblePagesChange,
-    onSelectionChange,
-    theme = 'auto',
-    initialZoom,
-    locale = 'en',
-    showToolbar = true,
-    showSidebar = true,
-    className,
-    store,
-  } = props;
+function DocViewerInner({
+  source: sourceProp,
+  onDocumentLoad,
+  onError,
+  onAnnotationChange,
+  page,
+  onPageChange,
+  onZoom,
+  onSearchResult,
+  onVisiblePagesChange,
+  onSelectionChange,
+  theme = 'auto',
+  initialZoom,
+  locale = 'en',
+  showToolbar = true,
+  showSidebar = true,
+  className,
+  children,
+  store,
+}: DocViewerProps & { store: ReturnType<typeof createViewerStore> }) {
+  const strings = useStrings();
 
   const [source, setStableSource] = useState(sourceProp);
   if (!isSameSource(source, sourceProp)) {
@@ -159,38 +166,19 @@ function DocViewerInner(
     return onAnnotationChangeSub(onAnnotationChange);
   }, [onAnnotationChange, onAnnotationChangeSub]);
 
-  useEffect(() => {
-    if (!onPageChange) return;
-    return store.subscribe(
-      (s) => s.currentPage,
-      (p) => onPageChange(p, store.getState().document?.pageCount ?? 0),
-    );
-  }, [onPageChange, store]);
-
-  useEffect(() => {
-    if (!onZoom) return;
-    return store.subscribe(
-      (s) => s.zoom,
-      (z) => onZoom(z, store.getState().fitMode),
-    );
-  }, [onZoom, store]);
-
-  useEffect(() => {
-    if (!onSearchResult) return;
-    return store.subscribe(
-      (s) => s.searchResult,
-      (r) => onSearchResult(r),
-    );
-  }, [onSearchResult, store]);
-
-  useEffect(() => {
-    if (!onVisiblePagesChange) return;
-    return store.subscribe(
-      (s) => s.visiblePages,
-      (pages) => onVisiblePagesChange(pages),
-      { equalityFn: (a, b) => a.length === b.length && a.every((p, i) => p === b[i]) },
-    );
-  }, [onVisiblePagesChange, store]);
+  useStoreListener(
+    store,
+    selectCurrentPage,
+    onPageChange && ((current, s) => onPageChange(current, s.document?.pageCount ?? 0)),
+  );
+  useStoreListener(store, selectZoom, onZoom && ((zoom, s) => onZoom(zoom, s.fitMode)));
+  useStoreListener(store, selectSearchResult, onSearchResult && ((result) => onSearchResult(result)));
+  useStoreListener(
+    store,
+    selectVisiblePages,
+    onVisiblePagesChange && ((pages) => onVisiblePagesChange(pages)),
+    samePages,
+  );
 
   useEffect(() => {
     if (page != null && loadState === 'loaded') store.getState().goToPage(page);
@@ -204,7 +192,7 @@ function DocViewerInner(
       if (!root || !sel || sel.rangeCount === 0) return;
       const anchor = sel.anchorNode;
       if (!anchor || !root.contains(anchor)) return;
-      const host = anchor.nodeType === 1 ? (anchor as Element) : anchor.parentElement;
+      const host = anchor instanceof Element ? anchor : anchor.parentElement;
       const pageEl = host?.closest?.('[data-page-index]');
       const idx = pageEl ? Number(pageEl.getAttribute('data-page-index')) : NaN;
       onSelectionChange({
@@ -233,80 +221,69 @@ function DocViewerInner(
 
   // Both fire on the store transition, not on rendered state: an inline callback prop would
   // otherwise change identity every render and re-announce a load that already happened.
-  useEffect(() => {
-    if (!onDocumentLoad) return;
-    return store.subscribe(
-      (s) => (s.loadState === 'loaded' ? s.document : null),
-      (model) => {
+  useStoreListener(
+    store,
+    selectLoadedDocument,
+    onDocumentLoad &&
+      ((model) => {
         if (model) onDocumentLoad(model);
-      },
-    );
-  }, [onDocumentLoad, store]);
-
-  useEffect(() => {
-    if (!onError) return;
-    return store.subscribe(
-      (s) => (s.loadState === 'error' ? s.loadError : null),
-      (error) => {
+      }),
+  );
+  useStoreListener(
+    store,
+    selectLoadError,
+    onError &&
+      ((error) => {
         if (error) onError(error);
-      },
-    );
-  }, [onError, store]);
+      }),
+  );
 
   const features = adapter?.manifest.features;
-  const rootClassName = useMemo(() => {
-    const classes = ['dv-root', `dv-theme-${theme}`];
-    if (className) classes.push(className);
-    return classes.join(' ');
-  }, [theme, className]);
-
-  const rootStrings = useMemo(() => resolveStrings(locale), [locale]);
+  const rootClassName = className ? `dv-root dv-theme-${theme} ${className}` : `dv-root dv-theme-${theme}`;
 
   return (
-    <I18nProvider locale={locale}>
-      <div
-        ref={rootRef}
-        className={rootClassName}
-        style={collapsed ? COLLAPSED_ROOT_STYLE : ROOT_STYLE}
-        aria-label={rootStrings.viewer.label}
-      >
-        <div className="dv-main-container">
-          {showToolbar && <Toolbar {...(features ? { features } : {})} />}
-          <progress
-            className="dv-loading-bar"
-            data-active={loadState === 'loading'}
-            aria-label={rootStrings.states.loading}
-            aria-hidden={loadState !== 'loading'}
-          />
-          <div style={{ display: 'flex', flex: 1, position: 'relative', overflow: 'hidden' }}>
-            {showSidebar && <Sidebar />}
-            <div style={{ flex: 1, position: 'relative' }}>
-              <ViewerContainer />
-            </div>
+    <div
+      ref={rootRef}
+      className={rootClassName}
+      style={collapsed ? COLLAPSED_ROOT_STYLE : ROOT_STYLE}
+      aria-label={strings.viewer.label}
+    >
+      <div className="dv-main-container">
+        {showToolbar && <Toolbar {...(features ? { features } : {})} />}
+        <progress
+          className="dv-loading-bar"
+          data-active={loadState === 'loading'}
+          aria-label={strings.states.loading}
+          aria-hidden={loadState !== 'loading'}
+        />
+        <div style={{ display: 'flex', flex: 1, position: 'relative', overflow: 'hidden' }}>
+          {showSidebar && <Sidebar />}
+          <div style={{ flex: 1, position: 'relative' }}>
+            <ViewerContainer />
           </div>
         </div>
-
-        <PageAnnouncer />
-
-        {passwordPending && (
-          <PasswordDialog
-            fileName={pendingFileName}
-            incorrect={passwordIncorrect}
-            onSubmit={(pw) => submitPassword(pw)}
-            onCancel={cancelPassword}
-          />
-        )}
-
-        {propertiesOpen && document && (
-          <PropertiesDialog
-            document={document}
-            onClose={() => setPropertiesOpen(false)}
-          />
-        )}
-
-        {props.children}
       </div>
-    </I18nProvider>
+
+      <PageAnnouncer />
+
+      {passwordPending && (
+        <PasswordDialog
+          fileName={pendingFileName}
+          incorrect={passwordIncorrect}
+          onSubmit={submitPassword}
+          onCancel={cancelPassword}
+        />
+      )}
+
+      {propertiesOpen && document && (
+        <PropertiesDialog
+          document={document}
+          onClose={() => setPropertiesOpen(false)}
+        />
+      )}
+
+      {children}
+    </div>
   );
 }
 
@@ -327,15 +304,15 @@ export const DocViewer = forwardRef<DocViewerRef, DocViewerProps>(
     });
 
     useImperativeHandle(ref, () => ({
-      goToPage: (index: number) => store.getState().goToPage(index),
+      goToPage: (index) => store.getState().goToPage(index),
       zoomIn: () => store.getState().zoomIn(),
       zoomOut: () => store.getState().zoomOut(),
-      setZoom: (zoom: number) => store.getState().setZoom(zoom),
-      rotate: (direction: 'cw' | 'ccw') =>
+      setZoom: (zoom) => store.getState().setZoom(zoom),
+      rotate: (direction) =>
         direction === 'cw'
           ? store.getState().rotateClockwise()
           : store.getState().rotateCounterClockwise(),
-      search: (query: import('../core/types').SearchQuery) => store.getState().search(query),
+      search: (query) => store.getState().search(query),
       nextMatch: () => store.getState().nextMatch(),
       prevMatch: () => store.getState().prevMatch(),
       download: () => store.getState().downloadDocument(),
@@ -361,7 +338,9 @@ export const DocViewer = forwardRef<DocViewerRef, DocViewerProps>(
 
     return (
       <ViewerStoreProvider store={store}>
-        <DocViewerInner {...props} store={store} />
+        <I18nProvider locale={props.locale ?? 'en'}>
+          <DocViewerInner {...props} store={store} />
+        </I18nProvider>
       </ViewerStoreProvider>
     );
   },

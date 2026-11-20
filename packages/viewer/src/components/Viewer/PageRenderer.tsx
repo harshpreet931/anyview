@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RenderContext } from '../../core/types';
-import { totalRotation, isSidewaysRotation, type Rotation } from '../../core/rotation';
+import { displayedPageSize } from '../../core/rotation';
 import { makeCacheKey, estimateBitmapByteSize } from '../../core/cache/page-cache';
 import type { CachedPage } from '../../core/cache/page-cache';
 import { useViewerStore } from '../../hooks/useDocViewer';
@@ -22,7 +22,6 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
 
   const targetRef = useRef<HTMLCanvasElement | HTMLDivElement | null>(null);
   const reflowRef = useRef<HTMLElement | null>(null);
-  const renderTokenRef = useRef(0);
   const [contentKey, setContentKey] = useState(0);
 
   const format = document?.format;
@@ -45,7 +44,6 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
   useEffect(() => {
     if (!adapter || !document || !targetRef.current) return;
 
-    const token = ++renderTokenRef.current;
     const controller = new AbortController();
 
     const page = document.pages[pageIndex];
@@ -95,7 +93,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
     start()
       .then(() => adapter.renderPage(ctx))
       .then((result) => {
-        if (token !== renderTokenRef.current || controller.signal.aborted) {
+        if (controller.signal.aborted) {
           result.bitmap?.close();
           return;
         }
@@ -104,7 +102,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
           const canvas = targetRef.current;
           (result.bitmap ? Promise.resolve(result.bitmap) : createImageBitmap(canvas))
             .then((bitmap) => {
-              if (token !== renderTokenRef.current || controller.signal.aborted) {
+              if (controller.signal.aborted) {
                 bitmap.close();
                 return;
               }
@@ -137,13 +135,15 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
   const page = document.pages[pageIndex];
   if (!page) return null;
 
-  const isSideways = isSidewaysRotation(
-    totalRotation(page.rotation as Rotation, rotation as Rotation),
+  const { width: scaledWidth, height: scaledHeight } = displayedPageSize(
+    page.width,
+    page.height,
+    page.rotation,
+    rotation,
+    zoom,
   );
-  const scaledWidth = (isSideways ? page.height : page.width) * zoom;
-  const scaledHeight = (isSideways ? page.width : page.height) * zoom;
 
-  const showTextLayer = isCanvasFormat && format === 'pdf' && !!features?.textSelection;
+  const showTextLayer = format === 'pdf' && !!features?.textSelection;
 
   return (
     <div
@@ -162,7 +162,9 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
     >
       {isCanvasFormat ? (
         <canvas
-          ref={targetRef as React.RefObject<HTMLCanvasElement>}
+          ref={(el) => {
+            targetRef.current = el;
+          }}
           {...(format === 'image' ? { role: 'img', 'aria-label': document.meta.name } : {})}
         />
       ) : (
@@ -209,11 +211,8 @@ function inView(el: Element): boolean {
   return r.bottom > v.top && r.top < v.bottom && r.right > v.left && r.left < v.right;
 }
 
-function paintCached(
-  cached: CachedPage,
-  target: HTMLCanvasElement | HTMLDivElement,
-): void {
-  if (target instanceof HTMLCanvasElement && cached.bitmap instanceof ImageBitmap) {
+function paintCached(cached: CachedPage, target: HTMLCanvasElement): void {
+  if (cached.bitmap instanceof ImageBitmap) {
     const bitmap = cached.bitmap;
     target.width = bitmap.width;
     target.height = bitmap.height;

@@ -47,7 +47,7 @@ export function SearchHighlightLayer({
 
   if (!searchResult || searchResult.matches.length === 0) return null;
 
-  const pageMatches: Array<{ globalIndex: number; match: (typeof searchResult.matches)[number] }> = [];
+  const pageMatches: Array<{ globalIndex: number; match: SearchMatch }> = [];
   searchResult.matches.forEach((match, globalIndex) => {
     if (match.pageIndex === pageIndex) pageMatches.push({ globalIndex, match });
   });
@@ -115,10 +115,21 @@ function sameBoxes(a: Map<number, Box>, b: Map<number, Box>): boolean {
   if (a.size !== b.size) return false;
   for (const [i, box] of a) {
     const other = b.get(i);
-    if (!other || Math.abs(other.x - box.x) > 1e-4 || Math.abs(other.y - box.y) > 1e-4
-      || Math.abs(other.width - box.width) > 1e-4 || Math.abs(other.height - box.height) > 1e-4) return false;
+    if (
+      !other ||
+      !near(other.x, box.x) ||
+      !near(other.y, box.y) ||
+      !near(other.width, box.width) ||
+      !near(other.height, box.height)
+    ) {
+      return false;
+    }
   }
   return true;
+}
+
+function near(a: number, b: number): boolean {
+  return Math.abs(a - b) <= 1e-4;
 }
 
 function touchesTextLayer(record: MutationRecord): boolean {
