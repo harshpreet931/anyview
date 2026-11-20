@@ -6,9 +6,8 @@ interface IconProps {
   className?: string;
 }
 
-/* Line icons on a 24px grid, drawn with a round 1.75 stroke so they read
-   light and even at 16-20px. Every name from the previous set is kept. */
-const ICON_PATHS: Record<string, ReactNode> = {
+/* 24px grid, 1.75 round stroke. */
+const ICON_PATHS = {
   'chevron-left': <path d="M14.5 6l-6 6 6 6" />,
   'chevron-right': <path d="M9.5 6l6 6-6 6" />,
   'chevron-up': <path d="M6 14.5l6-6 6 6" />,
@@ -110,10 +109,14 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <path d="M13 20v-4a2 2 0 0 1 2-2h4" />
     </>
   ),
-};
+} satisfies Record<string, ReactNode>;
+
+export type IconName = keyof typeof ICON_PATHS;
+
+const ICON_LOOKUP: Partial<Record<string, ReactNode>> = ICON_PATHS;
 
 export const Icon = memo(function Icon({ name, size = 16, className }: IconProps) {
-  const path = ICON_PATHS[name];
+  const path = ICON_LOOKUP[name];
   if (!path) return null;
 
   return (

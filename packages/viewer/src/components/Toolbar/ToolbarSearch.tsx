@@ -1,8 +1,19 @@
-import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent, type RefObject } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
 import { formatString } from '../../i18n/strings';
-import { Icon } from '../common/Icon';
+import { IconButton } from './IconButton';
+
+const SEARCH_DEBOUNCE_MS = 180;
+
+type Timer = ReturnType<typeof setTimeout> | undefined;
+
+function cancelPending(timer: RefObject<Timer>): boolean {
+  if (!timer.current) return false;
+  clearTimeout(timer.current);
+  timer.current = undefined;
+  return true;
+}
 
 export function ToolbarSearch() {
   const strings = useStrings();
@@ -22,7 +33,7 @@ export function ToolbarSearch() {
 
   const [searchText, setSearchText] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const searchTimer = useRef<Timer>(undefined);
 
   // This only mounts while the bar is open, so open/close is mount/unmount:
   // focus on the way in, drop the pending query and its results on the way out.
@@ -30,7 +41,7 @@ export function ToolbarSearch() {
     const input = searchInputRef.current;
     input?.focus();
     return () => {
-      if (searchTimer.current) clearTimeout(searchTimer.current);
+      cancelPending(searchTimer);
       clearSearch();
       const active = document.activeElement;
       if (!active || active === document.body || active === input || !active.isConnected) {
@@ -41,56 +52,45 @@ export function ToolbarSearch() {
     };
   }, [clearSearch]);
 
-  const runSearch = useCallback(
-    (text: string) =>
-      search({
-        text,
-        caseSensitive: false,
-        wholeWord: false,
-        regex: false,
-        diacritics: false,
-      }),
-    [search],
-  );
+  const runSearch = (text: string) =>
+    search({
+      text,
+      caseSensitive: false,
+      wholeWord: false,
+      regex: false,
+      diacritics: false,
+    });
 
-  const handleSearch = useCallback(
-    (text: string) => {
-      setSearchText(text);
-      if (searchTimer.current) clearTimeout(searchTimer.current);
-      searchTimer.current = undefined;
-      if (text.trim()) {
-        searchTimer.current = setTimeout(() => {
-          searchTimer.current = undefined;
-          runSearch(text);
-        }, 180);
-      } else {
-        clearSearch();
-      }
-    },
-    [runSearch, clearSearch],
-  );
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLInputElement>) => {
-      if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
-      e.preventDefault();
-      if (searchTimer.current) {
-        clearTimeout(searchTimer.current);
+  const handleSearch = (text: string) => {
+    setSearchText(text);
+    cancelPending(searchTimer);
+    if (text.trim()) {
+      searchTimer.current = setTimeout(() => {
         searchTimer.current = undefined;
-        if (searchText.trim()) runSearch(searchText);
-        return;
-      }
-      if (e.shiftKey) prevMatch();
-      else nextMatch();
-    },
-    [searchText, runSearch, nextMatch, prevMatch],
-  );
+        runSearch(text);
+      }, SEARCH_DEBOUNCE_MS);
+    } else {
+      clearSearch();
+    }
+  };
 
-  const handleCloseSearch = useCallback(() => {
-    setSearchOpen(false);
-  }, [setSearchOpen]);
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    if (cancelPending(searchTimer)) {
+      if (searchText.trim()) runSearch(searchText);
+      return;
+    }
+    if (e.shiftKey) prevMatch();
+    else nextMatch();
+  };
 
   const matchCount = searchResult?.matches.length ?? 0;
+
+  let matchStatus = '';
+  if (searchState === 'searching') matchStatus = '…';
+  else if (matchCount > 0) matchStatus = formatString(strings.search.resultsCount, currentMatchIndex + 1, matchCount);
+  else if (searchText) matchStatus = strings.search.noResults;
 
   return (
     <search className="dv-search-bar">
@@ -105,44 +105,21 @@ export function ToolbarSearch() {
         aria-label={strings.search.placeholder}
       />
       <span className="dv-search-count" aria-live="polite">
-        {searchState === 'searching'
-          ? '…'
-          : matchCount > 0
-            ? formatString(
-                strings.search.resultsCount,
-                currentMatchIndex + 1,
-                matchCount,
-              )
-            : searchText
-              ? strings.search.noResults
-              : ''}
+        {matchStatus}
       </span>
-      <button
-        className="dv-button"
+      <IconButton
+        icon="chevron-left"
+        label={strings.search.prevMatch}
         onClick={prevMatch}
         disabled={matchCount === 0}
-        aria-label={strings.search.prevMatch}
-        title={strings.search.prevMatch}
-      >
-        <Icon name="chevron-left" />
-      </button>
-      <button
-        className="dv-button"
+      />
+      <IconButton
+        icon="chevron-right"
+        label={strings.search.nextMatch}
         onClick={nextMatch}
         disabled={matchCount === 0}
-        aria-label={strings.search.nextMatch}
-        title={strings.search.nextMatch}
-      >
-        <Icon name="chevron-right" />
-      </button>
-      <button
-        className="dv-button"
-        onClick={handleCloseSearch}
-        aria-label={strings.search.close}
-        title={strings.search.close}
-      >
-        <Icon name="close" />
-      </button>
+      />
+      <IconButton icon="close" label={strings.search.close} onClick={() => setSearchOpen(false)} />
     </search>
   );
 }

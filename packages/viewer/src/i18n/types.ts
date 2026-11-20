@@ -1,3 +1,5 @@
+import type { ViewerErrorCode } from '../core/errors';
+
 export interface ViewerStrings {
   toolbar: {
     sidebarToggle: string;
@@ -114,12 +116,13 @@ export interface ViewerStrings {
     modificationDate: string;
     pages: string;
     fileSize: string;
+    dismiss?: string;
+    retry?: string;
   };
+  /** Dialog titles per error code. */
+  errors?: Partial<Record<ViewerErrorCode, string>>;
 }
 
 export type PartialViewerStrings = {
   [K in keyof ViewerStrings]?: Partial<ViewerStrings[K]>;
 };
-
-export type LocaleKey = string;
-export type LocaleLoader = (locale: string) => Promise<ViewerStrings>;

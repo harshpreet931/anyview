@@ -1,10 +1,9 @@
-import { useRef } from 'react';
 import type { DocumentModel } from '../../core/types';
 import { Button } from '../common/Button';
 import { Icon } from '../common/Icon';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useLocale, useStrings } from '../../i18n/I18nProvider';
 import { formatDateTime, formatFileSize } from '../../i18n/format';
+import { DialogShell } from './DialogShell';
 
 interface PropertiesDialogProps {
   document: DocumentModel;
@@ -12,10 +11,8 @@ interface PropertiesDialogProps {
 }
 
 export function PropertiesDialog({ document: doc, onClose }: PropertiesDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
   const strings = useStrings();
   const locale = useLocale();
-  useFocusTrap(dialogRef, true, onClose);
   const d = strings.dialog;
   const rows: Array<[string, string | undefined]> = [
     [d.fileName, doc.meta.name],
@@ -43,34 +40,34 @@ export function PropertiesDialog({ document: doc, onClose }: PropertiesDialogPro
   ];
 
   return (
-    <div className="dv-dialog-overlay" role="dialog" aria-modal="true" aria-label={d.properties}>
-      <div className="dv-dialog" ref={dialogRef} tabIndex={-1}>
-        <div className="dv-dialog-header">
-          <h2 className="dv-dialog-title">{d.properties}</h2>
-          <Button variant="icon" onClick={onClose} aria-label={d.close}>
-            <Icon name="close" />
-          </Button>
-        </div>
-        <div className="dv-dialog-body">
-          <table className="dv-properties-table">
-            <tbody>
-              {rows
-                .filter(([, value]) => value !== undefined)
-                .map(([key, value]) => (
-                  <tr key={key}>
-                    <td className="dv-properties-key">{key}</td>
-                    <td className="dv-properties-value">{value}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="dv-dialog-actions">
-          <Button variant="primary" onClick={onClose}>
-            {d.close}
-          </Button>
-        </div>
+    <DialogShell
+      title={d.properties}
+      onEscape={onClose}
+      headerAction={
+        <Button variant="icon" onClick={onClose} aria-label={d.close}>
+          <Icon name="close" />
+        </Button>
+      }
+    >
+      <div className="dv-dialog-body">
+        <table className="dv-properties-table">
+          <tbody>
+            {rows
+              .filter(([, value]) => value !== undefined)
+              .map(([key, value]) => (
+                <tr key={key}>
+                  <td className="dv-properties-key">{key}</td>
+                  <td className="dv-properties-value">{value}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
       </div>
-    </div>
+      <div className="dv-dialog-actions">
+        <Button variant="primary" onClick={onClose}>
+          {d.close}
+        </Button>
+      </div>
+    </DialogShell>
   );
 }

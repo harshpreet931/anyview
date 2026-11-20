@@ -27,7 +27,6 @@ export function I18nProvider({
   );
 }
 
-/** Access the active string table. */
 export function useStrings(): ViewerStrings {
   return useContext(I18nContext);
 }

@@ -1,21 +1,21 @@
 import { useViewerStore } from '../../hooks/useDocViewer';
 import type { AnnotationTool } from '../../core/types';
-import { Icon } from '../common/Icon';
 import { useStrings } from '../../i18n/I18nProvider';
 import type { ViewerStrings } from '../../i18n/types';
+import { IconButton } from './IconButton';
 
 const ANNOTATION_TOOLS: ReadonlyArray<{
   tool: AnnotationTool;
-  label: keyof ViewerStrings['annotations'];
+  labelKey: keyof ViewerStrings['annotations'];
 }> = [
-  { tool: 'highlight', label: 'highlight' },
-  { tool: 'ink', label: 'draw' },
-  { tool: 'rectangle', label: 'rectangle' },
-  { tool: 'ellipse', label: 'ellipse' },
-  { tool: 'line', label: 'line' },
-  { tool: 'arrow', label: 'arrow' },
-  { tool: 'free-text', label: 'freeText' },
-  { tool: 'sticky-note', label: 'note' },
+  { tool: 'highlight', labelKey: 'highlight' },
+  { tool: 'ink', labelKey: 'draw' },
+  { tool: 'rectangle', labelKey: 'rectangle' },
+  { tool: 'ellipse', labelKey: 'ellipse' },
+  { tool: 'line', labelKey: 'line' },
+  { tool: 'arrow', labelKey: 'arrow' },
+  { tool: 'free-text', labelKey: 'freeText' },
+  { tool: 'sticky-note', labelKey: 'note' },
 ];
 
 export function ToolbarAnnotations() {
@@ -29,22 +29,18 @@ export function ToolbarAnnotations() {
       role="radiogroup"
       aria-label={strings.toolbar.annotationTools}
     >
-      {ANNOTATION_TOOLS.map(({ tool, label: key }) => {
-        const label = strings.annotations[key];
+      {ANNOTATION_TOOLS.map(({ tool, labelKey }) => {
         const isActive = activeTool === tool;
         return (
-          <button
+          <IconButton
             key={tool}
-            className="dv-button"
+            icon={tool}
+            label={strings.annotations[labelKey]}
             role="radio"
             aria-checked={isActive}
-            aria-label={label}
-            title={label}
             data-toggled={isActive}
             onClick={() => setActiveTool(isActive ? null : tool)}
-          >
-            <Icon name={tool} />
-          </button>
+          />
         );
       })}
     </div>

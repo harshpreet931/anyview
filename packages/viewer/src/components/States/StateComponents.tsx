@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useFileInput } from '../../hooks/useFileInput';
 import { useStrings } from '../../i18n/I18nProvider';
+import { Button } from '../common/Button';
 
 function StateContainer({
   icon,
@@ -11,12 +12,12 @@ function StateContainer({
 }: {
   icon: ReactNode;
   title: string;
-  description?: string;
+  description?: string | undefined;
   children?: ReactNode;
 }) {
   return (
     <div className="dv-state-container" role="status">
-      {icon && <div className="dv-state-icon">{icon}</div>}
+      <div className="dv-state-icon">{icon}</div>
       <div className="dv-state-title">{title}</div>
       {description && <div className="dv-state-description">{description}</div>}
       {children}
@@ -94,12 +95,12 @@ export function ErrorState({
         </svg>
       }
       title={strings.states.error}
-      {...(message ? { description: message } : {})}
+      description={message}
     >
       {onRetry && (
-        <button className="dv-button dv-button-primary dv-button-md dv-state-action" onClick={onRetry}>
+        <Button variant="primary" className="dv-state-action" onClick={onRetry}>
           {strings.states.retry}
-        </button>
+        </Button>
       )}
     </StateContainer>
   );

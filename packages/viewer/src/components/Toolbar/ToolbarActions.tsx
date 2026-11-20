@@ -1,9 +1,9 @@
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
 import type { AdapterFeatures } from '../../core/types';
-import { Icon } from '../common/Icon';
+import { IconButton } from './IconButton';
 
-export function ToolbarActions({ features }: { features?: AdapterFeatures }) {
+export function ToolbarActions({ features }: { features?: AdapterFeatures | undefined }) {
   const strings = useStrings();
   const downloadDocument = useViewerStore((s) => s.downloadDocument);
   const printDocument = useViewerStore((s) => s.printDocument);
@@ -19,46 +19,22 @@ export function ToolbarActions({ features }: { features?: AdapterFeatures }) {
   return (
     <div className="dv-toolbar-group dv-toolbar-actions">
       {features?.download && (
-        <button
-          className="dv-button"
-          onClick={() => downloadDocument()}
-          aria-label={strings.toolbar.download}
-          title={strings.toolbar.download}
-        >
-          <Icon name="download" />
-        </button>
+        <IconButton icon="download" label={strings.toolbar.download} onClick={() => downloadDocument()} />
       )}
       {features?.print && (
-        <button
-          className="dv-button"
-          onClick={() => printDocument()}
-          aria-label={strings.toolbar.print}
-          title={strings.toolbar.print}
-        >
-          <Icon name="print" />
-        </button>
+        <IconButton icon="print" label={strings.toolbar.print} onClick={() => printDocument()} />
       )}
       {features?.fullscreen && (
-        <button
-          className="dv-button"
+        <IconButton
+          icon="fullscreen"
+          label={strings.toolbar.fullscreen}
           onClick={() => toggleFullscreen()}
           aria-pressed={isFullscreen}
           data-toggled={isFullscreen}
-          aria-label={strings.toolbar.fullscreen}
-          title={strings.toolbar.fullscreen}
-        >
-          <Icon name="fullscreen" />
-        </button>
+        />
       )}
       {hasDocument && (
-        <button
-          className="dv-button"
-          onClick={() => setPropertiesOpen(true)}
-          aria-label={strings.toolbar.properties}
-          title={strings.toolbar.properties}
-        >
-          <Icon name="info" />
-        </button>
+        <IconButton icon="info" label={strings.toolbar.properties} onClick={() => setPropertiesOpen(true)} />
       )}
     </div>
   );

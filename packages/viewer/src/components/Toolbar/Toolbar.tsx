@@ -3,25 +3,20 @@ import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
 import type { AdapterFeatures } from '../../core/types';
 import { ToolbarPageNav } from './ToolbarPageNav';
-import { ToolbarZoom, ToolbarView } from './ToolbarZoom';
+import { ToolbarZoom } from './ToolbarZoom';
+import { ToolbarView } from './ToolbarView';
 import { ToolbarActions } from './ToolbarActions';
 import { ToolbarAnnotations } from './ToolbarAnnotations';
 import { ToolbarSearch } from './ToolbarSearch';
-import { Icon } from '../common/Icon';
+import { IconButton } from './IconButton';
 
 interface ToolbarProps {
-  features?: AdapterFeatures;
+  features?: AdapterFeatures | undefined;
 }
 
-/**
- * How much room the full toolbar needs. The stylesheet collapses the
- * secondary groups (view, actions, annotations) into a "More" popover once
- * the viewer itself is narrower than the tier's width (container queries),
- * so a 600px embed with a PDF never clips while a Markdown file keeps every
- * control inline at the same width.
- */
 const NARROW_TOOLBAR_WIDTH = 360;
 
+// The stylesheet folds the secondary groups into "More" once the viewer is narrower than the tier needs.
 function toolbarTier(features: AdapterFeatures | undefined, pageCount: number) {
   if (features?.annotations) return 'lg';
   if (features?.rotation || pageCount > 1) return 'md';
@@ -58,7 +53,6 @@ export function Toolbar({ features }: ToolbarProps) {
     if (restoreFocus) moreButtonRef.current?.focus();
   }, []);
 
-  // Dismiss on outside pointer-down and on Escape, like any popover.
   useEffect(() => {
     if (!moreOpen) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -71,11 +65,11 @@ export function Toolbar({ features }: ToolbarProps) {
       e.stopPropagation();
       closeMore(true);
     };
-    window.document.addEventListener('pointerdown', onPointerDown);
-    window.document.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown, true);
     return () => {
-      window.document.removeEventListener('pointerdown', onPointerDown);
-      window.document.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown, true);
     };
   }, [moreOpen, closeMore]);
 
@@ -99,15 +93,12 @@ export function Toolbar({ features }: ToolbarProps) {
         data-narrow={narrow || undefined}
       >
         <div className="dv-toolbar-group">
-          <button
-            className="dv-button"
+          <IconButton
+            icon="sidebar"
+            label={strings.toolbar.sidebarToggle}
             onClick={toggleSidebar}
             aria-expanded={sidebarOpen}
-            aria-label={strings.toolbar.sidebarToggle}
-            title={strings.toolbar.sidebarToggle}
-          >
-            <Icon name="sidebar" />
-          </button>
+          />
         </div>
 
         <ToolbarPageNav />
@@ -116,34 +107,29 @@ export function Toolbar({ features }: ToolbarProps) {
 
         {features?.search && (
           <div className="dv-toolbar-group">
-            <button
-              className="dv-button"
+            <IconButton
+              icon="search"
+              label={strings.toolbar.searchToggle}
               onClick={() => setSearchOpen(!searchOpen)}
               aria-expanded={searchOpen}
-              aria-label={strings.toolbar.searchToggle}
-              title={strings.toolbar.searchToggle}
               data-toggled={searchOpen}
-            >
-              <Icon name="search" />
-            </button>
+            />
           </div>
         )}
 
-        {!narrow && <ToolbarZoom {...(features ? { features } : {})} />}
+        {!narrow && <ToolbarZoom features={features} />}
 
         {/* Before the popover in DOM order so Tab moves from the button into it. */}
-        <button
+        <IconButton
           ref={moreButtonRef}
-          className="dv-button dv-toolbar-more"
+          icon="more"
+          label={strings.toolbar.overflowMenu}
+          className="dv-toolbar-more"
           onClick={() => setMoreOpen((o) => !o)}
           aria-expanded={moreOpen}
           aria-controls={overflowId}
-          aria-label={strings.toolbar.overflowMenu}
-          title={strings.toolbar.overflowMenu}
           data-toggled={moreOpen}
-        >
-          <Icon name="more" />
-        </button>
+        />
 
         {/* Inline on wide viewers (display: contents); a popover on narrow ones. */}
         <div
@@ -154,9 +140,9 @@ export function Toolbar({ features }: ToolbarProps) {
           onClick={onOverflowClick}
           onChange={() => closeMore(false)}
         >
-          {narrow && <ToolbarZoom {...(features ? { features } : {})} />}
-          <ToolbarView {...(features ? { features } : {})} />
-          <ToolbarActions {...(features ? { features } : {})} />
+          {narrow && <ToolbarZoom features={features} />}
+          <ToolbarView features={features} />
+          <ToolbarActions features={features} />
           {features?.annotations && <ToolbarAnnotations />}
         </div>
       </div>

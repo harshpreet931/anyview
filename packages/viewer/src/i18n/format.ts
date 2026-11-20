@@ -24,7 +24,6 @@ export function formatFileSize(bytes: number, locale: string): string {
   }).format(value);
 }
 
-/** A date and time in the reader's locale. */
 export function formatDateTime(value: Date | string | number, locale: string): string {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);

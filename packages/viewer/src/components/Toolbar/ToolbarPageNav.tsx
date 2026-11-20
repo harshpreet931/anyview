@@ -1,6 +1,6 @@
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
-import { Icon } from '../common/Icon';
+import { IconButton } from './IconButton';
 
 export function ToolbarPageNav() {
   const strings = useStrings();
@@ -13,15 +13,12 @@ export function ToolbarPageNav() {
 
   return (
     <div className="dv-toolbar-group dv-toolbar-page-nav">
-      <button
-        className="dv-button"
+      <IconButton
+        icon="chevron-left"
+        label={strings.navigation.previousPage}
         onClick={prevPage}
         disabled={currentPage <= 0}
-        aria-label={strings.navigation.previousPage}
-        title={strings.navigation.previousPage}
-      >
-        <Icon name="chevron-left" />
-      </button>
+      />
       <input
         type="number"
         className="dv-page-input"
@@ -39,15 +36,12 @@ export function ToolbarPageNav() {
       <span className="dv-page-count">
         / {empty ? '–' : pageCount}
       </span>
-      <button
-        className="dv-button"
+      <IconButton
+        icon="chevron-right"
+        label={strings.navigation.nextPage}
         onClick={nextPage}
         disabled={currentPage >= pageCount - 1}
-        aria-label={strings.navigation.nextPage}
-        title={strings.navigation.nextPage}
-      >
-        <Icon name="chevron-right" />
-      </button>
+      />
     </div>
   );
 }
