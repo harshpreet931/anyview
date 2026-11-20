@@ -8,6 +8,8 @@ export interface TextLayerProps {
   height: number;
 }
 
+const SETTLE_DELAY_MS = 150;
+
 export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
   const adapter = useViewerStore((s) => s.adapter);
   const rotation = useViewerStore((s) => s.rotation);
@@ -20,15 +22,21 @@ export function TextLayer({ pageIndex, width, height }: TextLayerProps) {
       return;
     }
     const controller = new AbortController();
-    adapter
-      .getTextLayer(pageIndex, controller.signal, rotation)
-      .then((layer) => {
-        if (!controller.signal.aborted) setItems(layer.items);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setItems([]);
-      });
-    return () => controller.abort();
+    // Pages that only flash past during a fling never ask, so the worker stays free for the page that lands.
+    const timer = setTimeout(() => {
+      adapter
+        .getTextLayer!(pageIndex, controller.signal, rotation)
+        .then((layer) => {
+          if (!controller.signal.aborted) setItems(layer.items);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setItems([]);
+        });
+    }, SETTLE_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [adapter, pageIndex, rotation]);
 
   // Match each span to the source run width (pdf.js technique) so selection aligns with the bitmap glyphs.

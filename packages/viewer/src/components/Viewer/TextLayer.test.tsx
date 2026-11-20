@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { createViewerStore } from '../../core/store';
@@ -23,6 +23,7 @@ let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 afterEach(() => {
   act(() => root?.unmount());
+  vi.useRealTimers();
   host?.remove();
   root = null;
   host = null;
@@ -55,8 +56,9 @@ describe('TextLayer', () => {
         ),
       );
 
+    vi.useFakeTimers();
     render(600);
-    await act(() => new Promise((r) => setTimeout(r, 0)));
+    await act(async () => vi.advanceTimersByTime(1000));
     const spans = host.querySelectorAll<HTMLElement>('span[data-tw]');
     expect(spans.length).toBe(40);
     const first = reads;
@@ -69,5 +71,39 @@ describe('TextLayer', () => {
     expect(reads).toBe(first);
     expect(host.querySelectorAll<HTMLElement>('span[data-tw]')[5]!.getAttribute('style')).toBe(styleAt600);
     expect(host.querySelector<HTMLElement>('span[data-tw]')!.style.transform).toBe(scaleAt600);
+  });
+
+  it('asks for text only once the page has stayed mounted, and cancels it on unmount', () => {
+    vi.useFakeTimers();
+    const getTextLayer = vi.fn((_page: number, _signal?: AbortSignal) => new Promise<never>(() => {}));
+    const store = createViewerStore();
+    store.setState({ adapter: { getTextLayer } as unknown as Adapter });
+    host = document.createElement('div');
+    document.body.appendChild(host);
+    const mount = () => {
+      root = createRoot(host!);
+      act(() =>
+        root!.render(
+          <ViewerStoreProvider store={store}>
+            <TextLayer pageIndex={3} width={600} height={800} />
+          </ViewerStoreProvider>,
+        ),
+      );
+    };
+
+    mount();
+    act(() => vi.advanceTimersByTime(50));
+    act(() => root!.unmount());
+    act(() => vi.advanceTimersByTime(1000));
+    expect(getTextLayer).not.toHaveBeenCalled();
+
+    mount();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(getTextLayer).toHaveBeenCalledTimes(1);
+    const signal = getTextLayer.mock.calls[0]![1]!;
+    expect(signal.aborted).toBe(false);
+    act(() => root!.unmount());
+    root = null;
+    expect(signal.aborted).toBe(true);
   });
 });

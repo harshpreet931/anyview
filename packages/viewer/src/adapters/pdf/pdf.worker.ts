@@ -3,12 +3,13 @@
 import * as Comlink from 'comlink';
 import * as pdfjsLib from 'pdfjs-dist';
 import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs';
-import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
+import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
-import type { DocumentMetadata, OutlineNode } from '../../core/types';
+import type { DocumentMetadata, OutlineNode, PageRef } from '../../core/types';
 import type { ParsedPdf, PdfTextRun, PdfWorkerApi } from './types';
 import { pdfMetadata } from './metadata';
 import { totalRotation, type Rotation } from '../../core/rotation';
+import { TextQueue } from './text-queue';
 
 // Static imports keep the worker one bundle, which classic (iife) workers such as Vite 7's default require.
 (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = pdfjsWorker;
@@ -95,6 +96,37 @@ let nextDocId = 1;
 const active = new Set<number>();
 const cancelled = new Set<number>();
 const tasks = new Map<number, RenderTask>();
+const textQueue = new TextQueue();
+
+// pdf.js keeps each page's parsed content until told otherwise, so only the pages in use keep theirs.
+const RETAINED_PAGES = 8;
+const recentPages = new Set<PDFPageProxy>();
+
+function retain(page: PDFPageProxy): void {
+  recentPages.delete(page);
+  recentPages.add(page);
+  if (recentPages.size > RETAINED_PAGES) {
+    const oldest = recentPages.values().next().value!;
+    recentPages.delete(oldest);
+    oldest.cleanup();
+  }
+}
+
+async function readTextItems(page: PDFPageProxy, signal: AbortSignal): Promise<TextItem[]> {
+  const reader = page.streamTextContent().getReader();
+  const stop = () => void reader.cancel().catch(() => {});
+  signal.addEventListener('abort', stop);
+  try {
+    const items: TextItem[] = [];
+    for (let chunk = await reader.read(); !chunk.done && !signal.aborted; chunk = await reader.read()) {
+      for (const item of chunk.value.items) if ('str' in item) items.push(item);
+    }
+    if (signal.aborted) throw new Error('Text request cancelled');
+    return items;
+  } finally {
+    signal.removeEventListener('abort', stop);
+  }
+}
 
 function getDoc(docId: number): PDFDocumentProxy {
   const doc = docs.get(docId);
@@ -155,6 +187,7 @@ async function renderInto(
   renderId: number,
 ): Promise<ImageBitmap> {
   const page = await getDoc(docId).getPage(pageIndex + 1);
+  retain(page);
   if (cancelled.has(renderId)) throw new Error('Render cancelled');
   // Explicit rotation REPLACES page.rotate rather than composing, so combine the two.
   const total = totalRotation(page.rotate as Rotation, rotation);
@@ -202,19 +235,19 @@ const api: PdfWorkerApi = {
     }
     const pageCount = doc.numPages;
 
-    const pages = await Promise.all(
-      Array.from({ length: pageCount }, async (_, i) => {
-        const page = await doc.getPage(i + 1);
-        // Explicit rotation:0 gives canonical dims - pdf.js only applies the page's /Rotate when rotation is omitted.
-        const viewport = page.getViewport({ scale: 1, rotation: 0 });
-        return {
-          index: i,
-          width: viewport.width,
-          height: viewport.height,
-          rotation: page.rotate as Rotation,
-        };
-      }),
-    );
+    // One page at a time: asking for every page at once holds them all in flight (~450 MB for 10k pages) and is no faster.
+    const pages: PageRef[] = [];
+    for (let i = 0; i < pageCount; i++) {
+      const page = await doc.getPage(i + 1);
+      // Explicit rotation:0 gives canonical dims - pdf.js only applies the page's /Rotate when rotation is omitted.
+      const viewport = page.getViewport({ scale: 1, rotation: 0 });
+      pages.push({
+        index: i,
+        width: viewport.width,
+        height: viewport.height,
+        rotation: page.rotate as Rotation,
+      });
+    }
 
     const docId = nextDocId++;
     docs.set(docId, doc);
@@ -231,11 +264,13 @@ const api: PdfWorkerApi = {
     renderId: number,
   ): Promise<ImageBitmap> {
     active.add(renderId);
+    textQueue.renderStarted();
     try {
       return await renderInto(docId, pageIndex, scale, rotation, dpr, renderId);
     } finally {
       active.delete(renderId);
       cancelled.delete(renderId);
+      textQueue.renderFinished();
     }
   },
 
@@ -245,14 +280,13 @@ const api: PdfWorkerApi = {
     else if (active.has(renderId)) cancelled.add(renderId);
   },
 
-  async getTextContent(docId: number, pageIndex: number, rotation: Rotation) {
-    const page = await getDoc(docId).getPage(pageIndex + 1);
-    const total = totalRotation(page.rotate as Rotation, rotation);
-    const viewport = page.getViewport({ scale: 1, rotation: total });
-    const content = await page.getTextContent();
-    const items = content.items
-      .filter((item): item is TextItem => 'str' in item)
-      .map((item): PdfTextRun => {
+  getTextContent(docId: number, pageIndex: number, rotation: Rotation, textId: number) {
+    return textQueue.run(textId, async (signal) => {
+      const page = await getDoc(docId).getPage(pageIndex + 1);
+      retain(page);
+      const total = totalRotation(page.rotate as Rotation, rotation);
+      const viewport = page.getViewport({ scale: 1, rotation: total });
+      const items = (await readTextItems(page, signal)).map((item): PdfTextRun => {
         const [a, b, c, d, e, f] = pdfjsLib.Util.transform(viewport.transform, item.transform);
         const fontHeight = Math.hypot(c, d) || item.height || 10;
         const angle = Math.atan2(b, a);
@@ -267,11 +301,16 @@ const api: PdfWorkerApi = {
         };
       });
 
-    return {
-      items,
-      viewportWidth: viewport.width,
-      viewportHeight: viewport.height,
-    };
+      return {
+        items,
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+      };
+    });
+  },
+
+  cancelText(textId: number) {
+    textQueue.cancel(textId);
   },
 
   async getOutline(docId: number): Promise<OutlineNode[] | null> {
@@ -290,6 +329,7 @@ const api: PdfWorkerApi = {
     const doc = docs.get(docId);
     if (doc) {
       docs.delete(docId);
+      recentPages.clear();
       await doc.loadingTask.destroy();
     }
   },

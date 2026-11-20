@@ -56,6 +56,7 @@ export class PdfAdapter implements Adapter {
   private docId: number | null = null;
   private pageCount = 0;
   private renderSeq = 0;
+  private textSeq = 0;
   private originalBuffer: ArrayBuffer | null = null;
 
   private ensureWorker(): Comlink.Remote<PdfWorkerApi> {
@@ -204,8 +205,12 @@ export class PdfAdapter implements Adapter {
   ): Promise<Array<{ item: TextLayerItem; slice: (from: number, to: number) => Box }>> {
     const parsed = this.parsedDoc();
     if (!parsed || signal?.aborted) return [];
+    const { remote, docId } = parsed;
+    const textId = ++this.textSeq;
+    const onAbort = () => void remote.cancelText(textId).catch(() => {});
+    signal?.addEventListener('abort', onAbort, { once: true });
     try {
-      const result = await parsed.remote.getTextContent(parsed.docId, pageIndex, rotation as Rotation);
+      const result = await remote.getTextContent(docId, pageIndex, rotation as Rotation, textId);
       const vw = result.viewportWidth;
       const vh = result.viewportHeight;
       return result.items.map((run) => {
@@ -224,6 +229,8 @@ export class PdfAdapter implements Adapter {
       });
     } catch {
       return [];
+    } finally {
+      signal?.removeEventListener('abort', onAbort);
     }
   }
 

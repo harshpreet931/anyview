@@ -35,11 +35,13 @@ export interface PdfWorkerApi {
     docId: number,
     pageIndex: number,
     rotation: Rotation,
+    textId: number,
   ): Promise<{
     items: PdfTextRun[];
     viewportWidth: number;
     viewportHeight: number;
   }>;
+  cancelText(textId: number): void;
   getOutline(docId: number): Promise<OutlineNode[] | null>;
   getMetadata(docId: number): Promise<DocumentMetadata | null>;
   dispose(docId: number): Promise<void>;

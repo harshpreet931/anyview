@@ -12,7 +12,8 @@ export class PageCache {
   private totalBytes = 0;
   private readonly maxBytes: number;
 
-  constructor(maxBytes: number = 256 * 1024 * 1024) {
+  // Mounted pages already hold their pixels in a live canvas; the cache only needs to cover pages just scrolled away from.
+  constructor(maxBytes: number = 64 * 1024 * 1024) {
     this.maxBytes = maxBytes;
   }
 
@@ -29,6 +30,7 @@ export class PageCache {
   set(key: string, page: CachedPage): void {
     const existing = this.cache.get(key);
     if (existing) {
+      if (existing.bitmap !== page.bitmap) this.dispose(existing);
       this.totalBytes -= existing.byteSize;
       this.cache.delete(key);
     }

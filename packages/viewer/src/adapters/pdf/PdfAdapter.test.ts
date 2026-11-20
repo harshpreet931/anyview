@@ -87,6 +87,32 @@ describe('PdfAdapter.renderPage', () => {
   });
 });
 
+describe('PdfAdapter.getTextLayer', () => {
+  it('cancels the worker text request when the text layer is aborted', async () => {
+    const cancelText = vi.fn(async () => {});
+    let textId: unknown;
+    let fail!: (e: unknown) => void;
+    const adapter = new PdfAdapter();
+    Object.assign(adapter, {
+      docId: 1,
+      remote: {
+        getTextContent: (...args: unknown[]) => {
+          textId = args[3];
+          return new Promise((_, reject) => (fail = reject));
+        },
+        cancelText,
+      },
+    });
+    const controller = new AbortController();
+    const pending = adapter.getTextLayer(0, controller.signal);
+    controller.abort();
+    expect(textId).toBeTypeOf('number');
+    expect(cancelText).toHaveBeenCalledWith(textId);
+    fail(new Error('Text request cancelled'));
+    expect((await pending).items).toEqual([]);
+  });
+});
+
 describe('PdfAdapter.search', () => {
   const run = (str: string, x: number, y: number, width: number) => ({ str, width, height: 10, x, y, angle: 0 });
   const searchable = (items: ReturnType<typeof run>[]) => {
