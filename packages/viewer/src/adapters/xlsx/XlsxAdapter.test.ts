@@ -3,10 +3,11 @@ import * as XLSX from 'xlsx';
 import { XlsxAdapter } from './XlsxAdapter';
 import type { FileSourceReader, RenderContext } from '../../core/types';
 
-function workbookReader(): FileSourceReader {
+function workbookReader(sheets: Record<string, unknown[][]>): FileSourceReader {
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['name', 'qty'], ['apples', 3]]), 'Data');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([]), 'Empty');
+  for (const [name, rows] of Object.entries(sheets)) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name);
+  }
   const bytes = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
   return {
     meta: { name: 'book.xlsx', size: bytes.byteLength, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
@@ -29,7 +30,10 @@ function ctx(index: number, target: HTMLElement): RenderContext {
 describe('XlsxAdapter', () => {
   it('opens a workbook that contains a blank sheet', async () => {
     const adapter = new XlsxAdapter();
-    const model = await adapter.parse(workbookReader(), new AbortController().signal);
+    const model = await adapter.parse(
+      workbookReader({ Data: [['name', 'qty'], ['apples', 3]], Empty: [] }),
+      new AbortController().signal,
+    );
     expect(model.pageCount).toBe(2);
 
     const first = document.createElement('div');
@@ -42,14 +46,8 @@ describe('XlsxAdapter', () => {
 
   it('renders a bounded number of rows for very tall sheets and says so', async () => {
     const rows = Array.from({ length: 6_000 }, (_, i) => [`row ${i}`, i]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['name', 'n'], ...rows]), 'Big');
-    const bytes = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
     const adapter = new XlsxAdapter();
-    await adapter.parse(
-      { meta: { name: 'big.xlsx', size: bytes.byteLength, mimeType: '' }, arrayBuffer: async () => bytes, stream: () => null },
-      new AbortController().signal,
-    );
+    await adapter.parse(workbookReader({ Big: [['name', 'n'], ...rows] }), new AbortController().signal);
     const target = document.createElement('div');
     await adapter.renderPage(ctx(0, target));
     expect(target.querySelectorAll('tr').length).toBeLessThanOrEqual(5001);

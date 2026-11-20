@@ -28,48 +28,15 @@ async function columnCount(adapter: CsvAdapter): Promise<number> {
 const TSV = 'name\tage\tcity\nAda\t36\tLondon\n';
 
 describe('CsvAdapter delimiter detection', () => {
-  it('parses lowercase .tsv as tab-separated', async () => {
+  it.each([
+    ['lowercase .tsv as tab-separated', TSV, 'data.tsv', 'text/tab-separated-values', 3],
+    ['uppercase .TSV as tab-separated', TSV, 'DATA.TSV', 'text/tab-separated-values', 3],
+    ['.csv as comma-separated', 'name,age,city\nAda,36,London\n', 'data.csv', 'text/csv', 3],
+    ['semicolon-separated .csv', 'name;age;city\nAda;36;London\n', 'data.csv', 'text/csv', 3],
+    ['single-column .csv as one column', 'name\nAda\nGrace\n', 'data.csv', 'text/csv', 1],
+  ])('parses %s', async (_label, text, name, mimeType, columns) => {
     const adapter = new CsvAdapter();
-    await adapter.parse(
-      reader(TSV, 'data.tsv', 'text/tab-separated-values'),
-      new AbortController().signal,
-    );
-    expect(await columnCount(adapter)).toBe(3);
-  });
-
-  it('parses uppercase .TSV as tab-separated', async () => {
-    const adapter = new CsvAdapter();
-    await adapter.parse(
-      reader(TSV, 'DATA.TSV', 'text/tab-separated-values'),
-      new AbortController().signal,
-    );
-    expect(await columnCount(adapter)).toBe(3);
-  });
-
-  it('parses .csv as comma-separated', async () => {
-    const adapter = new CsvAdapter();
-    await adapter.parse(
-      reader('name,age,city\nAda,36,London\n', 'data.csv', 'text/csv'),
-      new AbortController().signal,
-    );
-    expect(await columnCount(adapter)).toBe(3);
-  });
-
-  it('detects semicolon-separated .csv files', async () => {
-    const adapter = new CsvAdapter();
-    await adapter.parse(
-      reader('name;age;city\nAda;36;London\n', 'data.csv', 'text/csv'),
-      new AbortController().signal,
-    );
-    expect(await columnCount(adapter)).toBe(3);
-  });
-
-  it('keeps a single-column .csv as one column', async () => {
-    const adapter = new CsvAdapter();
-    await adapter.parse(
-      reader('name\nAda\nGrace\n', 'data.csv', 'text/csv'),
-      new AbortController().signal,
-    );
-    expect(await columnCount(adapter)).toBe(1);
+    await adapter.parse(reader(text, name, mimeType), new AbortController().signal);
+    expect(await columnCount(adapter)).toBe(columns);
   });
 });

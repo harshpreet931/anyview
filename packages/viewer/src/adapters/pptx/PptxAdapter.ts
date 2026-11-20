@@ -10,9 +10,10 @@ import type {
   TextLayer,
   TextLayerItem,
 } from '../../core/types';
-import { ViewerError, isViewerError } from '../../core/errors';
+import type JSZip from 'jszip';
+import { ViewerError, asParseError, throwIfCancelled } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
-import { loadSanitizer } from '../../core/sanitizer';
+import { escapeHtml, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 
 export const pptxManifest: AdapterManifest = {
   id: 'pptx',
@@ -39,9 +40,12 @@ export const pptxManifest: AdapterManifest = {
   protocolVersion: 1,
 };
 
+const SLIDE_WIDTH = 960;
+const SLIDE_HEIGHT = 540;
+
 interface SlideContent {
   texts: string[];
-  html: string;
+  html: SafeHtml;
 }
 
 function relationshipId(el: Element): string | null {
@@ -67,31 +71,25 @@ export class PptxAdapter implements Adapter {
     signal: AbortSignal,
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
 
     try {
-      const JSZip = (await loadParser('jszip', () => import('jszip'))).default;
-      const zip = await JSZip.loadAsync(buffer);
-
-      const slideFiles = await this.orderedSlideFiles(zip);
-
+      const zipLib = (await loadParser('jszip', () => import('jszip'))).default;
+      const zip = await zipLib.loadAsync(buffer);
+      const slideFiles = await orderedSlideFiles(zip);
       // Cleared first so a mid-parse failure can't leave the previous deck's slides behind.
       this.slides = [];
       this.slides = await Promise.all(
-        slideFiles.map(async (slideFile) => {
-          const xml = await zip.file(slideFile)!.async('string');
-          return this.parseSlideXml(xml);
-        }),
+        slideFiles.map(async (slideFile) => parseSlideXml(await zip.file(slideFile)!.async('string'))),
       );
     } catch (cause) {
-      if (isViewerError(cause)) throw cause;
-      throw new ViewerError('PARSE_ERROR', 'Failed to parse PPTX.', { cause });
+      throw asParseError(cause, 'Failed to parse PPTX.');
     }
 
     const pages: PageRef[] = this.slides.map((_, i) => ({
       index: i,
-      width: 960,
-      height: 540,
+      width: SLIDE_WIDTH,
+      height: SLIDE_HEIGHT,
       rotation: 0,
       ...(i === 0 ? { label: 'Slide 1' } : {}),
     }));
@@ -111,16 +109,14 @@ export class PptxAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const target = ctx.target as HTMLElement;
-    target.innerHTML = '';
-
+    ctx.target.replaceChildren();
     const slide = this.slides[ctx.page.index];
     if (!slide) {
       throw new ViewerError('RENDER_ERROR', `Slide ${ctx.page.index} not found.`);
     }
 
-    const cssW = 960 * ctx.scale;
-    const cssH = 540 * ctx.scale;
+    const cssW = SLIDE_WIDTH * ctx.scale;
+    const cssH = SLIDE_HEIGHT * ctx.scale;
 
     const wrapper = document.createElement('div');
     wrapper.style.width = `${cssW}px`;
@@ -129,21 +125,17 @@ export class PptxAdapter implements Adapter {
     wrapper.style.position = 'relative';
 
     const slideEl = document.createElement('div');
-    slideEl.style.width = '960px';
-    slideEl.style.height = '540px';
+    slideEl.style.width = `${SLIDE_WIDTH}px`;
+    slideEl.style.height = `${SLIDE_HEIGHT}px`;
     slideEl.style.background = 'white';
     slideEl.style.boxSizing = 'border-box';
     slideEl.style.padding = '40px';
     slideEl.style.transform = `scale(${ctx.scale})`;
     slideEl.style.transformOrigin = 'top left';
-    const DOMPurify = await loadSanitizer();
-    slideEl.innerHTML = DOMPurify.sanitize(slide.html, {
-      ALLOWED_TAGS: ['div', 'h1', 'h2', 'h3', 'p', 'span', 'br', 'b', 'i', 'em', 'strong', 'ul', 'ol', 'li'],
-      ALLOWED_ATTR: ['style'],
-    });
+    setSafeHtml(slideEl, slide.html);
 
     wrapper.appendChild(slideEl);
-    target.appendChild(wrapper);
+    ctx.target.appendChild(wrapper);
 
     return { width: cssW, height: cssH };
   }
@@ -166,92 +158,83 @@ export class PptxAdapter implements Adapter {
     return { pageIndex, items };
   }
 
-  // Slide display order comes from presentation.xml relationship ids, not slideN.xml filenames.
-  private async orderedSlideFiles(zip: {
-    files: Record<string, unknown>;
-    file(path: string): { async(type: 'string'): Promise<string> } | null;
-  }): Promise<string[]> {
-    const all = Object.keys(zip.files).filter((n) =>
-      /^ppt\/slides\/slide\d+\.xml$/.test(n),
-    );
-    const slideNum = (n: string) =>
-      parseInt(n.match(/slide(\d+)\.xml/)?.[1] ?? '0', 10);
-    const numeric = () => all.slice().sort((a, b) => slideNum(a) - slideNum(b));
-
-    const presEntry = zip.file('ppt/presentation.xml');
-    const relsEntry = zip.file('ppt/_rels/presentation.xml.rels');
-    if (!presEntry || !relsEntry) return numeric();
-
-    try {
-      const parser = new DOMParser();
-      const relsDoc = parser.parseFromString(
-        await relsEntry.async('string'),
-        'application/xml',
-      );
-      const relTarget = new Map<string, string>();
-      relsDoc.querySelectorAll('*').forEach((el) => {
-        if (el.localName !== 'Relationship') return;
-        const id = el.getAttribute('Id');
-        const target = el.getAttribute('Target');
-        if (!id || !target) return;
-        const path = target.replace(/^\//, '').replace(/^\.\.\//, '');
-        relTarget.set(id, path.startsWith('ppt/') ? path : `ppt/${path}`);
-      });
-
-      const presDoc = parser.parseFromString(
-        await presEntry.async('string'),
-        'application/xml',
-      );
-      const ordered: string[] = [];
-      presDoc.querySelectorAll('*').forEach((el) => {
-        if (el.localName !== 'sldId') return;
-        const rid = relationshipId(el);
-        const file = rid ? relTarget.get(rid) : undefined;
-        if (file && file in zip.files) ordered.push(file);
-      });
-
-      if (ordered.length === 0) return numeric();
-      const seen = new Set(ordered);
-      for (const f of numeric()) if (!seen.has(f)) ordered.push(f);
-      return ordered;
-    } catch {
-      return numeric();
-    }
-  }
-
-  private parseSlideXml(xml: string): SlideContent {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(xml, 'application/xml');
-
-    const texts: string[] = [];
-
-    doc.querySelectorAll('*').forEach((node) => {
-      if (node.localName === 't' || node.tagName.split(':').pop() === 't') {
-        const text = node.textContent?.trim();
-        if (text) texts.push(text);
-      }
-    });
-
-    let html = '<div style="font-family:Calibri,Arial,sans-serif;">';
-    const title = texts[0];
-    if (title) {
-      html += `<h1 style="font-size:28px;font-weight:600;margin-bottom:16px;color:#333;">${this.escapeHtml(title)}</h1>`;
-    }
-    for (let i = 1; i < texts.length; i++) {
-      html += `<p style="font-size:18px;margin:8px 0;color:#444;">${this.escapeHtml(texts[i])}</p>`;
-    }
-    html += '</div>';
-
-    return { texts, html };
-  }
-
-  private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
   dispose(): void {
     this.slides = [];
   }
+}
+
+// Slide display order comes from presentation.xml relationship ids, not slideN.xml filenames.
+async function orderedSlideFiles(zip: JSZip): Promise<string[]> {
+  const all = Object.keys(zip.files).filter((n) =>
+    /^ppt\/slides\/slide\d+\.xml$/.test(n),
+  );
+  const slideNum = (n: string) =>
+    parseInt(n.match(/slide(\d+)\.xml/)?.[1] ?? '0', 10);
+  const numeric = () => all.slice().sort((a, b) => slideNum(a) - slideNum(b));
+
+  const presEntry = zip.file('ppt/presentation.xml');
+  const relsEntry = zip.file('ppt/_rels/presentation.xml.rels');
+  if (!presEntry || !relsEntry) return numeric();
+
+  try {
+    const parser = new DOMParser();
+    const relsDoc = parser.parseFromString(
+      await relsEntry.async('string'),
+      'application/xml',
+    );
+    const relTarget = new Map<string, string>();
+    relsDoc.querySelectorAll('*').forEach((el) => {
+      if (el.localName !== 'Relationship') return;
+      const id = el.getAttribute('Id');
+      const target = el.getAttribute('Target');
+      if (!id || !target) return;
+      const path = target.replace(/^\//, '').replace(/^\.\.\//, '');
+      relTarget.set(id, path.startsWith('ppt/') ? path : `ppt/${path}`);
+    });
+
+    const presDoc = parser.parseFromString(
+      await presEntry.async('string'),
+      'application/xml',
+    );
+    const ordered: string[] = [];
+    presDoc.querySelectorAll('*').forEach((el) => {
+      if (el.localName !== 'sldId') return;
+      const rid = relationshipId(el);
+      const file = rid ? relTarget.get(rid) : undefined;
+      if (file && file in zip.files) ordered.push(file);
+    });
+
+    if (ordered.length === 0) return numeric();
+    const seen = new Set(ordered);
+    for (const f of numeric()) if (!seen.has(f)) ordered.push(f);
+    return ordered;
+  } catch {
+    return numeric();
+  }
+}
+
+function parseSlideXml(xml: string): SlideContent {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'application/xml');
+
+  const texts: string[] = [];
+
+  doc.querySelectorAll('*').forEach((node) => {
+    if (node.localName === 't') {
+      const text = node.textContent?.trim();
+      if (text) texts.push(text);
+    }
+  });
+
+  let html = '<div style="font-family:Calibri,Arial,sans-serif;">';
+  const title = texts[0];
+  if (title) {
+    html += `<h1 style="font-size:28px;font-weight:600;margin-bottom:16px;color:#333;">${escapeHtml(title)}</h1>`;
+  }
+  for (let i = 1; i < texts.length; i++) {
+    html += `<p style="font-size:18px;margin:8px 0;color:#444;">${escapeHtml(texts[i])}</p>`;
+  }
+  html += '</div>';
+
+  return { texts, html: markSanitized(html) };
 }

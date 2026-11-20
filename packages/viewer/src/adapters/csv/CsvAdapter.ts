@@ -13,7 +13,7 @@ import type {
   SearchResult,
   SearchMatch,
 } from '../../core/types';
-import { ViewerError, isViewerError } from '../../core/errors';
+import { asParseError, throwIfCancelled } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
 
 export const csvManifest: AdapterManifest = {
@@ -40,6 +40,9 @@ export const csvManifest: AdapterManifest = {
 };
 
 const ROW_CHUNK = 2000;
+const TABLE_ROW_HEIGHT = 32;
+const TEXT_ROW_HEIGHT = 20;
+const CHAR_WIDTH = 8;
 
 export class CsvAdapter implements Adapter {
   readonly manifest = csvManifest;
@@ -51,7 +54,7 @@ export class CsvAdapter implements Adapter {
     signal: AbortSignal,
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
 
     const text = decodeText(buffer, source.meta.mimeType);
     const delimiter = source.meta.name.toLowerCase().endsWith('.tsv') ? '\t' : '';
@@ -66,12 +69,10 @@ export class CsvAdapter implements Adapter {
       this.rows = result.data;
       this.headers = this.rows.shift() ?? [];
     } catch (cause) {
-      if (isViewerError(cause)) throw cause;
-      throw new ViewerError('PARSE_ERROR', 'Failed to parse CSV.', { cause });
+      throw asParseError(cause, 'Failed to parse CSV.');
     }
 
-    const rowHeight = 32;
-    const height = Math.max((Math.min(this.rows.length, ROW_CHUNK) + 2) * rowHeight + 48, 400);
+    const height = Math.max((Math.min(this.rows.length, ROW_CHUNK) + 2) * TABLE_ROW_HEIGHT + 48, 400);
 
     const page: PageRef = {
       index: 0,
@@ -89,9 +90,6 @@ export class CsvAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const target = ctx.target as HTMLElement;
-    target.innerHTML = '';
-
     const container = document.createElement('div');
     container.style.padding = '16px';
     container.style.overflow = 'auto';
@@ -137,7 +135,7 @@ export class CsvAdapter implements Adapter {
     appendChunk();
     if (shown < rows.length) container.appendChild(more);
 
-    target.appendChild(container);
+    ctx.target.replaceChildren(container);
 
     return {
       width: ctx.page.width * ctx.scale,
@@ -149,28 +147,12 @@ export class CsvAdapter implements Adapter {
     _pageIndex: number,
     _signal?: AbortSignal,
   ): Promise<TextLayer> {
-    const items: TextLayerItem[] = [];
-    const rowHeight = 20;
-
-    if (this.headers.length > 0) {
-      items.push({
-        str: this.headers.join('\t'),
-        x: 0,
-        y: 0,
-        width: this.headers.join('\t').length * 8,
-        height: rowHeight,
-      });
-    }
-
-    this.rows.forEach((row, i) => {
-      items.push({
-        str: row.join('\t'),
-        x: 0,
-        y: (i + 1) * rowHeight,
-        width: row.join('\t').length * 8,
-        height: rowHeight,
-      });
-    });
+    const line = (row: string[], y: number): TextLayerItem => {
+      const str = row.join('\t');
+      return { str, x: 0, y, width: str.length * CHAR_WIDTH, height: TEXT_ROW_HEIGHT };
+    };
+    const items = this.rows.map((row, i) => line(row, (i + 1) * TEXT_ROW_HEIGHT));
+    if (this.headers.length > 0) items.unshift(line(this.headers, 0));
 
     return { pageIndex: 0, items };
   }
@@ -179,34 +161,25 @@ export class CsvAdapter implements Adapter {
     query: SearchQuery,
     _signal: AbortSignal,
   ): Promise<SearchResult> {
-    const matches: SearchMatch[] = [];
-    const rowHeight = 20;
-
+    const needle = query.caseSensitive ? query.text : query.text.toLowerCase();
     const allRows = [this.headers, ...this.rows];
-    for (let rowIdx = 0; rowIdx < allRows.length; rowIdx++) {
-      for (let colIdx = 0; colIdx < allRows[rowIdx].length; colIdx++) {
-        const cell = allRows[rowIdx][colIdx];
-        if (this.matchText(cell, query)) {
-          matches.push({
-            pageIndex: 0,
-            text: cell,
-            x: colIdx / Math.max(allRows[rowIdx].length, 1),
-            y: rowIdx / Math.max(allRows.length, 1),
-            width: cell.length * 8 / 1000,
-            height: rowHeight / 1000,
-          });
-        }
-      }
-    }
+    const matches: SearchMatch[] = [];
+    allRows.forEach((row, rowIdx) => {
+      row.forEach((cell, colIdx) => {
+        const haystack = query.caseSensitive ? cell : cell.toLowerCase();
+        if (!haystack.includes(needle)) return;
+        matches.push({
+          pageIndex: 0,
+          text: cell,
+          x: colIdx / row.length,
+          y: rowIdx / allRows.length,
+          width: cell.length * CHAR_WIDTH / 1000,
+          height: TEXT_ROW_HEIGHT / 1000,
+        });
+      });
+    });
 
     return { query, matches, totalMatches: matches.length };
-  }
-
-  private matchText(text: string, query: SearchQuery): boolean {
-    if (query.caseSensitive) {
-      return text.includes(query.text);
-    }
-    return text.toLowerCase().includes(query.text.toLowerCase());
   }
 
   dispose(): void {

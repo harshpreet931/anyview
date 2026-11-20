@@ -9,16 +9,17 @@ import type {
   RenderResult,
   SearchQuery,
   SearchResult,
-  SearchMatch,
   TextLayer,
   TextLayerItem,
 } from '../../core/types';
-import { ViewerError, isViewerError } from '../../core/errors';
+import { asParseError, throwIfCancelled } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
 import { loadSanitizer } from '../../core/sanitizer';
-import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
+import { EMPTY_HTML, markSanitized, type SafeHtml } from '../../core/safe-html';
 import { assertTransformSize } from '../../core/limits';
-import { headingScrollOffset } from '../../core/reflow-outline';
+import { headingScrollOffsets } from '../../core/reflow-outline';
+import { renderReflowPage } from '../../core/reflow-page';
+import { searchPattern } from '../../core/search-pattern';
 
 export const docxManifest: AdapterManifest = {
   id: 'docx',
@@ -45,6 +46,10 @@ export const docxManifest: AdapterManifest = {
   protocolVersion: 1,
 };
 
+const CHARS_PER_LINE = 80;
+const LINE_HEIGHT = 24;
+const CHAR_WIDTH = 8;
+
 export class DocxAdapter implements Adapter {
   readonly manifest = docxManifest;
   private htmlContent: SafeHtml = EMPTY_HTML;
@@ -55,7 +60,7 @@ export class DocxAdapter implements Adapter {
     signal: AbortSignal,
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
     assertTransformSize(buffer.byteLength);
 
     try {
@@ -74,16 +79,13 @@ export class DocxAdapter implements Adapter {
         SANITIZE_NAMED_PROPS: true,
       }));
     } catch (cause) {
-      if (isViewerError(cause)) throw cause;
-      throw new ViewerError('PARSE_ERROR', 'Failed to parse DOCX.', { cause });
+      throw asParseError(cause, 'Failed to parse DOCX.');
     }
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(this.htmlContent, 'text/html');
+    const doc = new DOMParser().parseFromString(this.htmlContent, 'text/html');
     this.textContent = doc.body.textContent ?? '';
 
-    const charCount = this.textContent.length;
-    const estimatedHeight = Math.ceil(charCount / 80) * 24 + 200;
+    const estimatedHeight = Math.ceil(this.textContent.length / CHARS_PER_LINE) * LINE_HEIGHT + 200;
 
     const page: PageRef = {
       index: 0,
@@ -92,7 +94,7 @@ export class DocxAdapter implements Adapter {
       rotation: 0,
     };
 
-    const outline = this.extractOutline(doc);
+    const outline = extractOutline(doc);
 
     return {
       format: 'docx',
@@ -104,35 +106,16 @@ export class DocxAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const target = ctx.target as HTMLElement;
-    target.innerHTML = '';
-
-    const container = document.createElement('div');
-    container.className = 'dv-docx-content';
-    container.style.padding = '48px 24px';
-    container.style.maxWidth = '800px';
-    container.style.margin = '0 auto';
-    container.style.fontSize = `${16 * ctx.scale}px`;
-    container.style.lineHeight = '1.6';
-    container.style.color = 'var(--dv-page-ink)';
-    container.style.background = 'var(--dv-page-bg)';
-    setSafeHtml(container, this.htmlContent);
-
-    const tables = container.querySelectorAll('table');
-    tables.forEach((t) => {
-      (t as HTMLElement).style.borderCollapse = 'collapse';
-      t.querySelectorAll('td, th').forEach((c) => {
-        (c as HTMLElement).style.border = '1px solid #ddd';
-        (c as HTMLElement).style.padding = '4px 8px';
+    const result = renderReflowPage(ctx, this.htmlContent, { className: 'dv-docx-content', padding: '48px 24px' });
+    const container = ctx.target.firstElementChild!;
+    container.querySelectorAll('table').forEach((table) => {
+      table.style.borderCollapse = 'collapse';
+      table.querySelectorAll<HTMLElement>('td, th').forEach((cell) => {
+        cell.style.border = '1px solid #ddd';
+        cell.style.padding = '4px 8px';
       });
     });
-
-    target.appendChild(container);
-
-    return {
-      width: ctx.page.width * ctx.scale,
-      height: container.scrollHeight || ctx.page.height * ctx.scale,
-    };
+    return { ...result, height: container.scrollHeight || result.height };
   }
 
   async getTextLayer(
@@ -145,9 +128,9 @@ export class DocxAdapter implements Adapter {
       .map((line, i) => ({
         str: line,
         x: 0,
-        y: i * 24,
-        width: line.length * 8,
-        height: 24,
+        y: i * LINE_HEIGHT,
+        width: line.length * CHAR_WIDTH,
+        height: LINE_HEIGHT,
       }));
 
     return { pageIndex: 0, items };
@@ -157,46 +140,19 @@ export class DocxAdapter implements Adapter {
     query: SearchQuery,
     _signal: AbortSignal,
   ): Promise<SearchResult> {
-    const matches: SearchMatch[] = [];
+    const re = searchPattern(query);
     const text = this.textContent;
-    const flags = query.caseSensitive ? 'g' : 'gi';
-    const pattern = query.regex ? query.text : escapeRegex(query.text);
-    const re = new RegExp(pattern, flags);
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(text)) !== null) {
-      const before = text.slice(0, m.index);
-      const line = before.split('\n').length - 1;
-      matches.push({
-        pageIndex: 0,
-        text: m[0],
-        x: 0,
-        y: line * 24,
-        width: m[0].length * 8,
-        height: 24,
-      });
-      if (m.index === re.lastIndex) re.lastIndex++;
-    }
-    return { query, matches, totalMatches: matches.length };
-  }
-
-  private extractOutline(doc: Document): OutlineNode[] | undefined {
-    const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
-    if (headings.length === 0) return undefined;
-
-    const outline: OutlineNode[] = [];
-    headings.forEach((h) => {
-      const level = parseInt(h.tagName.charAt(1));
-      outline.push({
-        title: h.textContent ?? '',
-        dest: {
+    const matches = re
+      ? Array.from(text.matchAll(re), (m) => ({
           pageIndex: 0,
-          scrollOffset: headingScrollOffset(doc, h),
-        },
-        ...(level < 3 ? { children: [] as OutlineNode[] } : {}),
-      });
-    });
-
-    return outline;
+          text: m[0],
+          x: 0,
+          y: (text.slice(0, m.index).split('\n').length - 1) * LINE_HEIGHT,
+          width: m[0].length * CHAR_WIDTH,
+          height: LINE_HEIGHT,
+        }))
+      : [];
+    return { query, matches, totalMatches: matches.length };
   }
 
   dispose(): void {
@@ -205,6 +161,13 @@ export class DocxAdapter implements Adapter {
   }
 }
 
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function extractOutline(doc: Document): OutlineNode[] | undefined {
+  const headings = Array.from(doc.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+  if (headings.length === 0) return undefined;
+
+  const offsets = headingScrollOffsets(doc, headings);
+  return headings.map((h, i) => ({
+    title: h.textContent ?? '',
+    dest: { pageIndex: 0, scrollOffset: offsets[i]! },
+  }));
 }

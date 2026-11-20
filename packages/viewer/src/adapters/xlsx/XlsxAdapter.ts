@@ -10,9 +10,9 @@ import type {
   TextLayer,
   TextLayerItem,
 } from '../../core/types';
-import { ViewerError, isViewerError } from '../../core/errors';
+import { ViewerError, asParseError, throwIfCancelled } from '../../core/errors';
 import { loadParser } from '../../core/load-parser';
-import { loadSanitizer } from '../../core/sanitizer';
+import { loadSanitizer, type Sanitizer } from '../../core/sanitizer';
 import { markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
 
 export const xlsxManifest: AdapterManifest = {
@@ -43,40 +43,41 @@ export const xlsxManifest: AdapterManifest = {
 
 const SHEET_ROW_LIMIT = 5000;
 
+interface Sheet {
+  name: string;
+  html: SafeHtml;
+  text: string;
+  totalRows: number | null;
+}
+
 export class XlsxAdapter implements Adapter {
   readonly manifest = xlsxManifest;
-  private sheetHtmls: SafeHtml[] = [];
-  private sheetNames: string[] = [];
-  private sheetTexts: string[] = [];
-  private sheetRowTotals: (number | null)[] = [];
+  private sheets: Sheet[] = [];
 
   async parse(
     source: FileSourceReader,
     signal: AbortSignal,
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
 
     try {
       const XLSX = await loadParser('xlsx', () => import('xlsx'));
       const workbook = XLSX.read(buffer, { type: 'array' });
       const DOMPurify = await loadSanitizer();
 
-      this.sheetNames = workbook.SheetNames;
-      this.sheetHtmls = [];
-      this.sheetTexts = [];
-      this.sheetRowTotals = [];
+      this.sheets = [];
 
-      for (const name of this.sheetNames) {
+      for (const name of workbook.SheetNames) {
         const sheet = workbook.Sheets[name];
         const hasCells = !!sheet?.['!ref'];
         let shown = sheet;
-        let total: number | null = null;
+        let totalRows: number | null = null;
         if (hasCells) {
           const range = XLSX.utils.decode_range(sheet['!ref']!);
           const rows = range.e.r - range.s.r + 1;
           if (rows > SHEET_ROW_LIMIT) {
-            total = rows;
+            totalRows = rows;
             shown = {
               ...sheet,
               '!ref': XLSX.utils.encode_range({
@@ -86,26 +87,28 @@ export class XlsxAdapter implements Adapter {
             };
           }
         }
-        this.sheetRowTotals.push(total);
         const html = hasCells
           ? XLSX.utils.sheet_to_html(shown, { id: `sheet-${name}` })
           : '<table></table>';
-        this.sheetHtmls.push(buildSheetHtml(html, DOMPurify));
-        this.sheetTexts.push(hasCells ? XLSX.utils.sheet_to_csv(sheet) : '');
+        this.sheets.push({
+          name,
+          html: buildSheetHtml(html, DOMPurify),
+          text: hasCells ? XLSX.utils.sheet_to_csv(sheet) : '',
+          totalRows,
+        });
       }
     } catch (cause) {
-      if (isViewerError(cause)) throw cause;
-      throw new ViewerError('PARSE_ERROR', 'Failed to parse spreadsheet.', { cause });
+      throw asParseError(cause, 'Failed to parse spreadsheet.');
     }
 
-    const pages: PageRef[] = this.sheetNames.map((_, i) => ({
+    const pages: PageRef[] = this.sheets.map((_, i) => ({
       index: i,
       width: 1000,
       height: 800,
       rotation: 0,
     }));
 
-    const outline: OutlineNode[] = this.sheetNames.map((name, i) => ({
+    const outline: OutlineNode[] = this.sheets.map(({ name }, i) => ({
       title: name,
       dest: { pageIndex: i },
     }));
@@ -113,18 +116,17 @@ export class XlsxAdapter implements Adapter {
     return {
       format: 'xlsx',
       meta: source.meta,
-      pageCount: this.sheetNames.length,
+      pageCount: this.sheets.length,
       pages,
       outline,
     };
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const target = ctx.target as HTMLElement;
-    target.innerHTML = '';
+    ctx.target.replaceChildren();
 
-    const html = this.sheetHtmls[ctx.page.index];
-    if (!html) {
+    const sheet = this.sheets[ctx.page.index];
+    if (!sheet) {
       throw new ViewerError('RENDER_ERROR', `Sheet ${ctx.page.index} not found.`);
     }
 
@@ -132,16 +134,15 @@ export class XlsxAdapter implements Adapter {
     container.style.padding = '16px';
     container.style.overflow = 'auto';
     container.style.fontSize = `${14 * ctx.scale}px`;
-    setSafeHtml(container, html);
-    const total = this.sheetRowTotals[ctx.page.index];
-    if (total) {
+    setSafeHtml(container, sheet.html);
+    if (sheet.totalRows) {
       const note = document.createElement('p');
       note.className = 'dv-sheet-truncated';
-      note.textContent = `Showing the first ${SHEET_ROW_LIMIT.toLocaleString()} of ${total.toLocaleString()} rows.`;
+      note.textContent = `Showing the first ${SHEET_ROW_LIMIT.toLocaleString()} of ${sheet.totalRows.toLocaleString()} rows.`;
       container.appendChild(note);
     }
 
-    target.appendChild(container);
+    ctx.target.appendChild(container);
 
     return {
       width: ctx.page.width * ctx.scale,
@@ -153,7 +154,7 @@ export class XlsxAdapter implements Adapter {
     pageIndex: number,
     _signal?: AbortSignal,
   ): Promise<TextLayer> {
-    const text = this.sheetTexts[pageIndex] ?? '';
+    const text = this.sheets[pageIndex]?.text ?? '';
     const items: TextLayerItem[] = text
       .split('\n')
       .map((line, i) => ({
@@ -168,16 +169,13 @@ export class XlsxAdapter implements Adapter {
   }
 
   dispose(): void {
-    this.sheetHtmls = [];
-    this.sheetNames = [];
-    this.sheetTexts = [];
-    this.sheetRowTotals = [];
+    this.sheets = [];
   }
 }
 
 function buildSheetHtml(
   rawHtml: string,
-  DOMPurify: { sanitize: (s: string, c?: Record<string, unknown>) => string },
+  DOMPurify: Sanitizer,
 ): SafeHtml {
   const sanitized = DOMPurify.sanitize(rawHtml, {
     ALLOWED_TAGS: [
@@ -194,11 +192,10 @@ function buildSheetHtml(
   if (table) {
     table.style.borderCollapse = 'collapse';
     table.style.width = '100%';
-    table.querySelectorAll('td, th').forEach((cell) => {
-      const c = cell as HTMLElement;
-      c.style.border = '1px solid #ddd';
-      c.style.padding = '4px 8px';
-      c.style.whiteSpace = 'nowrap';
+    table.querySelectorAll<HTMLElement>('td, th').forEach((cell) => {
+      cell.style.border = '1px solid #ddd';
+      cell.style.padding = '4px 8px';
+      cell.style.whiteSpace = 'nowrap';
     });
   }
   return markSanitized(doc.body.innerHTML);
