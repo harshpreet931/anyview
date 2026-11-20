@@ -1,11 +1,4 @@
-/* Light */
 .dv-theme-light { color-scheme: light; }
-
-/* Dark */
 .dv-theme-dark { color-scheme: dark; }
-
-/* Auto (follows system) */
 .dv-theme-auto { color-scheme: light dark; }
-
-/* Sepia (reading tint) - see sepia.css for the palette */
 .dv-theme-sepia { color-scheme: light; }

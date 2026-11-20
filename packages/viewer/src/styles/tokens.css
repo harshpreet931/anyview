@@ -1,21 +1,9 @@
-/* ============================================================
- * CSS Design Tokens
- * All customizable values as CSS custom properties.
- *
- * The chrome is built from a small set of brand primitives
- * (--dv-ink, --dv-surface, --dv-canvas, --dv-accent, ...). The
- * older semantic tokens (--dv-toolbar-bg-color, --dv-loading-color,
- * ...) are kept and now derive from those primitives, so overriding
- * either layer keeps working.
- * ============================================================ */
-
 :root,
 .dv-root {
-  /* Layout */
   --dv-sidebar-width: 240px;
+  --dv-sidebar-transition-duration: 200ms;
   --dv-sidebar-min-width: 160px;
   --dv-sidebar-max-width: 400px;
-  --dv-sidebar-transition-duration: 200ms;
   --dv-sidebar-transition-timing: cubic-bezier(0.23, 1, 0.32, 1);
   --dv-toolbar-height: 52px;
   --dv-toolbar-height-compact: 40px;
@@ -25,8 +13,7 @@
   --dv-control-inset: 3px;
   --dv-loading-bar-height: 2px;
 
-  /* ---- Brand primitives ----
-     light-dark() picks the right value for `auto`; the explicit
+  /* light-dark() picks the right value for `auto`; the explicit
      .dv-theme-* classes pin a scheme via color-scheme. */
   --dv-ink: light-dark(#121110, #f5f1ec);
   --dv-ink-2: light-dark(#2b2825, #d9d2ca);
@@ -40,7 +27,6 @@
   --dv-accent: light-dark(#e8551f, #ff7a45); /* 3:1+ as a ring on every surface */
   --dv-accent-soft: light-dark(rgb(232 85 31 / 0.14), rgb(255 122 69 / 0.2));
 
-  /* ---- Semantic colors (public, override freely) ---- */
   --dv-main-color: var(--dv-ink);
   --dv-body-bg-color: var(--dv-canvas);
   --dv-toolbar-bg-color: var(--dv-surface);
@@ -67,20 +53,29 @@
   --dv-page-bg: #ffffff;
   --dv-page-ink: #1f1c19;
   --dv-page-ink-soft: #5f574f;
+  --dv-page-link: #c2410c;
+  --dv-page-code-ink: #2b2825;
+  --dv-page-code-bg: #f1f1f1;
+  --dv-page-block-bg: #f6f6f6;
+  --dv-page-header-bg: #f5f5f5;
+  --dv-page-border: #dddddd;
+  --dv-page-rule: #e8e8e8;
+  --dv-page-rule-strong: #d8cfc4;
 
-  /* Shadows - layered, low-opacity, tinted warm (umber). A 1px ring replaces borders; two soft depths give lift. */
-  --dv-shadow-xs: 0 0 0 1px rgb(41 28 18 / 0.05), 0 1px 2px rgb(41 28 18 / 0.04);
-  --dv-shadow-sm: 0 0 0 1px rgb(41 28 18 / 0.05), 0 1px 2px -1px rgb(41 28 18 / 0.06),
-    0 2px 6px rgb(41 28 18 / 0.04);
-  --dv-shadow-md: 0 0 0 1px rgb(41 28 18 / 0.04), 0 2px 4px -2px rgb(41 28 18 / 0.06),
-    0 10px 28px -6px rgb(41 28 18 / 0.1);
-  --dv-shadow-lg: 0 0 0 1px rgb(41 28 18 / 0.05), 0 8px 16px -8px rgb(41 28 18 / 0.12),
-    0 28px 64px -12px rgb(41 28 18 / 0.22);
-  --dv-shadow-page: 0 0 0 1px rgb(41 28 18 / 0.04), 0 1px 2px rgb(41 28 18 / 0.04),
-    0 12px 32px -10px rgb(41 28 18 / 0.14);
+  --dv-shadow-rgb: 41 28 18;
+  --dv-shadow-xs: 0 0 0 1px rgb(var(--dv-shadow-rgb) / 0.05), 0 1px 2px rgb(var(--dv-shadow-rgb) / 0.04);
+  --dv-shadow-sm: 0 0 0 1px rgb(var(--dv-shadow-rgb) / 0.05), 0 1px 2px -1px rgb(var(--dv-shadow-rgb) / 0.06),
+    0 2px 6px rgb(var(--dv-shadow-rgb) / 0.04);
+  --dv-shadow-md: 0 0 0 1px rgb(var(--dv-shadow-rgb) / 0.04), 0 2px 4px -2px rgb(var(--dv-shadow-rgb) / 0.06),
+    0 10px 28px -6px rgb(var(--dv-shadow-rgb) / 0.1);
+  --dv-shadow-lg: 0 0 0 1px rgb(var(--dv-shadow-rgb) / 0.05), 0 8px 16px -8px rgb(var(--dv-shadow-rgb) / 0.12),
+    0 28px 64px -12px rgb(var(--dv-shadow-rgb) / 0.22);
+  --dv-shadow-page: 0 0 0 1px rgb(var(--dv-shadow-rgb) / 0.04), 0 1px 2px rgb(var(--dv-shadow-rgb) / 0.04),
+    0 12px 32px -10px rgb(var(--dv-shadow-rgb) / 0.14);
   --dv-shadow-focus: 0 0 0 2px var(--dv-surface), 0 0 0 4px var(--dv-accent);
+  --dv-ring: 0 0 0 2px var(--dv-accent);
+  --dv-ring-inset: inset 0 0 0 2px var(--dv-accent);
 
-  /* Spacing */
   --dv-spacing-xs: 2px;
   --dv-spacing-sm: 4px;
   --dv-spacing-md: 8px;
@@ -88,7 +83,6 @@
   --dv-spacing-xl: 24px;
   --dv-spacing-2xl: 32px;
 
-  /* Radius - concentric scale (outer = inner + padding) */
   --dv-radius-xs: 3px;
   --dv-radius-sm: 8px;
   --dv-radius-md: 12px;
@@ -96,7 +90,6 @@
   --dv-radius-xl: 28px;
   --dv-radius-full: 9999px;
 
-  /* Transition */
   --dv-transition-fast: 120ms;
   --dv-transition-normal: 180ms;
   --dv-transition-slow: 240ms;
@@ -106,11 +99,12 @@
   --dv-ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
   --dv-press-scale: 0.96;
 
-  /* Z-index scale */
+  --dv-z-marquee: 6;
   --dv-z-toolbar: 10;
   --dv-z-sidebar: 20;
   --dv-z-loading-bar: 30;
   --dv-z-doorhanger: 30000;
+  --dv-z-tooltip: 1000;
   --dv-z-dialog: 100000;
   --dv-z-alert: 100001;
 
@@ -125,12 +119,6 @@
   --dv-font-size-md: 13px;
   --dv-font-size-lg: 16px;
   --dv-font-size-xl: 18px;
-}
-
-.dv-root {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
 }
 
 @supports not (color: light-dark(#000, #fff)) {
