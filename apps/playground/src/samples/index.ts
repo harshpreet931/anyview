@@ -4,14 +4,13 @@ import csvContent from './csv-sample.csv?raw';
 import htmlContent from './html-sample.html?raw';
 import codeContent from './code-sample.ts?raw';
 import svgContent from './image-sample.svg?raw';
+import type { FileSource } from 'anyview';
 
-export interface SampleFile {
+export type SampleFile = {
   label: string;
   fileName: string;
   mimeType: string;
-  content?: string;
-  url?: string;
-}
+} & ({ content: string } | { url: string });
 
 const pdfStream1 = `BT
 /F2 34 Tf
@@ -238,12 +237,9 @@ export const SAMPLE_FILES: SampleFile[] = [
   },
 ];
 
-export function createSampleFileSource(sample: SampleFile) {
-  if (sample.url) {
-    return { kind: 'url' as const, url: `${import.meta.env.BASE_URL}${sample.url}`, filename: sample.fileName };
+export function createSampleFileSource(sample: SampleFile): FileSource {
+  if ('url' in sample) {
+    return { kind: 'url', url: `${import.meta.env.BASE_URL}${sample.url}`, filename: sample.fileName };
   }
-  const file = new File([sample.content ?? ''], sample.fileName, {
-    type: sample.mimeType,
-  });
-  return { kind: 'file' as const, file };
+  return { kind: 'file', file: new File([sample.content], sample.fileName, { type: sample.mimeType }) };
 }

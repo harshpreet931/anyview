@@ -2,11 +2,11 @@
   display: flex;
   gap: 2px;
   padding: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--frost);
   box-shadow: var(--frost-edge);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: var(--frost-blur);
+  -webkit-backdrop-filter: var(--frost-blur);
 }
 
 .ex-nav a {
@@ -15,7 +15,7 @@
   min-width: 44px;
   height: 40px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font: 500 15px/1 var(--mono);
   color: var(--frost-ink);
   text-decoration: none;
@@ -109,7 +109,7 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
   height: 34px;
   padding: 0 14px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font: 500 14px/1 var(--sans);
   color: var(--muted);
   background: transparent;
@@ -128,15 +128,13 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
   padding: 18px 20px;
   overflow: auto;
   border-radius: 16px;
-  background: #1c1917;
-  color: #ede6de;
+  background: var(--code-bg);
+  color: var(--code-ink);
   font: 13px/1.6 var(--mono);
   tab-size: 2;
 }
 
 .ex-section button { font-family: var(--sans); }
-
-/* ---------- 01 Chat ---------- */
 
 .ex-chat { height: 100%; overflow: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 .ex-message { display: flex; gap: 12px; align-items: flex-start; }
@@ -215,8 +213,6 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
 }
 .ex-modal-body { flex: 1; min-height: 0; }
 
-/* ---------- 02 Upload ---------- */
-
 .ex-upload { height: 100%; display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); }
 .ex-upload-fields { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
 .ex-upload-fields label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
@@ -229,14 +225,14 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
   color: var(--ink);
   background: var(--surface);
 }
-.ex-file {
+.ex-upload-fields .ex-file {
   position: relative;
-  display: grid !important;
+  display: grid;
   place-items: center;
   height: 88px;
   border: 1.5px dashed color-mix(in srgb, var(--ink) 22%, transparent);
   border-radius: 12px;
-  color: var(--ink-2) !important;
+  color: var(--ink-2);
   cursor: pointer;
 }
 .ex-file:hover { border-color: var(--accent); }
@@ -261,7 +257,7 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
   margin-top: auto;
   height: 44px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 15px;
   font-weight: 500;
   color: var(--pill-ink);
@@ -280,8 +276,6 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
   color: var(--muted);
 }
 
-/* ---------- 03 Review ---------- */
-
 .ex-review { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 260px; }
 .ex-review-viewer { min-width: 0; }
 .ex-review-panel {
@@ -299,7 +293,7 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
   flex: 1;
   height: 34px;
   border: 1px solid var(--hairline);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 13px;
   font-weight: 500;
   color: var(--ink);
@@ -330,7 +324,7 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
   flex: 1;
   height: 34px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 13px;
   font-weight: 500;
   color: var(--pill-ink);
@@ -346,11 +340,9 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
   padding: 10px;
   border-radius: 10px;
   font: 11.5px/1.5 var(--mono);
-  color: #ede6de;
-  background: #1c1917;
+  color: var(--code-ink);
+  background: var(--code-bg);
 }
-
-/* ---------- 04 Custom controls ---------- */
 
 .ex-custom { height: 100%; }
 .ex-controls {
@@ -363,7 +355,7 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
   align-items: center;
   gap: 4px;
   padding: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: #f5f1ec;
   background: rgb(18 17 16 / 0.86);
   box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.45);
@@ -385,8 +377,6 @@ a.pg-upload-btn { text-decoration: none; font: 500 15.5px/1 var(--sans); }
 .ex-controls button:disabled { opacity: 0.35; cursor: default; }
 .ex-controls span:not(.ex-controls-sep) { min-width: 48px; text-align: center; }
 .ex-controls-sep { width: 1px; height: 18px; margin: 0 4px; background: rgb(255 255 255 / 0.2); }
-
-/* ---------- Responsive ---------- */
 
 @media (max-width: 960px) {
   .ex-section { grid-template-columns: minmax(0, 1fr); }

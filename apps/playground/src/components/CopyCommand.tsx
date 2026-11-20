@@ -1,37 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { CheckIcon, CopyIcon } from './icons';
+import { useCopy } from './useCopy';
 
-/** A mono pill that copies an install command, with a cross-faded check. */
 export function CopyCommand({ command }: { command: string }) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef(0);
-
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-
+  const { copied, copy } = useCopy(command);
   const codeRef = useRef<HTMLElement>(null);
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
-      window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      // Clipboard unavailable (insecure context, permissions): select the
-      // command so a manual copy is one keystroke away.
-      const code = codeRef.current;
-      const sel = window.getSelection();
-      if (code && sel) {
-        const range = document.createRange();
-        range.selectNodeContents(code);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
+  const onClick = async () => {
+    if (await copy()) return;
+    // Clipboard unavailable (insecure context, permissions): select the
+    // command so a manual copy is one keystroke away.
+    const code = codeRef.current;
+    const sel = window.getSelection();
+    if (code && sel) {
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      sel.removeAllRanges();
+      sel.addRange(range);
     }
   };
 
   return (
-    <button type="button" className="pg-npm" onClick={copy} data-copied={copied} aria-label={`Copy "${command}"`}>
+    <button type="button" className="pg-npm" onClick={onClick} data-copied={copied} aria-label={`Copy "${command}"`}>
       <span className="pg-npm-prompt" aria-hidden="true">$</span>
       <code ref={codeRef}>{command}</code>
       <span className="pg-npm-icon" aria-hidden="true">

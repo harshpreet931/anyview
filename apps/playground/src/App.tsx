@@ -1,19 +1,18 @@
-import { useState, useCallback, useEffect, type ChangeEvent, type DragEvent } from 'react';
-import { DocViewer, type FileSource, type DocumentModel, type ViewerError } from 'anyview';
+import { useState, useCallback, useEffect } from 'react';
+import { DocViewer, getFormatSpecs, type FileSource, type Theme } from 'anyview';
 import { SAMPLE_FILES, createSampleFileSource } from './samples';
-import { Mascot, LogoMark } from './components/Mascot';
+import { Mascot } from './components/Mascot';
 import { SamplePicker } from './components/SamplePicker';
 import { CopyCommand } from './components/CopyCommand';
+import { GitHubLink, HomeLink, REPO, Sky, ThemeToggle, Wordmark } from './components/SiteChrome';
 import { useSiteTheme } from './components/useSiteTheme';
-import { ArrowIcon, GitHubIcon, MoonIcon, SunIcon, UploadIcon } from './components/icons';
+import { ArrowIcon, GitHubIcon, UploadIcon } from './components/icons';
 import '../../../packages/viewer/src/styles/viewer.css';
 import './playground.css';
 
-const REPO = 'https://github.com/harshpreet931/anyview';
-const ACCEPT =
-  '.pdf,.docx,.xlsx,.pptx,.csv,.tsv,.html,.htm,.md,.markdown,.txt,.log,.ipynb,.png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,.avif,.ts,.tsx,.js,.jsx,.json,.yaml,.yml,.py,.rb,.go,.rs,.java,.c,.cpp,.h,.css,.scss,.less,.vue,.svelte,.php,.sh,.bash,.zsh,.sql,.dockerfile';
-
-type ReaderTheme = 'light' | 'dark' | 'auto' | 'sepia';
+const ACCEPT = getFormatSpecs()
+  .flatMap((spec) => spec.extensions.map((ext) => `.${ext}`))
+  .join(',');
 
 const NOTES = [
   {
@@ -63,24 +62,13 @@ function Divider({ label }: { label: string }) {
 
 export function App() {
   const [source, setSource] = useState<FileSource | undefined>(undefined);
-  const [readerTheme, setReaderTheme] = useState<ReaderTheme>('auto');
+  const [readerTheme, setReaderTheme] = useState<Theme>('auto');
   const [isDragging, setIsDragging] = useState(false);
   const [activeSample, setActiveSample] = useState<number | null>(null);
   const { theme: siteTheme, toggle: toggleSiteTheme } = useSiteTheme();
   useReveal();
 
-  const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSource({ kind: 'file', file });
-      setActiveSample(null);
-    }
-  }, []);
-
-  const handleDrop = useCallback((e: DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
+  const openFile = useCallback((file: File | undefined) => {
     if (file) {
       setSource({ kind: 'file', file });
       setActiveSample(null);
@@ -113,50 +101,32 @@ export function App() {
 
   // "Auto" follows the site's sky, not just the OS, so the two never disagree.
   const viewerTheme = readerTheme === 'auto' ? siteTheme : readerTheme;
-  const nextThemeLabel = siteTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
 
   return (
     <div
       className="pg-root"
-      onDrop={handleDrop}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        openFile(e.dataTransfer.files?.[0]);
+      }}
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
     >
-      <div className="pg-sky" aria-hidden="true">
-        <span className="pg-cloud pg-cloud-1" />
-        <span className="pg-cloud pg-cloud-2" />
-        <span className="pg-cloud pg-cloud-3" />
-        <span className="pg-cloud pg-cloud-4" />
-        <span className="pg-stars" />
-        <span className="pg-grain" />
-      </div>
+      <Sky clouds={4} />
 
       <header className="pg-topbar">
-        <a className="pg-round pg-home" href={import.meta.env.BASE_URL} aria-label="anyview home">
-          <LogoMark />
-        </a>
+        <HomeLink />
 
         <SamplePicker samples={SAMPLE_FILES} active={activeSample} onPick={loadSample} />
 
         <div className="pg-topbar-end">
           <label className="pg-upload-btn">
-            <input type="file" onChange={handleFileChange} accept={ACCEPT} />
+            <input type="file" onChange={(e) => openFile(e.target.files?.[0])} accept={ACCEPT} />
             <UploadIcon width={16} height={16} />
             <span>Open file</span>
           </label>
-          <a className="pg-round pg-hide-sm" href={REPO} aria-label="anyview on GitHub">
-            <GitHubIcon />
-          </a>
-          <button
-            type="button"
-            className="pg-round pg-theme-toggle"
-            onClick={toggleSiteTheme}
-            aria-label={nextThemeLabel}
-            title={nextThemeLabel}
-            data-theme-icon={siteTheme}
-          >
-            <SunIcon className="pg-icon-sun" />
-            <MoonIcon className="pg-icon-moon" />
-          </button>
+          <GitHubLink />
+          <ThemeToggle theme={siteTheme} onToggle={toggleSiteTheme} />
         </div>
       </header>
 
@@ -201,7 +171,7 @@ export function App() {
               <select
                 className="pg-theme-select"
                 value={readerTheme}
-                onChange={(e) => setReaderTheme(e.target.value as ReaderTheme)}
+                onChange={(e) => setReaderTheme(e.target.value as Theme)}
                 aria-label="Viewer theme"
               >
                 <option value="auto">Auto</option>
@@ -217,8 +187,6 @@ export function App() {
               theme={viewerTheme}
               showToolbar
               showSidebar
-              onDocumentLoad={(model: DocumentModel) => console.log('Loaded:', model.format, model.pageCount, 'pages')}
-              onError={(err: ViewerError) => console.error('Error:', err)}
             />
           </div>
         </section>
@@ -262,9 +230,7 @@ export function App() {
               <h2>Free, and staying that way</h2>
               <p>MIT licensed. About 44 kB gzip up front, with every format engine split out and loaded on demand.</p>
             </div>
-            <span className="pg-wordmark">
-              any<em>view</em>
-            </span>
+            <Wordmark className="pg-wordmark" />
           </div>
           <div className="pg-promo-actions">
             <a className="pg-btn-ghost-dark" href={`${REPO}#readme`}>Read the docs</a>
@@ -276,9 +242,7 @@ export function App() {
         </article>
 
         <footer className="pg-footer">
-          <span>
-            any<em>view</em>
-          </span>
+          <Wordmark />
           <span>MIT · made for the web, rendered in the page</span>
         </footer>
       </section>

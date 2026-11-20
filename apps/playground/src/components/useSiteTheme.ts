@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 export type SiteTheme = 'light' | 'dark';
 
 const KEY = 'anyview-site-theme';
+const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 function readStored(): SiteTheme | null {
   try {
@@ -14,7 +15,7 @@ function readStored(): SiteTheme | null {
 }
 
 function systemTheme(): SiteTheme {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light';
 }
 
 /**
@@ -28,7 +29,7 @@ export function useSiteTheme() {
   const theme = stored ?? system;
 
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const mq = window.matchMedia(DARK_QUERY);
     const on = () => setSystem(mq.matches ? 'dark' : 'light');
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);

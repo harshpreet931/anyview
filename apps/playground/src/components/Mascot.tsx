@@ -33,7 +33,6 @@ export function Mascot({ className }: { className?: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [markup, setMarkup] = useState(FALLBACK_SVG);
 
-  // Swap in the real artwork once it is available.
   useEffect(() => {
     let alive = true;
     fetch(`${import.meta.env.BASE_URL}mascot.svg`)
@@ -45,7 +44,6 @@ export function Mascot({ className }: { className?: string }) {
     return () => { alive = false; };
   }, []);
 
-  // Blink + cursor tracking.
   useEffect(() => {
     const host = hostRef.current;
     if (!host || prefersReducedMotion()) return;
@@ -54,7 +52,7 @@ export function Mascot({ className }: { className?: string }) {
       .filter((el): el is SVGGElement => !!el);
     if (!eyes.length) return;
     const svg = host.querySelector('svg');
-    const MAX_LOOK = (svg?.viewBox.baseVal?.width || 120) * LOOK_RATIO;
+    const maxLook = (svg?.viewBox.baseVal?.width || 120) * LOOK_RATIO;
 
     let blinkTimer = 0;
     const blink = () => {
@@ -75,8 +73,8 @@ export function Mascot({ className }: { className?: string }) {
       const dy = py - (r.top + r.height / 2);
       const dist = Math.hypot(dx, dy) || 1;
       const reach = Math.min(1, dist / 420);
-      const tx = (dx / dist) * MAX_LOOK * reach;
-      const ty = (dy / dist) * MAX_LOOK * reach;
+      const tx = (dx / dist) * maxLook * reach;
+      const ty = (dy / dist) * maxLook * reach;
       for (const eye of eyes) eye.style.translate = `${tx.toFixed(2)}px ${ty.toFixed(2)}px`;
     };
     const onMove = (e: PointerEvent) => {

@@ -7,7 +7,6 @@ interface Props {
   onPick: (index: number) => void;
 }
 
-/** Hark-style segmented pill: frosted track, one black pill that glides to the active format. */
 export function SamplePicker({ samples, active, onPick }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -43,7 +42,6 @@ export function SamplePicker({ samples, active, onPick }: Props) {
     };
   }, []);
 
-  // Keep the chosen format in view when the track scrolls (narrow screens).
   useLayoutEffect(() => {
     const track = trackRef.current;
     if (!track || !thumb || track.scrollWidth <= track.clientWidth) return;

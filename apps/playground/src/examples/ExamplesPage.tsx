@@ -1,7 +1,7 @@
 import { useState, type ComponentType } from 'react';
-import { LogoMark } from '../components/Mascot';
-import { GitHubIcon, MoonIcon, SunIcon } from '../components/icons';
-import { useSiteTheme } from '../components/useSiteTheme';
+import { GitHubLink, HomeLink, REPO, Sky, ThemeToggle, Wordmark } from '../components/SiteChrome';
+import { useCopy } from '../components/useCopy';
+import { useSiteTheme, type SiteTheme } from '../components/useSiteTheme';
 import { ChatAttachments } from './demos/ChatAttachments';
 import { UploadPreview } from './demos/UploadPreview';
 import { ContractReview } from './demos/ContractReview';
@@ -11,15 +11,13 @@ import uploadSource from './demos/UploadPreview.tsx?raw';
 import reviewSource from './demos/ContractReview.tsx?raw';
 import controlsSource from './demos/CustomControls.tsx?raw';
 
-const REPO = 'https://github.com/harshpreet931/anyview';
-
 type Example = {
   id: string;
   kicker: string;
   title: string;
   body: string;
   uses: string[];
-  Demo: ComponentType<{ theme: 'light' | 'dark' }>;
+  Demo: ComponentType<{ theme: SiteTheme }>;
   source: string;
 };
 
@@ -62,25 +60,17 @@ const EXAMPLES: Example[] = [
   },
 ];
 
-function ExampleCard({ example, theme, index }: { example: Example; theme: 'light' | 'dark'; index: number }) {
-  const [tab, setTab] = useState<'preview' | 'code'>('preview');
-  const [copied, setCopied] = useState(false);
-  const { Demo } = example;
+const ordinal = (index: number) => String(index + 1).padStart(2, '0');
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(example.source);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      setCopied(false);
-    }
-  };
+function ExampleCard({ example, theme, index }: { example: Example; theme: SiteTheme; index: number }) {
+  const [tab, setTab] = useState<'preview' | 'code'>('preview');
+  const { copied, copy } = useCopy(example.source);
+  const { Demo } = example;
 
   return (
     <section className="ex-section" id={example.id} aria-labelledby={`${example.id}-title`}>
       <div className="ex-intro">
-        <span className="ex-number">{String(index + 1).padStart(2, '0')}</span>
+        <span className="ex-number">{ordinal(index)}</span>
         <span className="ex-kicker">{example.kicker}</span>
         <h2 id={`${example.id}-title`}>{example.title}</h2>
         <p>{example.body}</p>
@@ -124,27 +114,18 @@ function ExampleCard({ example, theme, index }: { example: Example; theme: 'ligh
 
 export function ExamplesPage() {
   const { theme, toggle } = useSiteTheme();
-  const nextThemeLabel = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
   const home = import.meta.env.BASE_URL;
 
   return (
     <div className="pg-root">
-      <div className="pg-sky" aria-hidden="true">
-        <span className="pg-cloud pg-cloud-1" />
-        <span className="pg-cloud pg-cloud-2" />
-        <span className="pg-cloud pg-cloud-3" />
-        <span className="pg-stars" />
-        <span className="pg-grain" />
-      </div>
+      <Sky clouds={3} />
 
       <header className="pg-topbar ex-topbar">
-        <a className="pg-round pg-home" href={home} aria-label="anyview home">
-          <LogoMark />
-        </a>
+        <HomeLink />
         <nav className="ex-nav" aria-label="Examples">
           {EXAMPLES.map((e, i) => (
             <a key={e.id} href={`#${e.id}`}>
-              {String(i + 1).padStart(2, '0')}
+              {ordinal(i)}
             </a>
           ))}
         </nav>
@@ -152,20 +133,8 @@ export function ExamplesPage() {
           <a className="pg-upload-btn" href={home}>
             Live demo
           </a>
-          <a className="pg-round pg-hide-sm" href={REPO} aria-label="anyview on GitHub">
-            <GitHubIcon />
-          </a>
-          <button
-            type="button"
-            className="pg-round pg-theme-toggle"
-            onClick={toggle}
-            aria-label={nextThemeLabel}
-            title={nextThemeLabel}
-            data-theme-icon={theme}
-          >
-            <SunIcon className="pg-icon-sun" />
-            <MoonIcon className="pg-icon-moon" />
-          </button>
+          <GitHubLink />
+          <ThemeToggle theme={theme} onToggle={toggle} />
         </div>
       </header>
 
@@ -188,9 +157,7 @@ export function ExamplesPage() {
         ))}
 
         <footer className="pg-footer">
-          <span>
-            any<em>view</em>
-          </span>
+          <Wordmark />
           <span>
             <a href={home}>Live demo</a> · <a href={`${REPO}#readme`}>Docs</a> · MIT
           </span>

@@ -1,13 +1,7 @@
-/* ============================================================
- * anyview: the site
- * Clean white, floating cards, black pills.
- * ============================================================ */
-
 :root {
-  --sky-1: #ffffff;
-  --sky-2: #ffffff;
-  --sky-3: #f6f6f6;
-  --sky-4: #ffffff;
+  --sky: #ffffff;
+  --sky-fade: #f6f6f6;
+  --night: #12100e;
 
   --surface: #ffffff;
   --surface-2: #f5f5f5;
@@ -23,6 +17,7 @@
   --frost-hover: rgb(18 17 16 / 0.065);
   --frost-ink: #4a443e;
   --frost-edge: inset 0 0 0 1px rgb(18 17 16 / 0.06);
+  --frost-blur: blur(20px) saturate(1.4);
 
   --pill: #121110;
   --pill-ink: #ffffff;
@@ -37,6 +32,11 @@
   --promo-ink: #f5f1ec;
   --promo-muted: #a8a097;
   --promo-btn: #2e2a27;
+
+  --code-bg: #1c1917;
+  --code-ink: #ede6de;
+
+  --radius-pill: 999px;
 
   --sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --serif: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
@@ -85,10 +85,10 @@
 html,
 body {
   min-height: 100%;
-  background: var(--sky-2);
+  background: var(--sky);
 }
 
-:root[data-theme='dark'] body { background: #12100e; }
+:root[data-theme='dark'] body { background: var(--night); }
 
 body {
   font-family: var(--sans);
@@ -123,8 +123,6 @@ body {
   outline-offset: 3px;
 }
 
-/* ---------- Sky ---------- */
-
 .pg-sky {
   position: fixed;
   inset: 0;
@@ -133,7 +131,7 @@ body {
   pointer-events: none;
   background:
     radial-gradient(55% 45% at 6% 4%, rgb(255 138 61 / 0.07) 0%, transparent 70%),
-    linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 50%, var(--sky-3) 100%);
+    linear-gradient(180deg, var(--sky) 50%, var(--sky-fade) 100%);
 }
 
 .pg-cloud {
@@ -147,7 +145,7 @@ body {
 
 .pg-cloud-1 { width: 46vw; height: 22vw; left: -8vw; top: 46vh; opacity: 0.42; animation: pg-drift 70s ease-in-out infinite alternate; }
 .pg-cloud-2 { width: 38vw; height: 16vw; right: -6vw; top: 22vh; opacity: 0.35; animation: pg-drift 90s ease-in-out -30s infinite alternate-reverse; }
-.pg-cloud-3 { width: 60vw; height: 20vw; left: 20vw; bottom: -10vw; opacity: 0.55; background: #ffffff; animation: pg-drift 110s ease-in-out -50s infinite alternate; }
+.pg-cloud-3 { width: 60vw; height: 20vw; left: 20vw; bottom: -10vw; opacity: 0.55; animation: pg-drift 110s ease-in-out -50s infinite alternate; }
 .pg-cloud-4 { width: 26vw; height: 12vw; left: 40vw; top: -4vw; opacity: 0.3; animation: pg-drift 80s ease-in-out -10s infinite alternate-reverse; }
 
 .pg-stars { display: none; }
@@ -161,12 +159,11 @@ body {
 }
 
 :root[data-theme='dark'] .pg-sky {
-  /* Ember night: warm charcoal with low, faint embers. */
   background:
     radial-gradient(55% 42% at 10% 6%, rgb(232 85 31 / 0.13) 0%, transparent 70%),
     radial-gradient(45% 36% at 92% 18%, rgb(255 138 61 / 0.07) 0%, transparent 70%),
     radial-gradient(70% 50% at 70% 100%, rgb(217 64 26 / 0.09) 0%, transparent 70%),
-    linear-gradient(180deg, #12100e 0%, #1a1613 55%, #1f1915 100%);
+    linear-gradient(180deg, var(--night) 0%, #1a1613 55%, #1f1915 100%);
 }
 
 :root[data-theme='dark'] .pg-cloud { background: #e8551f; opacity: 0.05; filter: blur(90px); }
@@ -193,8 +190,6 @@ body {
   mask-image: linear-gradient(180deg, #000 0%, rgb(0 0 0 / 0.4) 70%, transparent 100%);
 }
 
-/* ---------- Shared pieces ---------- */
-
 .pg-round {
   display: inline-grid;
   place-items: center;
@@ -202,12 +197,12 @@ body {
   height: 48px;
   flex-shrink: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--frost);
   color: var(--frost-ink);
   box-shadow: var(--frost-edge);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: var(--frost-blur);
+  -webkit-backdrop-filter: var(--frost-blur);
   cursor: pointer;
   text-decoration: none;
   transition-property: background-color, color, scale;
@@ -223,8 +218,6 @@ body {
   border-radius: 24px;
   box-shadow: var(--card-shadow);
 }
-
-/* ---------- Top bar ---------- */
 
 .pg-topbar {
   position: relative;
@@ -257,15 +250,14 @@ body {
   gap: 8px;
 }
 
-/* Segmented sample picker */
 .pg-segment {
   min-width: 0;
   max-width: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--frost);
   box-shadow: var(--frost-edge);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: var(--frost-blur);
+  -webkit-backdrop-filter: var(--frost-blur);
 }
 
 .pg-segment-track {
@@ -275,7 +267,7 @@ body {
   padding: 4px;
   overflow-x: auto;
   scrollbar-width: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .pg-segment-track::-webkit-scrollbar { display: none; }
@@ -298,7 +290,7 @@ body {
   top: 4px;
   bottom: 4px;
   left: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--pill);
   box-shadow: 0 1px 2px rgb(28 18 10 / 0.18), 0 4px 12px -2px rgb(28 18 10 / 0.22);
   opacity: 0;
@@ -314,7 +306,7 @@ body {
   height: 40px;
   padding: 0 15px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--frost-ink);
   font: 500 15px/1 var(--sans);
@@ -332,7 +324,6 @@ body {
 .pg-sample-chip[data-active='true'] { color: var(--pill-ink); background: transparent; }
 .pg-sample-chip:focus-visible { outline-offset: -2px; }
 
-/* Open file pill (Hark's "Search") */
 .pg-upload-btn {
   position: relative;
   display: inline-flex;
@@ -340,12 +331,12 @@ body {
   gap: 8px;
   height: 48px;
   padding: 0 20px 0 17px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--frost);
   color: var(--frost-ink);
   box-shadow: var(--frost-edge);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: var(--frost-blur);
+  -webkit-backdrop-filter: var(--frost-blur);
   font: 500 15px/1 var(--sans);
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -368,7 +359,6 @@ body {
   pointer-events: none;
 }
 
-/* Theme toggle: two icons cross-faded */
 .pg-theme-toggle { position: relative; }
 .pg-theme-toggle svg {
   grid-area: 1 / 1;
@@ -382,8 +372,6 @@ body {
   scale: 0.25;
   filter: blur(4px);
 }
-
-/* ---------- Stage: hero + live demo ---------- */
 
 .pg-stage {
   display: flex;
@@ -484,7 +472,7 @@ body {
   gap: 10px;
   height: 52px;
   padding: 0 22px 0 26px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--pill);
   color: var(--pill-ink);
   font: 500 16px/1 var(--sans);
@@ -509,11 +497,11 @@ body {
   height: 52px;
   padding: 0 18px 0 20px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--frost);
   box-shadow: var(--frost-edge);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: var(--frost-blur);
+  -webkit-backdrop-filter: var(--frost-blur);
   color: var(--ink);
   font: 450 14.5px/1 var(--mono);
   cursor: pointer;
@@ -546,7 +534,6 @@ body {
 .pg-npm[data-copied='true'] .pg-npm-copy { opacity: 0; scale: 0.25; filter: blur(4px); }
 .pg-npm[data-copied='true'] .pg-npm-check { opacity: 1; scale: 1; filter: blur(0); }
 
-/* Live demo */
 .pg-demo {
   min-width: 0;
   display: flex;
@@ -571,7 +558,7 @@ body {
 .pg-live-dot {
   width: 7px;
   height: 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #3fbf7f;
   box-shadow: 0 0 0 3px rgb(63 191 127 / 0.18);
 }
@@ -582,7 +569,7 @@ body {
   gap: 2px;
   height: 32px;
   padding-left: 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--frost);
   box-shadow: var(--frost-edge);
   color: var(--muted);
@@ -592,7 +579,7 @@ body {
   height: 32px;
   padding: 0 28px 0 6px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background-color: transparent;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2.5 3.75 5 6.25 7.5 3.75' fill='none' stroke='%236b635a' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
@@ -614,8 +601,6 @@ body {
 }
 
 .pg-canvas .dv-root { height: 100%; }
-
-/* ---------- Narrow column below the fold ---------- */
 
 .pg-column {
   width: min(640px, calc(100% - 32px));
@@ -683,7 +668,6 @@ body {
 :root[data-theme='dark'] .tk-t { color: #ffb27a; }
 :root[data-theme='dark'] .tk-a { color: #f2c46d; }
 
-/* Dark promo card (Hark's "pro" card) */
 .pg-promo {
   margin-top: 36px;
   padding: 24px 24px 22px 28px;
@@ -789,7 +773,6 @@ body {
 
 .pg-footer em { color: var(--muted); }
 
-/* Scroll reveal */
 [data-reveal] {
   opacity: 0;
   transform: translateY(14px);
@@ -798,8 +781,6 @@ body {
 }
 
 [data-reveal='in'] { opacity: 1; transform: none; }
-
-/* ---------- Drop overlay ---------- */
 
 .pg-drop-overlay {
   position: fixed;
@@ -823,7 +804,7 @@ body {
   gap: 12px;
   height: 64px;
   padding: 0 28px 0 24px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--pill);
   color: var(--pill-ink);
   font: 500 17px/1 var(--sans);
@@ -831,8 +812,6 @@ body {
   box-shadow: 0 20px 50px -12px rgb(41 24 12 / 0.45);
   animation: pg-pop 380ms var(--spring) both;
 }
-
-/* ---------- Motion ---------- */
 
 @keyframes pg-rise {
   from { opacity: 0; transform: translateY(14px); }
@@ -893,8 +872,6 @@ body {
 }
 .pg-text-link:hover { color: var(--accent-ink); }
 .pg-text-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
-
-/* ---------- Responsive ---------- */
 
 @media (max-width: 1180px) {
   .pg-topbar {
