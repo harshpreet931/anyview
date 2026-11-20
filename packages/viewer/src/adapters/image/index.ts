@@ -1,2 +1,3 @@
-export { imageManifest, ImageAdapter } from './ImageAdapter';
+export { imageManifest } from './manifest';
+export { ImageAdapter } from './ImageAdapter';
 export { ImageAdapter as default } from './ImageAdapter';
