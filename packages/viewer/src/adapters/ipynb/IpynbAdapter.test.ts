@@ -1,15 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { IpynbAdapter } from './IpynbAdapter';
-import type { FileSourceReader } from '../../core/types';
+import { textReader } from '../test-reader';
 
-function reader(json: string): FileSourceReader {
-  const buffer = new TextEncoder().encode(json).buffer;
-  return {
-    meta: { name: 'nb.ipynb', size: buffer.byteLength, mimeType: 'application/x-ipynb+json' },
-    arrayBuffer: async () => buffer,
-    stream: () => null,
-  };
-}
+const reader = (json: string) => textReader(json, 'nb.ipynb', 'application/x-ipynb+json');
 
 const NB = JSON.stringify({
   cells: [

@@ -12,13 +12,16 @@ import type {
   SearchResult,
   SearchMatch,
   TextLayer,
-  TextLayerItem,
 } from '../../core/types';
-import { ViewerError } from '../../core/errors';
+import { ViewerError, throwIfCancelled } from '../../core/errors';
 import { loadSanitizer, DOCUMENT_HTML_CONFIG } from '../../core/sanitizer';
-import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
+import { EMPTY_HTML, markSanitized, type SafeHtml } from '../../core/safe-html';
 import { assertTransformSize } from '../../core/limits';
 import { headingScrollOffsets } from '../../core/reflow-outline';
+import { renderReflowPage } from '../../core/reflow-page';
+import { searchPattern } from '../../core/search-pattern';
+import { lineTextLayer } from '../../core/line-text-layer';
+import { estimatedReflowHeight } from '../../core/reflow-height';
 
 export const htmlManifest: AdapterManifest = {
   id: 'html',
@@ -53,7 +56,7 @@ export class HtmlAdapter implements Adapter {
     signal: AbortSignal,
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
     assertTransformSize(buffer.byteLength);
 
     const rawHtml = decodeText(buffer, source.meta.mimeType);
@@ -65,17 +68,13 @@ export class HtmlAdapter implements Adapter {
       throw new ViewerError('PARSE_ERROR', 'Failed to sanitize HTML.', { cause });
     }
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(this.htmlContent, 'text/html');
+    const doc = new DOMParser().parseFromString(this.htmlContent, 'text/html');
     this.textContent = doc.body.textContent ?? '';
-
-    const charCount = this.textContent.length;
-    const estimatedHeight = Math.ceil(charCount / 80) * 24 + 200;
 
     const page: PageRef = {
       index: 0,
       width: 800,
-      height: Math.max(estimatedHeight, 400),
+      height: estimatedReflowHeight(this.textContent.length),
       rotation: 0,
     };
 
@@ -91,44 +90,15 @@ export class HtmlAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const target = ctx.target as HTMLElement;
-    target.innerHTML = '';
-
-    const container = document.createElement('div');
-    container.className = 'dv-html-content';
-    container.style.padding = '24px';
-    container.style.maxWidth = '800px';
-    container.style.margin = '0 auto';
-    container.style.fontSize = `${16 * ctx.scale}px`;
-    container.style.lineHeight = '1.6';
-    container.style.color = 'var(--dv-page-ink)';
-    container.style.background = 'var(--dv-page-bg)';
-    setSafeHtml(container, this.htmlContent);
-
-    target.appendChild(container);
-
-    return {
-      width: ctx.page.width * ctx.scale,
-      height: container.scrollHeight || ctx.page.height * ctx.scale,
-    };
+    return renderReflowPage(ctx, this.htmlContent, { className: 'dv-html-content' });
   }
 
   async getTextLayer(
     _pageIndex: number,
     _signal?: AbortSignal,
   ): Promise<TextLayer> {
-    const items: TextLayerItem[] = this.textContent
-      .split('\n')
-      .filter((l) => l.trim())
-      .map((line, i) => ({
-        str: line,
-        x: 0,
-        y: i * 24,
-        width: line.length * 8,
-        height: 24,
-      }));
-
-    return { pageIndex: 0, items };
+    const lines = this.textContent.split('\n').filter((line) => line.trim());
+    return lineTextLayer(lines, 24);
   }
 
   async search(
@@ -136,10 +106,9 @@ export class HtmlAdapter implements Adapter {
     _signal: AbortSignal,
   ): Promise<SearchResult> {
     const matches: SearchMatch[] = [];
+    const re = searchPattern(query);
+    if (!re) return { query, matches, totalMatches: 0 };
     const text = this.textContent;
-    const flags = query.caseSensitive ? 'g' : 'gi';
-    const pattern = query.regex ? query.text : escapeRegex(query.text);
-    const re = new RegExp(pattern, flags);
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
       const before = text.slice(0, m.index);
@@ -173,8 +142,4 @@ export class HtmlAdapter implements Adapter {
     this.htmlContent = EMPTY_HTML;
     this.textContent = '';
   }
-}
-
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

@@ -1,11 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CodeAdapter } from './CodeAdapter';
-import type { FileSourceReader } from '../../core/types';
-
-function reader(text: string, name: string): FileSourceReader {
-  const buffer = new TextEncoder().encode(text).buffer;
-  return { meta: { name, size: buffer.byteLength, mimeType: '' }, arrayBuffer: async () => buffer, stream: () => null };
-}
+import { textReader } from '../test-reader';
 
 async function render(adapter: CodeAdapter, model: Awaited<ReturnType<CodeAdapter['parse']>>) {
   const target = document.createElement('div');
@@ -26,7 +21,7 @@ describe('CodeAdapter large files', () => {
     const text = line.repeat(Math.ceil(400_000 / line.length));
     const adapter = new CodeAdapter();
     const t0 = performance.now();
-    const model = await adapter.parse(reader(text, 'huge.ts'), new AbortController().signal);
+    const model = await adapter.parse(textReader(text, 'huge.ts'), new AbortController().signal);
     expect(performance.now() - t0).toBeLessThan(1500);
     const target = await render(adapter, model);
     expect(target.querySelector('.shiki')).toBeNull();
@@ -61,7 +56,7 @@ describe('CodeAdapter highlighting', () => {
       '}',
     ].join('\n');
     const adapter = new CodeAdapter();
-    const model = await adapter.parse(reader(src, 'store.ts'), new AbortController().signal);
+    const model = await adapter.parse(textReader(src, 'store.ts'), new AbortController().signal);
     const target = await render(adapter, model);
     expect(target.querySelector('.shiki')).not.toBeNull();
     expect(target.querySelectorAll('.shiki span[style]').length).toBeGreaterThan(10);

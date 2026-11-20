@@ -9,14 +9,15 @@ import type {
   RenderContext,
   RenderResult,
   TextLayer,
-  TextLayerItem,
 } from '../../core/types';
-import { ViewerError, isViewerError } from '../../core/errors';
-import { loadSanitizer, DOCUMENT_HTML_CONFIG } from '../../core/sanitizer';
-import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
-import { makeSafeUrlTransform } from '../../core/markdown-url';
+import { ViewerError, asParseError, throwIfCancelled } from '../../core/errors';
+import { loadSanitizer, DOCUMENT_HTML_CONFIG, type Sanitizer } from '../../core/sanitizer';
+import { EMPTY_HTML, escapeHtml, markSanitized, type SafeHtml } from '../../core/safe-html';
 import { assertTransformSize } from '../../core/limits';
-import { CODE_THEME } from '../../core/code-theme';
+import { loadMarkdownRenderer, MARKDOWN_HEADING } from '../../core/markdown-render';
+import { loadHighlighter } from '../../core/highlighter';
+import { renderReflowPage } from '../../core/reflow-page';
+import { lineTextLayer } from '../../core/line-text-layer';
 
 export const ipynbManifest: AdapterManifest = {
   id: 'ipynb',
@@ -45,7 +46,7 @@ interface NbOutput {
   output_type: string;
   name?: string;
   text?: string | string[];
-  data?: Record<string, unknown>;
+  data?: Record<string, string | string[]>;
   ename?: string;
   evalue?: string;
   traceback?: string[];
@@ -57,15 +58,19 @@ interface NbCell {
   outputs?: NbOutput[];
 }
 
+interface NbMetadata {
+  language_info?: { name?: string };
+  kernelspec?: { language?: string };
+}
+
+interface Notebook {
+  cells?: NbCell[];
+  metadata?: NbMetadata;
+}
+
 function joinSource(s: string | string[] | undefined): string {
   if (Array.isArray(s)) return s.join('');
   return s ?? '';
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }
 
 // Strip non-base64 chars: the value is interpolated into a data: URI src, so a quote would break out and inject markup (XSS).
@@ -81,21 +86,24 @@ function utf8ToBase64(s: string): string {
 
 const ANSI = new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g");
 
+const BASE64_IMAGE_TYPES = ['image/png', 'image/jpeg'];
+
+const plainCode = (code: string) => `<pre class="dv-ipynb-code"><code>${escapeHtml(code)}</code></pre>`;
+
 export class IpynbAdapter implements Adapter {
   readonly manifest = ipynbManifest;
   private htmlContent: SafeHtml = EMPTY_HTML;
   private textContent = '';
-  private language = 'python';
 
   async parse(
     source: FileSourceReader,
     signal: AbortSignal,
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
     assertTransformSize(buffer.byteLength);
 
-    let nb: { cells?: NbCell[]; metadata?: Record<string, unknown> };
+    let nb: Notebook;
     try {
       nb = JSON.parse(decodeText(buffer, source.meta.mimeType));
     } catch (cause) {
@@ -105,11 +113,8 @@ export class IpynbAdapter implements Adapter {
       throw new ViewerError('PARSE_ERROR', 'Not a valid Jupyter notebook.');
     }
 
-    const meta = nb.metadata as
-      | { language_info?: { name?: string }; kernelspec?: { language?: string } }
-      | undefined;
-    this.language =
-      meta?.language_info?.name || meta?.kernelspec?.language || 'python';
+    const language =
+      nb.metadata?.language_info?.name || nb.metadata?.kernelspec?.language || 'python';
 
     const cells = nb.cells;
     this.textContent = cells
@@ -117,10 +122,9 @@ export class IpynbAdapter implements Adapter {
       .join('\n\n');
 
     try {
-      this.htmlContent = await this.buildHtml(cells);
+      this.htmlContent = await this.buildHtml(cells, language);
     } catch (cause) {
-      if (isViewerError(cause)) throw cause;
-      throw new ViewerError('PARSE_ERROR', 'Failed to render notebook.', { cause });
+      throw asParseError(cause, 'Failed to render notebook.');
     }
 
     const estimatedHeight = Math.max(this.textContent.length / 4 + 400, 600);
@@ -141,63 +145,20 @@ export class IpynbAdapter implements Adapter {
     };
   }
 
-  private async buildHtml(cells: NbCell[]): Promise<SafeHtml> {
-    const [
-      React,
-      { renderToStaticMarkup },
-      { default: ReactMarkdown, defaultUrlTransform },
-      { default: remarkGfm },
-      DOMPurify,
-    ] = await Promise.all([
-      import('react'),
-      import('react-dom/server'),
-      import('react-markdown'),
-      import('remark-gfm'),
+  private async buildHtml(cells: NbCell[], language: string): Promise<SafeHtml> {
+    const [renderMarkdown, DOMPurify, highlight] = await Promise.all([
+      loadMarkdownRenderer(),
       loadSanitizer(),
+      loadHighlighter(language, plainCode),
     ]);
-    const urlTransform = makeSafeUrlTransform(defaultUrlTransform);
-
-    let codeToHtml: ((src: string) => string) | null = null;
-    try {
-      const shiki = await import('shiki');
-      const highlighter = await shiki.createHighlighter({
-        themes: [CODE_THEME],
-        langs: [this.language],
-      });
-      codeToHtml = (src: string) =>
-        highlighter.codeToHtml(src, {
-          lang: this.language,
-          theme: CODE_THEME,
-        });
-    } catch {
-      codeToHtml = null;
-    }
-
-    const renderMd = (src: string) =>
-      renderToStaticMarkup(
-        React.createElement(
-          ReactMarkdown,
-          { remarkPlugins: [remarkGfm], urlTransform },
-          src,
-        ),
-      );
-    const renderCode = (src: string) => {
-      if (codeToHtml) {
-        try {
-          return codeToHtml(src);
-        } catch {
-        }
-      }
-      return `<pre class="dv-ipynb-code"><code>${escapeHtml(src)}</code></pre>`;
-    };
 
     let html = '<div class="dv-ipynb">';
     for (const cell of cells) {
       const src = joinSource(cell.source);
       if (cell.cell_type === 'markdown') {
-        html += `<div class="dv-ipynb-md">${renderMd(src)}</div>`;
+        html += `<div class="dv-ipynb-md">${renderMarkdown(src)}</div>`;
       } else if (cell.cell_type === 'code') {
-        html += `<div class="dv-ipynb-cell"><div class="dv-ipynb-input">${renderCode(src)}</div>`;
+        html += `<div class="dv-ipynb-cell"><div class="dv-ipynb-input">${highlight(src)}</div>`;
         for (const out of cell.outputs ?? []) {
           html += this.renderOutput(out, DOMPurify);
         }
@@ -210,10 +171,7 @@ export class IpynbAdapter implements Adapter {
     return markSanitized(html);
   }
 
-  private renderOutput(
-    out: NbOutput,
-    DOMPurify: { sanitize: (s: string, c?: Record<string, unknown>) => string },
-  ): string {
+  private renderOutput(out: NbOutput, DOMPurify: Sanitizer): string {
     if (out.output_type === 'stream') {
       const cls =
         out.name === 'stderr' ? 'dv-ipynb-stream dv-ipynb-stderr' : 'dv-ipynb-stream';
@@ -226,25 +184,23 @@ export class IpynbAdapter implements Adapter {
     }
     if (out.output_type === 'execute_result' || out.output_type === 'display_data') {
       const data = out.data ?? {};
-      const png = data['image/png'];
-      if (typeof png === 'string') {
-        return `<img class="dv-ipynb-img" alt="output" src="data:image/png;base64,${safeBase64(png)}" />`;
-      }
-      const jpg = data['image/jpeg'];
-      if (typeof jpg === 'string') {
-        return `<img class="dv-ipynb-img" alt="output" src="data:image/jpeg;base64,${safeBase64(jpg)}" />`;
+      for (const mimeType of BASE64_IMAGE_TYPES) {
+        const base64 = data[mimeType];
+        if (typeof base64 === 'string') {
+          return `<img class="dv-ipynb-img" alt="output" src="data:${mimeType};base64,${safeBase64(base64)}" />`;
+        }
       }
       const svg = data['image/svg+xml'];
       if (svg !== undefined) {
-        return `<img class="dv-ipynb-img" alt="output" src="data:image/svg+xml;base64,${utf8ToBase64(joinSource(svg as string | string[]))}" />`;
+        return `<img class="dv-ipynb-img" alt="output" src="data:image/svg+xml;base64,${utf8ToBase64(joinSource(svg))}" />`;
       }
       const htmlOut = data['text/html'];
       if (htmlOut !== undefined) {
-        return `<div class="dv-ipynb-html">${DOMPurify.sanitize(joinSource(htmlOut as string | string[]), DOCUMENT_HTML_CONFIG)}</div>`;
+        return `<div class="dv-ipynb-html">${DOMPurify.sanitize(joinSource(htmlOut), DOCUMENT_HTML_CONFIG)}</div>`;
       }
       const plain = data['text/plain'];
       if (plain !== undefined) {
-        return `<pre class="dv-ipynb-result">${escapeHtml(joinSource(plain as string | string[]))}</pre>`;
+        return `<pre class="dv-ipynb-result">${escapeHtml(joinSource(plain))}</pre>`;
       }
     }
     return '';
@@ -255,7 +211,7 @@ export class IpynbAdapter implements Adapter {
     for (const cell of cells) {
       if (cell.cell_type !== 'markdown') continue;
       for (const line of joinSource(cell.source).split('\n')) {
-        const m = /^(#{1,6})\s+(.+)$/.exec(line);
+        const m = MARKDOWN_HEADING.exec(line);
         if (m) {
           outline.push({ title: m[2]!.trim(), dest: { pageIndex: 0 } });
           break;
@@ -266,36 +222,18 @@ export class IpynbAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const target = ctx.target as HTMLElement;
-    target.innerHTML = '';
-
-    const container = document.createElement('div');
-    container.className = 'dv-ipynb-content';
-    container.style.padding = '24px';
-    container.style.maxWidth = '900px';
-    container.style.margin = '0 auto';
-    container.style.fontSize = `${15 * ctx.scale}px`;
-    container.style.lineHeight = '1.6';
-    container.style.color = 'var(--dv-page-ink)';
-    container.style.background = 'var(--dv-page-bg)';
-    setSafeHtml(container, this.htmlContent);
-
-    target.appendChild(container);
-
-    return {
-      width: ctx.page.width * ctx.scale,
-      height: container.scrollHeight || ctx.page.height * ctx.scale,
-    };
+    return renderReflowPage(ctx, this.htmlContent, {
+      className: 'dv-ipynb-content',
+      maxWidth: 900,
+      fontSize: 15,
+    });
   }
 
   async getTextLayer(
     _pageIndex: number,
     _signal?: AbortSignal,
   ): Promise<TextLayer> {
-    const items: TextLayerItem[] = this.textContent
-      .split('\n')
-      .map((line, i) => ({ str: line, x: 0, y: i * 22, width: line.length * 8, height: 22 }));
-    return { pageIndex: 0, items };
+    return lineTextLayer(this.textContent.split('\n'), 22);
   }
 
   dispose(): void {

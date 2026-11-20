@@ -8,20 +8,28 @@ import type {
   RenderContext,
   RenderResult,
   TextLayer,
-  TextLayerItem,
 } from '../../core/types';
 import { assertTransformSize } from '../../core/limits';
-import { CODE_THEME } from '../../core/code-theme';
+import { throwIfCancelled } from '../../core/errors';
+import { escapeHtml } from '../../core/safe-html';
+import { loadHighlighter } from '../../core/highlighter';
+import { lineTextLayer, widestLine } from '../../core/line-text-layer';
+
+const LANGUAGE_BY_EXTENSION: Record<string, string> = {
+  ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
+  json: 'json', yaml: 'yaml', yml: 'yaml',
+  py: 'python', rb: 'ruby', go: 'go', rs: 'rust',
+  java: 'java', c: 'c', cpp: 'cpp', h: 'c',
+  css: 'css', scss: 'scss', less: 'less',
+  vue: 'vue', svelte: 'svelte', php: 'php',
+  sh: 'bash', bash: 'bash', zsh: 'bash',
+  sql: 'sql', dockerfile: 'dockerfile',
+};
 
 export const codeManifest: AdapterManifest = {
   id: 'code',
   label: 'Source Code',
-  extensions: [
-    'ts', 'tsx', 'js', 'jsx', 'json', 'yaml', 'yml',
-    'py', 'rb', 'go', 'rs', 'java', 'c', 'cpp', 'h',
-    'css', 'scss', 'less', 'vue', 'svelte', 'php',
-    'sh', 'bash', 'zsh', 'sql', 'dockerfile',
-  ],
+  extensions: Object.keys(LANGUAGE_BY_EXTENSION),
   mimeTypes: [
     'text/typescript', 'text/javascript', 'application/json',
     'text/yaml', 'text/x-yaml', 'text/python',
@@ -47,17 +55,7 @@ export const codeManifest: AdapterManifest = {
 
 function detectLanguage(filename: string): string {
   const ext = filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
-  const map: Record<string, string> = {
-    ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
-    json: 'json', yaml: 'yaml', yml: 'yaml',
-    py: 'python', rb: 'ruby', go: 'go', rs: 'rust',
-    java: 'java', c: 'c', cpp: 'cpp', h: 'c',
-    css: 'css', scss: 'scss', less: 'less',
-    vue: 'vue', svelte: 'svelte', php: 'php',
-    sh: 'bash', bash: 'bash', zsh: 'bash',
-    sql: 'sql', dockerfile: 'dockerfile',
-  };
-  return map[ext] || 'plaintext';
+  return LANGUAGE_BY_EXTENSION[ext] ?? 'plaintext';
 }
 
 const HIGHLIGHT_MAX_CHARS = 300_000;
@@ -74,57 +72,36 @@ function columnCount(line: string): number {
   return columns;
 }
 
+const lineWidth = (line: string) => columnCount(line) * CHAR_WIDTH;
+
+const plainHtml = (code: string) => `<pre><code>${escapeHtml(code)}</code></pre>`;
+
 export class CodeAdapter implements Adapter {
   readonly manifest = codeManifest;
-  private codeText = '';
+  private lines: string[] = [];
   private highlightedHtml = '';
-  private language = 'plaintext';
 
   async parse(
     source: FileSourceReader,
     signal: AbortSignal,
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
     assertTransformSize(buffer.byteLength);
 
-    this.codeText = decodeText(buffer, source.meta.mimeType);
-    this.language = detectLanguage(source.meta.name);
-
-    const plain = () => `<pre><code>${this.escapeHtml(this.codeText)}</code></pre>`;
-    if (this.codeText.length > HIGHLIGHT_MAX_CHARS) {
-      this.highlightedHtml = plain();
+    const code = decodeText(buffer, source.meta.mimeType);
+    this.lines = code.split('\n');
+    if (code.length > HIGHLIGHT_MAX_CHARS) {
+      this.highlightedHtml = plainHtml(code);
     } else {
-      try {
-        const shiki = await import('shiki');
-        const highlighter = await shiki.createHighlighter({
-          themes: [CODE_THEME],
-          langs: [this.language],
-        });
-
-        this.highlightedHtml = highlighter.codeToHtml(this.codeText, {
-          lang: this.language,
-          theme: CODE_THEME,
-        });
-      } catch {
-        this.highlightedHtml = plain();
-      }
+      const highlight = await loadHighlighter(detectLanguage(source.meta.name), plainHtml);
+      this.highlightedHtml = highlight(code);
     }
-
-    const lines = this.codeText.split('\n');
-    // Loop instead of Math.max(...spread): spreading a huge array overflows the call-stack arg limit.
-    let maxColumns = 0;
-    for (const line of lines) {
-      const columns = columnCount(line);
-      if (columns > maxColumns) maxColumns = columns;
-    }
-    const maxWidth = Math.ceil(maxColumns * CHAR_WIDTH);
-    const totalHeight = lines.length * LINE_HEIGHT;
 
     const page: PageRef = {
       index: 0,
-      width: Math.max(maxWidth + PADDING_X, 600),
-      height: Math.max(totalHeight + PADDING_Y, 400),
+      width: Math.max(Math.ceil(widestLine(this.lines, lineWidth)) + PADDING_X, 600),
+      height: Math.max(this.lines.length * LINE_HEIGHT + PADDING_Y, 400),
       rotation: 0,
     };
 
@@ -156,27 +133,11 @@ export class CodeAdapter implements Adapter {
     _pageIndex: number,
     _signal?: AbortSignal,
   ): Promise<TextLayer> {
-    const items: TextLayerItem[] = this.codeText
-      .split('\n')
-      .map((line, i) => ({
-        str: line,
-        x: 0,
-        y: i * LINE_HEIGHT,
-        width: columnCount(line) * CHAR_WIDTH,
-        height: LINE_HEIGHT,
-      }));
-
-    return { pageIndex: 0, items };
-  }
-
-  private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    return lineTextLayer(this.lines, LINE_HEIGHT, lineWidth);
   }
 
   dispose(): void {
-    this.codeText = '';
+    this.lines = [];
     this.highlightedHtml = '';
   }
 }

@@ -9,6 +9,7 @@ import type {
   TextLayer,
 } from '../../core/types';
 import { canvasPixelRatio } from '../../core/limits';
+import { throwIfCancelled } from '../../core/errors';
 
 export const imageManifest: AdapterManifest = {
   id: 'image',
@@ -64,10 +65,11 @@ export class ImageAdapter implements Adapter {
     signal: AbortSignal,
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
 
     const blob = new Blob([buffer], { type: imageMimeType(source.meta.name, source.meta.mimeType, buffer) });
-    this.objectUrl = URL.createObjectURL(blob);
+    const objectUrl = URL.createObjectURL(blob);
+    this.objectUrl = objectUrl;
 
     await new Promise<void>((resolve, reject) => {
       const img = new Image();
@@ -79,10 +81,10 @@ export class ImageAdapter implements Adapter {
         resolve();
       };
       img.onerror = () => reject(new Error('Failed to decode image'));
-      img.src = this.objectUrl!;
+      img.src = objectUrl;
     });
 
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
 
     const page: PageRef = {
       index: 0,
@@ -115,18 +117,18 @@ export class ImageAdapter implements Adapter {
     target.width = Math.max(1, Math.round(outW * dpr));
     target.height = Math.max(1, Math.round(outH * dpr));
 
-    const c = target.getContext('2d');
-    if (!c) return { width: outW, height: outH };
+    const context = target.getContext('2d');
+    if (!context) return { width: outW, height: outH };
 
-    c.imageSmoothingQuality = 'high';
-    c.clearRect(0, 0, target.width, target.height);
-    c.save();
-    c.translate(target.width / 2, target.height / 2);
-    c.rotate((ctx.rotation * Math.PI) / 180);
+    context.imageSmoothingQuality = 'high';
+    context.clearRect(0, 0, target.width, target.height);
+    context.save();
+    context.translate(target.width / 2, target.height / 2);
+    context.rotate((ctx.rotation * Math.PI) / 180);
     const dw = cssW * dpr;
     const dh = cssH * dpr;
-    c.drawImage(this.img, -dw / 2, -dh / 2, dw, dh);
-    c.restore();
+    context.drawImage(this.img, -dw / 2, -dh / 2, dw, dh);
+    context.restore();
 
     return { width: outW, height: outH };
   }

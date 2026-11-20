@@ -9,11 +9,14 @@ import type {
   RenderContext,
   RenderResult,
   TextLayer,
-  TextLayerItem,
 } from '../../core/types';
-import { makeSafeUrlTransform } from '../../core/markdown-url';
 import { assertTransformSize } from '../../core/limits';
-import { EMPTY_HTML, markSanitized, setSafeHtml, type SafeHtml } from '../../core/safe-html';
+import { throwIfCancelled } from '../../core/errors';
+import { EMPTY_HTML, type SafeHtml } from '../../core/safe-html';
+import { loadMarkdownRenderer, MARKDOWN_HEADING } from '../../core/markdown-render';
+import { renderReflowPage } from '../../core/reflow-page';
+import { lineTextLayer } from '../../core/line-text-layer';
+import { estimatedReflowHeight } from '../../core/reflow-height';
 
 export const markdownManifest: AdapterManifest = {
   id: 'markdown',
@@ -38,6 +41,8 @@ export const markdownManifest: AdapterManifest = {
   protocolVersion: 1,
 };
 
+const LINE_HEIGHT = 24;
+
 export class MarkdownAdapter implements Adapter {
   readonly manifest = markdownManifest;
   private markdownText = '';
@@ -48,47 +53,21 @@ export class MarkdownAdapter implements Adapter {
     signal: AbortSignal,
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
     assertTransformSize(buffer.byteLength);
 
     this.markdownText = decodeText(buffer, source.meta.mimeType);
-
-    const [
-      React,
-      { renderToStaticMarkup },
-      { default: ReactMarkdown, defaultUrlTransform },
-      { default: remarkGfm },
-    ] = await Promise.all([
-      import('react'),
-      import('react-dom/server'),
-      import('react-markdown'),
-      import('remark-gfm'),
-    ]);
-
-    const element = React.createElement(
-      ReactMarkdown,
-      {
-        remarkPlugins: [remarkGfm],
-        urlTransform: makeSafeUrlTransform(defaultUrlTransform),
-      },
-      this.markdownText,
-    );
-
-    // react-markdown has no rehype-raw, so the serializer escapes every span of document text.
-    this.htmlContent = markSanitized(renderToStaticMarkup(element));
-
-    const charCount = this.markdownText.length;
-    const estimatedHeight = Math.ceil(charCount / 80) * 24 + 200;
+    const renderMarkdown = await loadMarkdownRenderer();
+    this.htmlContent = renderMarkdown(this.markdownText);
 
     const page: PageRef = {
       index: 0,
       width: 800,
-      height: Math.max(estimatedHeight, 400),
+      height: estimatedReflowHeight(this.markdownText.length),
       rotation: 0,
     };
 
-    const lines = this.markdownText.split('\n');
-    const outline = this.extractOutline(lines);
+    const outline = extractOutline(this.markdownText.split('\n'));
 
     return {
       format: 'markdown',
@@ -100,74 +79,32 @@ export class MarkdownAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    const target = ctx.target as HTMLElement;
-    target.innerHTML = '';
-
-    const container = document.createElement('div');
-    container.className = 'dv-markdown-content';
-    container.style.padding = '24px';
-    container.style.maxWidth = '800px';
-    container.style.margin = '0 auto';
-    container.style.fontSize = `${16 * ctx.scale}px`;
-    container.style.lineHeight = '1.6';
-    container.style.color = 'var(--dv-page-ink)';
-    container.style.background = 'var(--dv-page-bg)';
-    setSafeHtml(container, this.htmlContent);
-
-    target.appendChild(container);
-
-    return {
-      width: ctx.page.width * ctx.scale,
-      height: container.scrollHeight || ctx.page.height * ctx.scale,
-    };
+    return renderReflowPage(ctx, this.htmlContent, { className: 'dv-markdown-content' });
   }
 
   async getTextLayer(
     _pageIndex: number,
     _signal?: AbortSignal,
   ): Promise<TextLayer> {
-    const items: TextLayerItem[] = this.markdownText
-      .split('\n')
-      .map((line, i) => ({
-        str: line,
-        x: 0,
-        y: i * 24,
-        width: line.length * 8,
-        height: 24,
-      }));
-
-    return { pageIndex: 0, items };
-  }
-
-  private extractOutline(lines: string[]): DocumentModel['outline'] {
-    const outline: OutlineNode[] = [];
-
-    for (const line of lines) {
-      const match = /^(#{1,6})\s+(.+)$/.exec(line);
-      if (match) {
-        const level = match[1].length;
-        const title = match[2].trim();
-        outline.push({
-          title,
-          dest: {
-            pageIndex: 0,
-            scrollOffset: this.estimateScrollOffset(lines, line),
-          },
-          ...(level < 3 ? { children: [] } : {}),
-        });
-      }
-    }
-
-    return outline.length > 0 ? outline : undefined;
-  }
-
-  private estimateScrollOffset(lines: string[], targetLine: string): number {
-    const index = lines.indexOf(targetLine);
-    return index >= 0 ? index * 24 : 0;
+    return lineTextLayer(this.markdownText.split('\n'), LINE_HEIGHT);
   }
 
   dispose(): void {
     this.markdownText = '';
     this.htmlContent = EMPTY_HTML;
   }
+}
+
+function extractOutline(lines: string[]): OutlineNode[] | undefined {
+  const outline: OutlineNode[] = [];
+  lines.forEach((line, index) => {
+    const match = MARKDOWN_HEADING.exec(line);
+    if (match) {
+      outline.push({
+        title: match[2]!.trim(),
+        dest: { pageIndex: 0, scrollOffset: index * LINE_HEIGHT },
+      });
+    }
+  });
+  return outline.length > 0 ? outline : undefined;
 }

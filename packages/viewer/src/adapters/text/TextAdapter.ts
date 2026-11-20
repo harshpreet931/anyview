@@ -8,8 +8,9 @@ import type {
   RenderContext,
   RenderResult,
   TextLayer,
-  TextLayerItem,
 } from '../../core/types';
+import { throwIfCancelled } from '../../core/errors';
+import { lineTextLayer, widestLine } from '../../core/line-text-layer';
 
 export const textManifest: AdapterManifest = {
   id: 'text',
@@ -34,6 +35,8 @@ export const textManifest: AdapterManifest = {
   protocolVersion: 1,
 };
 
+const LINE_HEIGHT = 20;
+
 export class TextAdapter implements Adapter {
   readonly manifest = textManifest;
   private text = '';
@@ -44,24 +47,15 @@ export class TextAdapter implements Adapter {
     signal: AbortSignal,
   ): Promise<DocumentModel> {
     const buffer = await source.arrayBuffer();
-    if (signal.aborted) throw new Error('Parse cancelled');
+    throwIfCancelled(signal);
 
     this.text = decodeText(buffer, source.meta.mimeType);
     this.lines = this.text.split('\n');
 
-    const charWidth = 8;
-    const lineHeight = 20;
-    let maxLineLength = 0;
-    for (const line of this.lines) {
-      if (line.length > maxLineLength) maxLineLength = line.length;
-    }
-    const maxWidth = maxLineLength * charWidth;
-    const totalHeight = this.lines.length * lineHeight;
-
     const page: PageRef = {
       index: 0,
-      width: Math.max(maxWidth, 400),
-      height: Math.max(totalHeight, 400),
+      width: Math.max(widestLine(this.lines), 400),
+      height: Math.max(this.lines.length * LINE_HEIGHT, 400),
       rotation: 0,
     };
 
@@ -101,15 +95,7 @@ export class TextAdapter implements Adapter {
     _pageIndex: number,
     _signal?: AbortSignal,
   ): Promise<TextLayer> {
-    const items: TextLayerItem[] = this.lines.map((line, i) => ({
-      str: line,
-      x: 0,
-      y: i * 20,
-      width: line.length * 8,
-      height: 20,
-    }));
-
-    return { pageIndex: 0, items };
+    return lineTextLayer(this.lines, LINE_HEIGHT);
   }
 
   dispose(): void {
