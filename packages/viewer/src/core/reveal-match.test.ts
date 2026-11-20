@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { revealMatch } from './reveal-match';
 
 const rect = (top: number, height: number) => ({ top, height, left: 0, width: 10, bottom: top + height, right: 10, x: 0, y: top }) as DOMRect;
@@ -27,46 +27,5 @@ describe('revealMatch', () => {
     expect(top).toBe(19_990 - (500 - 10) / 2);
     container.remove();
   });
-
-  it('keeps following the match while the layout around it settles, until the user scrolls', () => {
-    let resized: () => void = () => {};
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        constructor(cb: () => void) {
-          resized = cb;
-        }
-        observe() {}
-        disconnect() {
-          resized = () => {};
-        }
-      },
-    );
-    const container = document.createElement('div');
-    container.className = 'dv-viewer-container';
-    const content = document.createElement('div');
-    const mark = document.createElement('mark');
-    content.appendChild(mark);
-    container.appendChild(content);
-    document.body.appendChild(container);
-    container.getBoundingClientRect = () => rect(0, 500);
-    let markTop = 1000;
-    mark.getBoundingClientRect = () => rect(markTop, 10);
-    const tops: number[] = [];
-    container.scrollTo = ((opts: ScrollToOptions) => {
-      tops.push(opts.top!);
-    }) as typeof container.scrollTo;
-
-    revealMatch(mark, 7, true);
-    markTop = 1800;
-    resized();
-    container.dispatchEvent(new WheelEvent('wheel'));
-    markTop = 2600;
-    resized();
-    expect(tops).toEqual([1000 - 245, 1800 - 245]);
-    container.remove();
-  });
 });
-
-afterEach(() => vi.unstubAllGlobals());
 

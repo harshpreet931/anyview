@@ -8,7 +8,7 @@ import { useDomSearch } from '../../hooks/useDomSearch';
 import { TextLayer } from './TextLayer';
 import { SearchHighlightLayer } from './SearchHighlightLayer';
 import { AnnotationLayer } from './AnnotationLayer';
-import { pageBox } from './layout';
+import { isFixedPageFormat, pageBox, paperHeight } from './layout';
 
 export interface PageRendererProps {
   pageIndex: number;
@@ -152,10 +152,13 @@ export const PageRenderer = memo(function PageRenderer({ pageIndex }: PageRender
   const page = document.pages[pageIndex];
   if (!page) return null;
 
-  const { width: scaledWidth, height: scaledHeight } = pageBox(page, rotation, zoom);
-  // Flowing content takes the page's real height once it has rendered; until then the estimate holds its place.
+  const flowing = !isFixedPageFormat(format);
+  const { width: scaledWidth, height: scaledHeight } = pageBox(page, rotation, zoom, flowing);
+  // Content takes the page's real height once it has rendered; until then the estimate holds its place.
   const height =
-    !isCanvasFormat && contentKey > 0 && naturalHeight != null ? Math.round(naturalHeight * zoom) : scaledHeight;
+    !isCanvasFormat && contentKey > 0 && naturalHeight != null
+      ? Math.round(Math.max(naturalHeight * zoom, flowing ? paperHeight(page, rotation, zoom) : 0))
+      : scaledHeight;
 
   const showTextLayer = format === 'pdf' && !!features?.textSelection;
 

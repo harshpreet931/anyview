@@ -5,6 +5,7 @@ import { useLatest } from '../../hooks/useLatest';
 import { useStrings } from '../../i18n/I18nProvider';
 import { formatString } from '../../i18n/strings';
 import type { Adapter, FormatId, PageRef } from '../../core/types';
+import { isFixedPageFormat, paperHeight } from '../Viewer/layout';
 import { useSidebarList } from './useSidebarList';
 
 export const LIVE_PREVIEW_MAX_BYTES = 1_000_000;
@@ -19,7 +20,11 @@ const THUMB_GAP = 4;
 const RENDER_WIDTH_STEP = 32;
 const SCROLL_SETTLE_MS = 100;
 
-const pageSize = (page: PageRef) => displayedPageSize(page.width, page.height, page.rotation, 0, 1);
+/** A page's shape in the sidebar. A flowing page shows its first sheet of paper, however long it is. */
+function thumbSize(page: PageRef, format: FormatId): { width: number; height: number } {
+  const size = displayedPageSize(page.width, page.height, page.rotation, 0, 1);
+  return isFixedPageFormat(format) ? size : { width: size.width, height: paperHeight(page, 0, 1) };
+}
 
 export function ThumbnailList({
   pages,
@@ -56,7 +61,7 @@ export function ThumbnailList({
     count: pages.length,
     scrollElement,
     estimateSize: (i) => {
-      const size = pageSize(pages[i]!);
+      const size = thumbSize(pages[i]!, format);
       return (thumbWidth * size.height) / size.width + THUMB_CHROME;
     },
     paddingEnd: 16,
@@ -180,7 +185,7 @@ const Thumbnail = memo(function Thumbnail({
   const canvasFormat = format === 'pdf' || format === 'image';
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const docRef = useRef<HTMLDivElement>(null);
-  const size = pageSize(page);
+  const size = thumbSize(page, format);
   const scale = canvasFormat ? renderWidth / size.width : 1;
 
   useEffect(() => {
@@ -202,7 +207,7 @@ const Thumbnail = memo(function Thumbnail({
     const render = () => {
       if (!canvasFormat) {
         target.style.width = `${page.width}px`;
-        target.style.height = `${page.height}px`;
+        target.style.height = `${size.height}px`;
       }
       adapter
         .renderPage({
@@ -230,7 +235,7 @@ const Thumbnail = memo(function Thumbnail({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [adapter, page, canvasFormat, scale, isScrolling]);
+  }, [adapter, page, size.height, canvasFormat, scale, isScrolling]);
 
   return (
     <button

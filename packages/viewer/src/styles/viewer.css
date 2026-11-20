@@ -686,6 +686,8 @@
 }
 
 .dv-sidebar [role="tabpanel"] {
+  /* The lists keep their own place; the browser's anchoring would move it again while items resize. */
+  overflow-anchor: none;
   scrollbar-width: thin;
   scrollbar-gutter: stable;
   scrollbar-color: var(--dv-scrollbar-color) transparent;

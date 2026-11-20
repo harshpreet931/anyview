@@ -74,7 +74,10 @@ export function ViewerContainer() {
     return () => setPinnedPages((pages) => pages.filter((p) => p !== page));
   }, []);
 
-  const { virtualizer, pageCount, rows, pageToRow, holdScrollPosition } = usePageVirtualizer(scrollRef, pinnedPages);
+  const { virtualizer, pageCount, rows, pageToRow, scrollToRow: anchorToRow, holdScrollPosition } = usePageVirtualizer(
+    scrollRef,
+    pinnedPages,
+  );
 
   const scrollProgrammatically = useCallback((move: (el: HTMLElement) => void) => {
     const el = scrollRef.current;
@@ -88,8 +91,8 @@ export function ViewerContainer() {
   }, []);
 
   const scrollToRow = useCallback(
-    (row: number) => scrollProgrammatically(() => virtualizer.scrollToIndex(row, { align: 'start' })),
-    [scrollProgrammatically, virtualizer],
+    (row: number, offset?: number) => scrollProgrammatically(() => anchorToRow(row, offset)),
+    [scrollProgrammatically, anchorToRow],
   );
 
   // The scroll can't go past the content's rendered size, which still has the old layout until the next render.
@@ -126,7 +129,6 @@ export function ViewerContainer() {
     restore: (at, ratio, viewX, viewY) => {
       const el = scrollRef.current;
       if (!el) return;
-      holdScrollPosition();
       virtualizer.measure();
       // getVirtualItems() is called for its side effect: it makes the virtualizer recompute its measurements.
       virtualizer.getVirtualItems();
@@ -151,12 +153,13 @@ export function ViewerContainer() {
       const cross = off.cross + at.cross * ratio - (isHorizontal ? viewY : viewX);
       const left = Math.max(0, isHorizontal ? main : cross);
       const top = Math.max(0, isHorizontal ? cross : main);
-      if (Math.abs(el.scrollLeft - left) < 1 && Math.abs(el.scrollTop - top) < 1) return;
-      const was = [el.scrollLeft, el.scrollTop];
-      isProgrammaticScrollRef.current = true;
-      el.scrollLeft = left;
-      el.scrollTop = top;
-      if (el.scrollLeft === was[0] && el.scrollTop === was[1]) isProgrammaticScrollRef.current = false;
+      if (Math.abs(el.scrollLeft - left) >= 1 || Math.abs(el.scrollTop - top) >= 1) {
+        scrollProgrammatically((view) => {
+          view.scrollLeft = left;
+          view.scrollTop = top;
+        });
+      }
+      holdScrollPosition();
     },
   }, sizerRef);
 
@@ -185,23 +188,19 @@ export function ViewerContainer() {
 
   useEffect(() => {
     if (!isScrolling) return;
-    const el = scrollRef.current;
-    if (!el) {
-      setScrolling(false);
-      return;
-    }
+    // The offset is from the top of the page, which sits half a gap into its row.
+    const down = PAGE_GAP / 2 + scrollOffset * zoom;
     const targetRow = pageToRow[currentPage] ?? 0;
-    scrollToRow(targetRow);
-    const frame = requestAnimationFrame(() => {
-      const start = virtualizer.measurementsCache[targetRow]?.start ?? 0;
-      const down = scrollOffset * zoom;
-      scrollProgrammatically((view) =>
-        view.scrollTo(isHorizontal ? { left: start, top: down } : { top: start + down }),
-      );
-      setScrolling(false);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [isScrolling, scrollOffset, zoom, currentPage, virtualizer, pageToRow, setScrolling, isHorizontal, scrollToRow, scrollProgrammatically]);
+    if (isHorizontal) {
+      scrollToRow(targetRow);
+      scrollProgrammatically((el) => {
+        el.scrollTop = down;
+      });
+    } else {
+      scrollToRow(targetRow, down);
+    }
+    setScrolling(false);
+  }, [isScrolling, scrollOffset, zoom, currentPage, pageToRow, setScrolling, isHorizontal, scrollToRow, scrollProgrammatically]);
 
   useTrackCurrentPage(scrollRef, virtualizer, rows, pageToRow, isHorizontal, isProgrammaticScrollRef);
 

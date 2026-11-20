@@ -184,14 +184,14 @@ export function useDomSearch(
     const container = containerRef.current;
     if (!container || isRevealed(container, matchNonce)) return;
     if (!modelSearch) {
-      revealMatch(indexedRanges(state).get(currentMatchIndex), matchNonce, true);
+      revealMatch(indexedRanges(state).get(currentMatchIndex), matchNonce);
       return;
     }
     const match = searchResult?.matches[currentMatchIndex];
     if (!match || match.pageIndex !== pageIndex) return;
     let cancelled = false;
     const reveal = () => {
-      if (!cancelled) revealMatch(locateMatch(container, match), matchNonce, true);
+      if (!cancelled) revealMatch(locateMatch(container, match), matchNonce);
     };
     const rendering = adapter?.revealMatch?.(match, container);
     if (rendering) rendering.then(reveal, () => {});

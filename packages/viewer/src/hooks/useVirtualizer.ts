@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
+import { useCallback, useLayoutEffect, useMemo, type RefObject } from 'react';
 import { defaultRangeExtractor, useVirtualizer, type Range } from '@tanstack/react-virtual';
 import { useViewerStore } from './useDocViewer';
 import { groupRows } from '../core/group-rows';
-import { rowSize } from '../components/Viewer/layout';
+import { isFixedPageFormat, rowSize } from '../components/Viewer/layout';
+import { useScrollAnchor } from '../components/Viewer/useScrollAnchor';
 
 const NO_PAGES: ReadonlyArray<number> = [];
 
@@ -21,6 +22,7 @@ export function usePageVirtualizer(
   const spreadMode = useViewerStore((s) => s.spreadMode);
 
   const pageCount = doc?.pages.length ?? 0;
+  const flowing = !!doc && !isFixedPageFormat(doc.format);
   const rows = useMemo(() => groupRows(pageCount, spreadMode, horizontal), [pageCount, spreadMode, horizontal]);
   const pageToRow = useMemo(() => {
     const map: number[] = [];
@@ -40,7 +42,7 @@ export function usePageVirtualizer(
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => rowSize(doc?.pages, rows[index], rotation, zoom, horizontal),
+    estimateSize: (index) => rowSize(doc?.pages, rows[index], rotation, zoom, horizontal, flowing),
     overscan: 2,
     horizontal,
     rangeExtractor,
@@ -52,19 +54,14 @@ export function usePageVirtualizer(
     virtualizer.measure();
   }, [virtualizer, doc, zoom, rotation, horizontal, spreadMode]);
 
-  // Rows re-measured just after a zoom would otherwise each move the scroll that the zoom anchoring just set.
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const holdScrollPosition = useCallback(() => {
-    clearTimeout(holdTimer.current);
+  // The library's own correction compares positions from before a batch of measurements with a scroll it has
+  // already corrected, so it overshoots, and it can't scroll past content that hasn't grown yet.
+  useLayoutEffect(() => {
     virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
-    holdTimer.current = setTimeout(() => {
-      holdTimer.current = undefined;
-      virtualizer.shouldAdjustScrollPositionOnItemSizeChange = undefined;
-    }, 500);
   }, [virtualizer]);
-  useEffect(() => () => clearTimeout(holdTimer.current), []);
+  const { scrollToRow, holdScrollPosition } = useScrollAnchor(scrollRef, virtualizer, [doc, zoom, rotation, horizontal, spreadMode]);
 
-  return { virtualizer, pageCount, rows, pageToRow, holdScrollPosition };
+  return { virtualizer, pageCount, rows, pageToRow, scrollToRow, holdScrollPosition };
 }
 
 /** The page virtualizer the viewer uses, for custom page views. */
