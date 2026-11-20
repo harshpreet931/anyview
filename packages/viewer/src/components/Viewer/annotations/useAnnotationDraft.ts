@@ -1,6 +1,7 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import type { Rotation } from '../../../core/rotation';
 import { useViewerStore } from '../../../hooks/useDocViewer';
+import { usePinPage } from '../pinned-pages';
 import {
   FREE_TEXT_SIZE,
   INK_THICKNESS,
@@ -39,6 +40,8 @@ export function useAnnotationDraft(pageIndex: number, turn: Rotation) {
   const [draftBox, setDraftBox] = useState<DraftBox | null>(null);
   const [draftPath, setDraftPath] = useState<Point[]>([]);
   const [editor, setEditor] = useState<EditorState | null>(null);
+  // A half-typed note would be lost if its page scrolled out of the virtualized window and unmounted.
+  usePinPage(pageIndex, editor !== null);
 
   const stamp = (tool: keyof typeof TOOL_DEFAULTS) => {
     const now = Date.now();

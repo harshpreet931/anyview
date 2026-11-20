@@ -31,6 +31,10 @@ export function ToolbarPageNav() {
           const val = parseInt(e.target.value, 10);
           if (!isNaN(val)) goToPage(val - 1);
         }}
+        onKeyDown={(e) => {
+          const val = parseInt(e.currentTarget.value, 10);
+          if (e.key === 'Enter' && !isNaN(val)) goToPage(val - 1);
+        }}
         aria-label={strings.navigation.pageInput}
       />
       <span className="dv-page-count">

@@ -1,7 +1,7 @@
 import { useEffect, type RefObject } from 'react';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { displayedPageSize } from '../../core/rotation';
-import { PAGE_SPREAD_GAP, PAGE_VERTICAL_GAP } from './layout';
+import { PAGE_GAP, PAGE_SPREAD_GAP } from './layout';
 
 const FIXED_PAGE_FORMATS = new Set(['pdf', 'image', 'pptx']);
 
@@ -23,8 +23,8 @@ export function useFitZoom(scrollRef: RefObject<HTMLElement | null>): void {
       const { width: pw, height: ph } = displayedPageSize(page.width, page.height, page.rotation, rotation, 1);
       const cols = spreadMode !== 'none' && !isHorizontal ? 2 : 1;
       const rowWidth = cols * pw + (cols - 1) * PAGE_SPREAD_GAP;
-      const availW = el.clientWidth - PAGE_VERTICAL_GAP;
-      const availH = el.clientHeight - PAGE_VERTICAL_GAP;
+      const availW = el.clientWidth - PAGE_GAP;
+      const availH = el.clientHeight - PAGE_GAP;
       if (availW <= 0 || availH <= 0 || rowWidth <= 0 || ph <= 0) return;
       const flowing = !FIXED_PAGE_FORMATS.has(document.format);
       let z = 1;

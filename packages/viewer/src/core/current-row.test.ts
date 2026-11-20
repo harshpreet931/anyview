@@ -28,6 +28,12 @@ describe('currentRow', () => {
     expect(currentRow(items, 0, { viewport: 3000, total: 2700, count: 3 })).toBe(0);
   });
 
+  it('moves to the next row once the previous page has left the view, though the gap above it shows', () => {
+    const opts = { viewport: 600, total: 2700, count: 3, gap: 48 };
+    expect(currentRow(items, 900 - 30, opts)).toBe(0);
+    expect(currentRow(items, 900 - 20, opts)).toBe(1);
+  });
+
   it('handles an empty list', () => {
     expect(currentRow([], 0, { viewport: 600, total: 0, count: 0 })).toBe(0);
   });

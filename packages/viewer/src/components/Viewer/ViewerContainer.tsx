@@ -1,14 +1,14 @@
-import { useRef, useEffect, useMemo } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { useViewerStore } from '../../hooks/useDocViewer';
+import { useRef, useEffect, useLayoutEffect, useCallback, useState } from 'react';
+import { useViewerStore, useViewerStoreApi } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
 import { useZoomGestures } from '../../hooks/useZoomGestures';
-import { displayedPageSize } from '../../core/rotation';
+import { usePageVirtualizer } from '../../hooks/useVirtualizer';
 import { rowAtOffset } from '../../core/current-row';
-import { groupRows } from '../../core/group-rows';
+import type { Rotation } from '../../core/rotation';
 import { PageRenderer } from './PageRenderer';
 import { EmptyState, LoadingState, ErrorState } from '../States';
-import { PAGE_SPREAD_GAP, PAGE_VERTICAL_GAP } from './layout';
+import { PAGE_GAP, PAGE_SPREAD_GAP } from './layout';
+import { PinPageContext } from './pinned-pages';
 import { useFitZoom } from './useFitZoom';
 import { rowInView, useTrackCurrentPage } from './useTrackCurrentPage';
 
@@ -53,9 +53,9 @@ export function ViewerContainer() {
   const loadError = useViewerStore((s) => s.loadError);
   const zoom = useViewerStore((s) => s.zoom);
   const rotation = useViewerStore((s) => s.rotation);
-  const scrollMode = useViewerStore((s) => s.scrollMode);
-  const spreadMode = useViewerStore((s) => s.spreadMode);
+  const isHorizontal = useViewerStore((s) => s.scrollMode === 'horizontal');
   const currentPage = useViewerStore((s) => s.currentPage);
+  const navigationNonce = useViewerStore((s) => s.navigationNonce);
   const scrollOffset = useViewerStore((s) => s.scrollOffset);
   const isScrolling = useViewerStore((s) => s.isScrolling);
   const setScrolling = useViewerStore((s) => s.setScrolling);
@@ -66,53 +66,40 @@ export function ViewerContainer() {
   const contentRef = useRef<HTMLDivElement>(null);
   const sizerRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScrollRef = useRef(false);
+  const store = useViewerStoreApi();
 
-  const isHorizontal = scrollMode === 'horizontal';
-  const pageCount = document?.pages.length ?? 0;
+  const [pinnedPages, setPinnedPages] = useState<number[]>([]);
+  const pinPage = useCallback((page: number) => {
+    setPinnedPages((pages) => [...pages, page]);
+    return () => setPinnedPages((pages) => pages.filter((p) => p !== page));
+  }, []);
 
-  const rows = useMemo(
-    () => groupRows(pageCount, spreadMode, isHorizontal),
-    [pageCount, isHorizontal, spreadMode],
+  const { virtualizer, pageCount, rows, pageToRow, holdScrollPosition } = usePageVirtualizer(scrollRef, pinnedPages);
+
+  const scrollProgrammatically = useCallback((move: (el: HTMLElement) => void) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const at = [el.scrollLeft, el.scrollTop];
+    const pending = isProgrammaticScrollRef.current;
+    isProgrammaticScrollRef.current = true;
+    move(el);
+    // A scroll that didn't move fires no event to end the suppression, which would swallow the user's next scroll.
+    if (el.scrollLeft === at[0] && el.scrollTop === at[1]) isProgrammaticScrollRef.current = pending;
+  }, []);
+
+  const scrollToRow = useCallback(
+    (row: number) => scrollProgrammatically(() => virtualizer.scrollToIndex(row, { align: 'start' })),
+    [scrollProgrammatically, virtualizer],
   );
 
-  const pageToRow = useMemo<number[]>(() => {
-    const map: number[] = [];
-    rows.forEach((row, r) => row.forEach((p) => { map[p] = r; }));
-    return map;
-  }, [rows]);
-
-  const virtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: (rowIndex) => {
-      const gap = isHorizontal ? 0 : PAGE_VERTICAL_GAP;
-      const pages = document?.pages;
-      const row = rows[rowIndex];
-      if (!pages || !row) return 400 + gap;
-      let main = 0;
-      for (const p of row) {
-        const page = pages[p];
-        if (!page) continue;
-        const size = displayedPageSize(page.width, page.height, page.rotation, rotation, zoom);
-        const m = isHorizontal ? size.width : size.height;
-        if (m > main) main = m;
-      }
-      return (main || 400) + gap;
-    },
-    overscan: 2,
-    horizontal: isHorizontal,
-  });
-
-  const anchorHoldRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const holdAnchor = () => {
-    if (anchorHoldRef.current) clearTimeout(anchorHoldRef.current);
-    virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
-    anchorHoldRef.current = setTimeout(() => {
-      anchorHoldRef.current = undefined;
-      virtualizer.shouldAdjustScrollPositionOnItemSizeChange = undefined;
-    }, 500);
+  // The scroll can't go past the content's rendered size, which still has the old layout until the next render.
+  const fitContent = () => {
+    const content = contentRef.current;
+    if (!content) return;
+    const total = `${virtualizer.getTotalSize()}px`;
+    if (isHorizontal) content.style.width = total;
+    else content.style.height = total;
   };
-  useEffect(() => () => clearTimeout(anchorHoldRef.current), []);
 
   const { marquee } = useZoomGestures(scrollRef, contentRef, isProgrammaticScrollRef, {
     capture: (x, y) => {
@@ -129,27 +116,31 @@ export function ViewerContainer() {
         main: main - start - off.main,
         cross: cross - off.cross,
         atStart: main <= 0,
-        sizes: new Map(virtualizer.itemSizeCache),
+        layout: { document, rotation, rows },
+        // Only the rows whose real size differs from the estimate; the estimate already follows the zoom.
+        sizes: [...virtualizer.itemSizeCache].filter(
+          ([index, size]) => size !== virtualizer.options.estimateSize(index as number),
+        ),
       };
     },
     restore: (at, ratio, viewX, viewY) => {
       const el = scrollRef.current;
       if (!el) return;
-      holdAnchor();
+      holdScrollPosition();
       virtualizer.measure();
       // getVirtualItems() is called for its side effect: it makes the virtualizer recompute its measurements.
       virtualizer.getVirtualItems();
-      const gap = isHorizontal ? 0 : PAGE_VERTICAL_GAP;
-      for (const [key, size] of at.sizes) {
-        if (typeof key === 'number') virtualizer.resizeItem(key, Math.max(0, size - gap) * ratio + gap);
+      const { layout } = at;
+      if (layout.document === document && layout.rotation === rotation && layout.rows === rows) {
+        for (const [key, size] of at.sizes) {
+          if (typeof key === 'number') {
+            virtualizer.resizeItem(key, Math.round(Math.max(0, size - PAGE_GAP) * ratio) + PAGE_GAP);
+          }
+        }
+        virtualizer.getVirtualItems();
       }
-      virtualizer.getVirtualItems();
+      fitContent();
       const content = contentRef.current;
-      if (content) {
-        const total = `${virtualizer.getTotalSize()}px`;
-        if (isHorizontal) content.style.width = total;
-        else content.style.height = total;
-      }
       const start = virtualizer.measurementsCache[at.row]?.start ?? 0;
       const pageEl =
         at.page >= 0
@@ -169,16 +160,28 @@ export function ViewerContainer() {
     },
   }, sizerRef);
 
+  // A new rotation, spread or scroll axis moves every page, so bring the current one back to the top.
+  const laidOut = useRef<{ rotation: Rotation; rows: number[][] } | null>(null);
+  useLayoutEffect(() => {
+    const before = laidOut.current;
+    laidOut.current = { rotation, rows };
+    if (!before || (before.rotation === rotation && before.rows === rows)) return;
+    fitContent();
+    scrollToRow(pageToRow[store.getState().currentPage] ?? 0);
+  });
+
+  const handledNonce = useRef(navigationNonce);
   useEffect(() => {
     if (currentPage < 0 || currentPage >= pageCount) return;
     const el = scrollRef.current;
     if (!el) return;
     const targetRow = pageToRow[currentPage] ?? 0;
-    if (rowInView(el, virtualizer.getVirtualItems(), isHorizontal, rows.length) !== targetRow) {
-      isProgrammaticScrollRef.current = true;
-      virtualizer.scrollToIndex(targetRow, { align: 'start' });
+    const requested = handledNonce.current !== navigationNonce;
+    handledNonce.current = navigationNonce;
+    if (requested || rowInView(el, virtualizer.getVirtualItems(), isHorizontal, rows.length) !== targetRow) {
+      scrollToRow(targetRow);
     }
-  }, [currentPage, pageCount, virtualizer, pageToRow, isHorizontal, rows.length]);
+  }, [currentPage, navigationNonce, pageCount, virtualizer, pageToRow, isHorizontal, rows.length, scrollToRow]);
 
   useEffect(() => {
     if (!isScrolling) return;
@@ -188,15 +191,19 @@ export function ViewerContainer() {
       return;
     }
     const targetRow = pageToRow[currentPage] ?? 0;
-    isProgrammaticScrollRef.current = true;
-    virtualizer.scrollToIndex(targetRow, { align: 'start' });
-    requestAnimationFrame(() => {
-      el.scrollTop += scrollOffset * zoom;
+    scrollToRow(targetRow);
+    const frame = requestAnimationFrame(() => {
+      const start = virtualizer.measurementsCache[targetRow]?.start ?? 0;
+      const down = scrollOffset * zoom;
+      scrollProgrammatically((view) =>
+        view.scrollTo(isHorizontal ? { left: start, top: down } : { top: start + down }),
+      );
       setScrolling(false);
     });
-  }, [isScrolling, scrollOffset, zoom, currentPage, virtualizer, pageToRow, setScrolling]);
+    return () => cancelAnimationFrame(frame);
+  }, [isScrolling, scrollOffset, zoom, currentPage, virtualizer, pageToRow, setScrolling, isHorizontal, scrollToRow, scrollProgrammatically]);
 
-  useTrackCurrentPage(scrollRef, virtualizer, rows, isHorizontal, isProgrammaticScrollRef);
+  useTrackCurrentPage(scrollRef, virtualizer, rows, pageToRow, isHorizontal, isProgrammaticScrollRef);
 
   useEffect(() => {
     const pages = virtualizer
@@ -217,6 +224,7 @@ export function ViewerContainer() {
       role="region"
       aria-label={strings.viewer.content}
       data-marquee={cursorMode === 'marquee' || undefined}
+      data-horizontal={isHorizontal || undefined}
     >
       {showState ? (
         <>
@@ -227,64 +235,66 @@ export function ViewerContainer() {
           )}
         </>
       ) : (
-        <div
-          ref={contentRef}
-          style={{
-            height: isHorizontal ? '100%' : `${virtualizer.getTotalSize()}px`,
-            width: isHorizontal ? `${virtualizer.getTotalSize()}px` : '100%',
-            position: 'relative',
-          }}
-        >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const row = rows[virtualItem.index] ?? [];
-            return (
+        <PinPageContext.Provider value={pinPage}>
+          <div
+            ref={contentRef}
+            style={{
+              height: isHorizontal ? '100%' : `${virtualizer.getTotalSize()}px`,
+              width: isHorizontal ? `${virtualizer.getTotalSize()}px` : '100%',
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const row = rows[virtualItem.index] ?? [];
+              return (
+                <div
+                  key={virtualItem.key}
+                  data-index={virtualItem.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    ...(isHorizontal
+                      ? { height: '100%', transform: `translateX(${virtualItem.start}px)` }
+                      : { width: '100%', transform: `translateY(${virtualItem.start}px)` }),
+                  }}
+                >
+                  {row.length > 1 ? (
+                    <div
+                      className="dv-spread"
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'safe center',
+                        alignItems: 'flex-start',
+                        gap: `${PAGE_SPREAD_GAP * zoom}px`,
+                      }}
+                    >
+                      {row.map((p) => (
+                        <PageRenderer key={p} pageIndex={p} />
+                      ))}
+                    </div>
+                  ) : (
+                    <PageRenderer pageIndex={row[0]!} />
+                  )}
+                </div>
+              );
+            })}
+
+            {marquee && (
               <div
-                key={virtualItem.key}
-                data-index={virtualItem.index}
-                ref={virtualizer.measureElement}
+                className="dv-marquee-rect"
                 style={{
                   position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  ...(isHorizontal
-                    ? { height: '100%', transform: `translateX(${virtualItem.start}px)` }
-                    : { width: '100%', transform: `translateY(${virtualItem.start}px)` }),
+                  left: `${marquee.left}px`,
+                  top: `${marquee.top}px`,
+                  width: `${marquee.w}px`,
+                  height: `${marquee.h}px`,
                 }}
-              >
-                {row.length > 1 ? (
-                  <div
-                    className="dv-spread"
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'safe center',
-                      alignItems: 'flex-start',
-                      gap: `${PAGE_SPREAD_GAP * zoom}px`,
-                    }}
-                  >
-                    {row.map((p) => (
-                      <PageRenderer key={p} pageIndex={p} />
-                    ))}
-                  </div>
-                ) : (
-                  <PageRenderer pageIndex={row[0]!} />
-                )}
-              </div>
-            );
-          })}
-
-          {marquee && (
-            <div
-              className="dv-marquee-rect"
-              style={{
-                position: 'absolute',
-                left: `${marquee.left}px`,
-                top: `${marquee.top}px`,
-                width: `${marquee.w}px`,
-                height: `${marquee.h}px`,
-              }}
-            />
-          )}
-        </div>
+              />
+            )}
+          </div>
+        </PinPageContext.Provider>
       )}
       <div ref={sizerRef} className="dv-zoom-sizer" aria-hidden="true" />
     </div>

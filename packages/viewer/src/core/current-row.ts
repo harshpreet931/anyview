@@ -15,12 +15,14 @@ export function rowAtOffset(items: RowStart[], offset: number): number {
 /**
  * The row to report as current. A last page shorter than the viewport can never
  * bring its top to the top of the scroller, so reaching the end counts as being on it.
+ * Each row starts with half of the `gap` before its page, so a row is current once the previous
+ * page has scrolled out of view, even while part of the gap still shows.
  */
 export function currentRow(
   items: RowStart[],
   offset: number,
-  { viewport, total, count }: { viewport: number; total: number; count: number },
+  { viewport, total, count, gap = 0 }: { viewport: number; total: number; count: number; gap?: number },
 ): number {
   if (count > 0 && total > viewport && offset + viewport >= total - END_TOLERANCE) return count - 1;
-  return rowAtOffset(items, offset);
+  return rowAtOffset(items, offset + gap / 2);
 }

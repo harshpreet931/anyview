@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import type { RenderContext } from '../../core/types';
+import { memo, useEffect, useRef, useState } from 'react';
+import type { DocumentModel, RenderContext } from '../../core/types';
 import { displayedPageSize } from '../../core/rotation';
 import { makeCacheKey, estimateBitmapByteSize } from '../../core/cache/page-cache';
 import type { CachedPage } from '../../core/cache/page-cache';
@@ -8,12 +8,27 @@ import { useDomSearch } from '../../hooks/useDomSearch';
 import { TextLayer } from './TextLayer';
 import { SearchHighlightLayer } from './SearchHighlightLayer';
 import { AnnotationLayer } from './AnnotationLayer';
+import { pageBox } from './layout';
 
 export interface PageRendererProps {
   pageIndex: number;
 }
 
-export function PageRenderer({ pageIndex }: PageRendererProps) {
+const appeared = new WeakMap<DocumentModel, Set<number>>();
+
+/** Whether this is the first time the page is shown, so scrolling back to it doesn't replay its entrance. */
+function useFirstAppearance(document: DocumentModel | null, pageIndex: number): boolean {
+  const [first] = useState(() => !document || !appeared.get(document)?.has(pageIndex));
+  useEffect(() => {
+    if (!document) return;
+    const seen = appeared.get(document) ?? new Set<number>();
+    seen.add(pageIndex);
+    appeared.set(document, seen);
+  }, [document, pageIndex]);
+  return first;
+}
+
+export const PageRenderer = memo(function PageRenderer({ pageIndex }: PageRendererProps) {
   const adapter = useViewerStore((s) => s.adapter);
   const document = useViewerStore((s) => s.document);
   const zoom = useViewerStore((s) => s.zoom);
@@ -23,6 +38,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
   const targetRef = useRef<HTMLCanvasElement | HTMLDivElement | null>(null);
   const reflowRef = useRef<HTMLElement | null>(null);
   const [contentKey, setContentKey] = useState(0);
+  const first = useFirstAppearance(document, pageIndex);
 
   const format = document?.format;
   const isCanvasFormat = format === 'pdf' || format === 'image';
@@ -122,6 +138,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
             })
             .catch(() => {});
         } else {
+          setNaturalHeight((target as HTMLElement).offsetHeight);
           setContentKey((k) => k + 1);
         }
       })
@@ -135,28 +152,17 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
   const page = document.pages[pageIndex];
   if (!page) return null;
 
-  const { width: scaledWidth, height: scaledHeight } = displayedPageSize(
-    page.width,
-    page.height,
-    page.rotation,
-    rotation,
-    zoom,
-  );
+  const { width: scaledWidth, height: scaledHeight } = pageBox(page, rotation, zoom);
+  // Flowing content takes the page's real height once it has rendered; until then the estimate holds its place.
+  const height =
+    !isCanvasFormat && contentKey > 0 && naturalHeight != null ? Math.round(naturalHeight * zoom) : scaledHeight;
 
   const showTextLayer = format === 'pdf' && !!features?.textSelection;
 
   return (
     <div
-      className="dv-page"
-      style={{
-        width: `${scaledWidth}px`,
-        height: isCanvasFormat
-          ? `${scaledHeight}px`
-          : naturalHeight != null
-            ? `${naturalHeight * zoom}px`
-            : 'auto',
-        minHeight: isCanvasFormat ? undefined : `${scaledHeight}px`,
-      }}
+      className={first ? 'dv-page dv-page-new' : 'dv-page'}
+      style={{ width: `${scaledWidth}px`, height: `${height}px` }}
       data-page-index={pageIndex}
       data-format={format}
     >
@@ -174,7 +180,11 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
             reflowRef.current = el;
           }}
           className="dv-reflow-target"
-          style={{ width: `${scaledWidth / zoom}px`, transform: `scale(${zoom})`, transformOrigin: '0 0' }}
+          style={{
+            width: `${displayedPageSize(page.width, page.height, page.rotation, rotation, 1).width}px`,
+            transform: `scale(${zoom})`,
+            transformOrigin: '0 0',
+          }}
         />
       )}
 
@@ -199,7 +209,7 @@ export function PageRenderer({ pageIndex }: PageRendererProps) {
       )}
     </div>
   );
-}
+});
 
 const OFFSCREEN_DELAY_MS = 120;
 

@@ -288,7 +288,15 @@
   background: var(--dv-page-bg);
   color: var(--dv-page-ink);
   color-scheme: light;
+}
+
+.dv-page-new {
   animation: dv-page-enter var(--dv-transition-slow) var(--dv-ease-out) backwards;
+}
+
+/* Side by side, pages keep the same gap they have when stacked. */
+.dv-viewer-container[data-horizontal] .dv-page {
+  margin-inline: var(--dv-spacing-xl);
 }
 
 /* A spread is one block: the pair sits together and its gap scales with the zoom. */
