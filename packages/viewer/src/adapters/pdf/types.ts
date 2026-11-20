@@ -1,4 +1,5 @@
-import type { PageRef } from '../../core/types';
+import type { DocumentMetadata, OutlineNode, PageRef } from '../../core/types';
+import type { Rotation } from '../../core/rotation';
 
 export interface ParsedPdf {
   readonly pageCount: number;
@@ -6,21 +7,13 @@ export interface ParsedPdf {
   readonly docId: number;
 }
 
-export interface PdfOutlineItem {
-  readonly title: string;
-  readonly dest: { readonly pageIndex: number };
-  readonly items?: readonly PdfOutlineItem[];
-}
-
-export interface PdfMetadata {
-  readonly title?: string;
-  readonly author?: string;
-  readonly subject?: string;
-  readonly keywords?: string;
-  readonly creator?: string;
-  readonly producer?: string;
-  readonly creationDate?: Date;
-  readonly modificationDate?: Date;
+export interface PdfTextRun {
+  str: string;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  angle: number;
 }
 
 export interface PdfWorkerApi {
@@ -33,21 +26,21 @@ export interface PdfWorkerApi {
     docId: number,
     pageIndex: number,
     scale: number,
-    rotation: number,
+    rotation: Rotation,
     dpr: number,
-    renderId?: number,
+    renderId: number,
   ): Promise<ImageBitmap>;
   cancelRender(renderId: number): void;
   getTextContent(
     docId: number,
     pageIndex: number,
-    rotation?: number,
+    rotation: Rotation,
   ): Promise<{
-    items: Array<{ str: string; transform: readonly number[]; width: number; height: number; x: number; y: number; angle?: number }>;
+    items: PdfTextRun[];
     viewportWidth: number;
     viewportHeight: number;
   }>;
-  getOutline(docId: number): Promise<PdfOutlineItem[] | null>;
-  getMetadata(docId: number): Promise<PdfMetadata | null>;
+  getOutline(docId: number): Promise<OutlineNode[] | null>;
+  getMetadata(docId: number): Promise<DocumentMetadata | null>;
   dispose(docId: number): Promise<void>;
 }

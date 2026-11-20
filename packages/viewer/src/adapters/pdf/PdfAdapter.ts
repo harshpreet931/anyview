@@ -3,10 +3,8 @@ import type {
   Adapter,
   AdapterManifest,
   DocumentModel,
-  DocumentMetadata,
   FileSourceReader,
   OutlineNode,
-  PageRef,
   RenderContext,
   RenderResult,
   TextLayer,
@@ -16,10 +14,11 @@ import type {
   SearchMatch,
   ParseOptions,
 } from '../../core/types';
-import { ViewerError } from '../../core/errors';
+import { ViewerError, throwIfCancelled } from '../../core/errors';
 import { canvasPixelRatio } from '../../core/limits';
-import { totalRotation, isSidewaysRotation, type Rotation } from '../../core/rotation';
-import type { ParsedPdf, PdfWorkerApi, PdfOutlineItem } from './types';
+import { displayedPageSize, type Rotation } from '../../core/rotation';
+import { searchPattern } from '../../core/search-pattern';
+import type { PdfTextRun, PdfWorkerApi } from './types';
 
 export const pdfManifest: AdapterManifest = {
   id: 'pdf',
@@ -55,19 +54,23 @@ export class PdfAdapter implements Adapter {
   private worker: Worker | null = null;
   private remote: Comlink.Remote<PdfWorkerApi> | null = null;
   private docId: number | null = null;
+  private pageCount = 0;
   private renderSeq = 0;
-  private parsedPdf: ParsedPdf | null = null;
   private originalBuffer: ArrayBuffer | null = null;
 
   private ensureWorker(): Comlink.Remote<PdfWorkerApi> {
-    if (!this.worker) {
+    if (!this.remote) {
       this.worker = new Worker(
         new URL('./pdf.worker.ts', import.meta.url),
         { type: 'module' },
       );
       this.remote = Comlink.wrap(this.worker);
     }
-    return this.remote!;
+    return this.remote;
+  }
+
+  private parsedDoc(): { remote: Comlink.Remote<PdfWorkerApi>; docId: number } | null {
+    return this.remote && this.docId != null ? { remote: this.remote, docId: this.docId } : null;
   }
 
   async parse(
@@ -79,7 +82,7 @@ export class PdfAdapter implements Adapter {
 
     if (!this.originalBuffer) {
       const src = await source.arrayBuffer();
-      if (signal.aborted) throw new Error('Parse cancelled');
+      throwIfCancelled(signal);
       this.originalBuffer = src.slice(0);
     }
     const buffer = this.originalBuffer.slice(0);
@@ -91,18 +94,18 @@ export class PdfAdapter implements Adapter {
         PdfAdapter.pdfAssetBase,
       );
       this.docId = result.docId;
-      this.parsedPdf = result;
+      this.pageCount = result.pageCount;
 
-      const outline = await this.buildOutline(remote);
-      const metadata = await remote.getMetadata(this.docId).catch(() => null);
+      const outline = await this.buildOutline(remote, result.docId);
+      const metadata = await remote.getMetadata(result.docId).catch(() => null);
 
       return {
         format: 'pdf',
         meta: source.meta,
         pageCount: result.pageCount,
-        pages: result.pages as readonly PageRef[],
+        pages: result.pages,
         ...(outline ? { outline } : {}),
-        ...(metadata ? { metadata: metadata as unknown as DocumentMetadata } : {}),
+        ...(metadata ? { metadata } : {}),
         permissions: {
           canPrint: true,
           canCopy: true,
@@ -131,22 +134,24 @@ export class PdfAdapter implements Adapter {
   }
 
   async renderPage(ctx: RenderContext): Promise<RenderResult> {
-    if (!this.remote || this.docId == null) {
-      throw new ViewerError('RENDER_ERROR', 'PDF not parsed.');
-    }
+    const parsed = this.parsedDoc();
+    if (!parsed) throw new ViewerError('RENDER_ERROR', 'PDF not parsed.');
+    const { remote, docId } = parsed;
 
     try {
-      const dpr = canvasPixelRatio(
-        ctx.page.width * ctx.scale,
-        ctx.page.height * ctx.scale,
-        ctx.devicePixelRatio,
+      const { width, height } = displayedPageSize(
+        ctx.page.width,
+        ctx.page.height,
+        ctx.page.rotation,
+        ctx.rotation,
+        ctx.scale,
       );
-      const remote = this.remote;
+      const dpr = canvasPixelRatio(width, height, ctx.devicePixelRatio);
       const renderId = ++this.renderSeq;
-      const job = remote.renderPage(this.docId, ctx.page.index, ctx.scale, ctx.rotation, dpr, renderId);
+      const job = remote.renderPage(docId, ctx.page.index, ctx.scale, ctx.rotation, dpr, renderId);
       const bitmap = await new Promise<ImageBitmap>((resolve, reject) => {
         const onAbort = () => {
-          void Promise.resolve(remote.cancelRender(renderId)).catch(() => {});
+          remote.cancelRender(renderId).catch(() => {});
           void job.then((b) => b.close(), () => {});
           reject(new DOMException('Render cancelled', 'AbortError'));
         };
@@ -168,35 +173,15 @@ export class PdfAdapter implements Adapter {
         throw new DOMException('Render cancelled', 'AbortError');
       }
 
-      const target = ctx.target as HTMLCanvasElement;
-
-      const cssWidth = ctx.page.width * ctx.scale;
-      const cssHeight = ctx.page.height * ctx.scale;
-      const isSideways = isSidewaysRotation(
-        totalRotation(ctx.page.rotation as Rotation, ctx.rotation as Rotation),
-      );
-      const outWidth = isSideways ? cssHeight : cssWidth;
-      const outHeight = isSideways ? cssWidth : cssHeight;
-
+      const target = ctx.target;
       if (target instanceof HTMLCanvasElement) {
-        const renderWidth = cssWidth * dpr;
-        const renderHeight = cssHeight * dpr;
-
-        target.width = isSideways ? renderHeight : renderWidth;
-        target.height = isSideways ? renderWidth : renderHeight;
-
-        const c2d = target.getContext('2d');
-        if (c2d) {
-          c2d.drawImage(bitmap, 0, 0, target.width, target.height);
-        }
-        return { width: outWidth, height: outHeight, bitmap };
+        target.width = width * dpr;
+        target.height = height * dpr;
+        target.getContext('2d')?.drawImage(bitmap, 0, 0, target.width, target.height);
+        return { width, height, bitmap };
       }
       bitmap.close();
-
-      return {
-        width: outWidth,
-        height: outHeight,
-      };
+      return { width, height };
     } catch (cause) {
       throw new ViewerError('RENDER_ERROR', 'Failed to render PDF page.', {
         cause,
@@ -217,27 +202,14 @@ export class PdfAdapter implements Adapter {
     signal: AbortSignal | undefined,
     rotation: number,
   ): Promise<Array<{ item: TextLayerItem; slice: (from: number, to: number) => Box }>> {
-    if (!this.remote || this.docId == null || signal?.aborted) return [];
+    const parsed = this.parsedDoc();
+    if (!parsed || signal?.aborted) return [];
     try {
-      const result = await this.remote.getTextContent(this.docId, pageIndex, rotation);
+      const result = await parsed.remote.getTextContent(parsed.docId, pageIndex, rotation as Rotation);
       const vw = result.viewportWidth;
       const vh = result.viewportHeight;
       return result.items.map((run) => {
-        const angle = run.angle ?? 0;
-        const degrees = Math.round((angle * 180) / Math.PI * 100) / 100;
-        const length = run.str.length || 1;
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-        const slice = (from: number, to: number) =>
-          boundingBox(
-            run.x + cos * run.width * (from / length),
-            run.y + sin * run.width * (from / length),
-            run.width * ((to - from) / length),
-            run.height,
-            angle,
-            vw,
-            vh,
-          );
+        const degrees = Math.round((run.angle * 180) / Math.PI * 100) / 100;
         return {
           item: {
             str: run.str,
@@ -247,7 +219,7 @@ export class PdfAdapter implements Adapter {
             height: run.height / vh,
             ...(degrees ? { angle: degrees } : {}),
           },
-          slice,
+          slice: (from: number, to: number) => boundingBox(run, from, to, vw, vh),
         };
       });
     } catch {
@@ -260,21 +232,18 @@ export class PdfAdapter implements Adapter {
     signal: AbortSignal,
     rotation = 0,
   ): Promise<SearchResult> {
-    if (!this.remote || this.docId == null || !this.parsedPdf) {
-      return { query, matches: [], totalMatches: 0 };
-    }
+    const none = { query, matches: [], totalMatches: 0 };
+    const pattern = searchPattern(query);
+    if (!pattern || !this.parsedDoc()) return none;
 
     const pages = await Promise.all(
-      Array.from({ length: this.parsedPdf.pageCount }, (_, pageIdx) =>
+      Array.from({ length: this.pageCount }, (_, pageIdx) =>
         this.textRuns(pageIdx, signal, rotation),
       ),
     );
-    if (signal.aborted) return { query, matches: [], totalMatches: 0 };
+    if (signal.aborted) return none;
 
     const matches: SearchMatch[] = [];
-
-    const pattern = searchPattern(query);
-    if (!pattern) return { query, matches: [], totalMatches: 0 };
     pages.forEach((runs, pageIndex) => {
       runs.forEach(({ item, slice }, runIndex) => {
         for (const m of item.str.matchAll(pattern)) {
@@ -291,31 +260,18 @@ export class PdfAdapter implements Adapter {
 
   private async buildOutline(
     remote: Comlink.Remote<PdfWorkerApi>,
+    docId: number,
   ): Promise<readonly OutlineNode[] | undefined> {
-    if (this.docId == null) return undefined;
     try {
-      const outline = await remote.getOutline(this.docId);
-      if (!outline || outline.length === 0) return undefined;
-
-      return outline.map((item) => this.convertOutlineNode(item));
+      const outline = await remote.getOutline(docId);
+      return outline?.length ? outline : undefined;
     } catch {
       return undefined;
     }
   }
 
-  private convertOutlineNode(item: PdfOutlineItem): OutlineNode {
-    return {
-      title: item.title,
-      dest: item.dest,
-      ...(item.items ? { children: item.items.map((child) => this.convertOutlineNode(child)) } : {}),
-    };
-  }
-
   async exportDocument(_format: 'original' | 'pdf'): Promise<Blob> {
-    if (this.originalBuffer) {
-      return new Blob([this.originalBuffer], { type: 'application/pdf' });
-    }
-    return new Blob([], { type: 'application/pdf' });
+    return new Blob(this.originalBuffer ? [this.originalBuffer] : [], { type: 'application/pdf' });
   }
 
   dispose(): void {
@@ -326,7 +282,7 @@ export class PdfAdapter implements Adapter {
     this.worker = null;
     this.remote = null;
     this.docId = null;
-    this.parsedPdf = null;
+    this.pageCount = 0;
     this.originalBuffer = null;
   }
 }
@@ -338,9 +294,14 @@ interface Box {
   height: number;
 }
 
-function boundingBox(x: number, y: number, width: number, height: number, angle: number, vw: number, vh: number): Box {
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
+function boundingBox(run: PdfTextRun, from: number, to: number, vw: number, vh: number): Box {
+  const length = run.str.length || 1;
+  const cos = Math.cos(run.angle);
+  const sin = Math.sin(run.angle);
+  const x = run.x + cos * run.width * (from / length);
+  const y = run.y + sin * run.width * (from / length);
+  const width = run.width * ((to - from) / length);
+  const height = run.height;
   const xs = [x, x + cos * width, x - sin * height, x + cos * width - sin * height];
   const ys = [y, y + sin * width, y + cos * height, y + sin * width + cos * height];
   const left = Math.min(...xs);
@@ -351,21 +312,4 @@ function boundingBox(x: number, y: number, width: number, height: number, angle:
     width: (Math.max(...xs) - left) / vw,
     height: (Math.max(...ys) - top) / vh,
   };
-}
-
-function searchPattern(query: SearchQuery): RegExp | null {
-  if (!query.text) return null;
-  const flags = query.caseSensitive ? 'g' : 'gi';
-  // query.regex is the caller opting into raw regex syntax, so their text is the pattern;
-  // every other path escapes it. Matches how HtmlAdapter picks its pattern.
-  const pattern = query.regex ? query.text : escapeRegex(query.text);
-  try {
-    return new RegExp(query.wholeWord && !query.regex ? `\\b${pattern}\\b` : pattern, flags);
-  } catch {
-    return null;
-  }
-}
-
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

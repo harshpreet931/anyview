@@ -2,7 +2,10 @@
 
 import * as Comlink from 'comlink';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
-import type { ParsedPdf, PdfOutlineItem, PdfMetadata, PdfWorkerApi } from './types';
+import type { TextItem } from 'pdfjs-dist/types/src/display/api';
+import type { DocumentMetadata, OutlineNode } from '../../core/types';
+import type { ParsedPdf, PdfTextRun, PdfWorkerApi } from './types';
+import { pdfMetadata } from './metadata';
 import { totalRotation, type Rotation } from '../../core/rotation';
 import { loadParser } from '../../core/load-parser';
 
@@ -87,10 +90,10 @@ function createBinaryDataFactory(assetBase: string | undefined) {
 function buildPdfAssets(assetBase: string | undefined) {
   const base = assetBase || DEFAULT_ASSET_BASE;
   return {
-    cMapUrl: `${base}cmaps/`,
+    cMapUrl: base + ASSET_DIRS.cMapUrl,
     cMapPacked: true,
-    standardFontDataUrl: `${base}standard_fonts/`,
-    wasmUrl: `${base}wasm/`,
+    standardFontDataUrl: base + ASSET_DIRS.standardFontDataUrl,
+    wasmUrl: base + ASSET_DIRS.wasmUrl,
     iccUrl: `${base}iccs/`,
     disableFontFace: true,
     useSystemFonts: false,
@@ -140,7 +143,7 @@ type RawOutlineItem = {
 async function mapOutline(
   doc: PDFDocumentProxy,
   items: readonly RawOutlineItem[],
-): Promise<PdfOutlineItem[]> {
+): Promise<OutlineNode[]> {
   return Promise.all(
     items.map(async (item) => {
       const [pageIndex, children] = await Promise.all([
@@ -150,7 +153,7 @@ async function mapOutline(
       return {
         title: item.title,
         dest: { pageIndex: pageIndex ?? 0 },
-        ...(children ? { items: children } : {}),
+        ...(children ? { children } : {}),
       };
     }),
   );
@@ -160,14 +163,14 @@ async function renderInto(
   docId: number,
   pageIndex: number,
   scale: number,
-  rotation: number,
+  rotation: Rotation,
   dpr: number,
-  renderId?: number,
+  renderId: number,
 ): Promise<ImageBitmap> {
   const page = await getDoc(docId).getPage(pageIndex + 1);
-  if (renderId != null && cancelled.has(renderId)) throw new Error('Render cancelled');
+  if (cancelled.has(renderId)) throw new Error('Render cancelled');
   // Explicit rotation REPLACES page.rotate rather than composing, so combine the two.
-  const total = totalRotation(page.rotate as Rotation, rotation as Rotation);
+  const total = totalRotation(page.rotate as Rotation, rotation);
   const viewport = page.getViewport({ scale: scale * dpr, rotation: total });
 
   const canvas = new OffscreenCanvas(
@@ -181,11 +184,11 @@ async function renderInto(
     canvasContext: ctx as unknown as CanvasRenderingContext2D,
     viewport,
   });
-  if (renderId != null) tasks.set(renderId, task);
+  tasks.set(renderId, task);
   try {
     await task.promise;
   } finally {
-    if (renderId != null) tasks.delete(renderId);
+    tasks.delete(renderId);
   }
 
   return canvas.transferToImageBitmap();
@@ -237,18 +240,16 @@ const api: PdfWorkerApi = {
     docId: number,
     pageIndex: number,
     scale: number,
-    rotation: number,
+    rotation: Rotation,
     dpr: number,
-    renderId?: number,
+    renderId: number,
   ): Promise<ImageBitmap> {
-    if (renderId != null) active.add(renderId);
+    active.add(renderId);
     try {
       return await renderInto(docId, pageIndex, scale, rotation, dpr, renderId);
     } finally {
-      if (renderId != null) {
-        active.delete(renderId);
-        cancelled.delete(renderId);
-      }
+      active.delete(renderId);
+      cancelled.delete(renderId);
     }
   },
 
@@ -258,37 +259,21 @@ const api: PdfWorkerApi = {
     else if (active.has(renderId)) cancelled.add(renderId);
   },
 
-
-  async getTextContent(docId: number, pageIndex: number, rotation = 0) {
+  async getTextContent(docId: number, pageIndex: number, rotation: Rotation) {
+    const { Util } = await loadPdfjs();
     const page = await getDoc(docId).getPage(pageIndex + 1);
-    const total = totalRotation(page.rotate as Rotation, rotation as Rotation);
+    const total = totalRotation(page.rotate as Rotation, rotation);
     const viewport = page.getViewport({ scale: 1, rotation: total });
     const content = await page.getTextContent();
-
-    const vt = viewport.transform;
-
     const items = content.items
-      .filter(
-        (item): item is import('pdfjs-dist/types/src/display/api').TextItem =>
-          'str' in item,
-      )
-      .map((item) => {
-        const tm = item.transform as readonly number[];
-
-        const c = vt[0] * tm[2] + vt[2] * tm[3];
-        const d = vt[1] * tm[2] + vt[3] * tm[3];
-        const e = vt[0] * tm[4] + vt[2] * tm[5] + vt[4];
-        const f = vt[1] * tm[4] + vt[3] * tm[5] + vt[5];
-
+      .filter((item): item is TextItem => 'str' in item)
+      .map((item): PdfTextRun => {
+        const [a, b, c, d, e, f] = Util.transform(viewport.transform, item.transform);
         const fontHeight = Math.hypot(c, d) || item.height || 10;
-        const angle = Math.atan2(
-          vt[1] * tm[0] + vt[3] * tm[1],
-          vt[0] * tm[0] + vt[2] * tm[1],
-        );
+        const angle = Math.atan2(b, a);
 
         return {
           str: item.str,
-          transform: tm,
           width: item.width || item.str.length * fontHeight * 0.5,
           height: fontHeight,
           x: e + fontHeight * Math.sin(angle),
@@ -304,37 +289,16 @@ const api: PdfWorkerApi = {
     };
   },
 
-  async getOutline(docId: number): Promise<PdfOutlineItem[] | null> {
+  async getOutline(docId: number): Promise<OutlineNode[] | null> {
     const doc = getDoc(docId);
     const outline = (await doc.getOutline()) as RawOutlineItem[] | null;
     if (!outline) return null;
     return mapOutline(doc, outline);
   },
 
-  async getMetadata(docId: number): Promise<PdfMetadata | null> {
-    const meta = await getDoc(docId).getMetadata();
-    const info = meta.info as Record<string, unknown>;
-
-    const raw: Record<string, unknown> = {
-      title: info.Title as string | undefined,
-      author: info.Author as string | undefined,
-      subject: info.Subject as string | undefined,
-      keywords: info.Keywords as string | undefined,
-      creator: info.Creator as string | undefined,
-      producer: info.Producer as string | undefined,
-      creationDate: info.CreationDate
-        ? new Date(info.CreationDate as string)
-        : undefined,
-      modificationDate: info.ModDate
-        ? new Date(info.ModDate as string)
-        : undefined,
-    };
-
-    for (const key of Object.keys(raw)) {
-      if (raw[key] === undefined) delete raw[key];
-    }
-
-    return raw as PdfMetadata;
+  async getMetadata(docId: number): Promise<DocumentMetadata> {
+    const [{ PDFDateString }, meta] = await Promise.all([loadPdfjs(), getDoc(docId).getMetadata()]);
+    return pdfMetadata(meta.info as Record<string, unknown>, (date) => PDFDateString.toDateObject(date));
   },
 
   async dispose(docId: number): Promise<void> {

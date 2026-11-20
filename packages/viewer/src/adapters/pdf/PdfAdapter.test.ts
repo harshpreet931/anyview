@@ -9,7 +9,7 @@ describe('PdfAdapter.renderPage', () => {
     const adapter = new PdfAdapter();
     Object.assign(adapter, {
       docId: 1,
-      remote: { renderPage: () => new Promise((r) => (finish = r)), cancelRender: vi.fn() },
+      remote: { renderPage: () => new Promise((r) => (finish = r)), cancelRender: vi.fn(async () => {}) },
     });
 
     const canvas = document.createElement('canvas');
@@ -37,7 +37,7 @@ describe('PdfAdapter.renderPage', () => {
   });
 
   it('cancels the worker render when the page render is aborted', async () => {
-    const cancelRender = vi.fn();
+    const cancelRender = vi.fn(async () => {});
     let renderId: number | undefined;
     const adapter = new PdfAdapter();
     Object.assign(adapter, {
@@ -70,7 +70,7 @@ describe('PdfAdapter.renderPage', () => {
     const adapter = new PdfAdapter();
     Object.assign(adapter, {
       docId: 1,
-      remote: { renderPage: () => Promise.resolve(bitmap), cancelRender: vi.fn() },
+      remote: { renderPage: () => Promise.resolve(bitmap), cancelRender: vi.fn(async () => {}) },
     });
     const canvas = document.createElement('canvas');
     vi.spyOn(canvas, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D);
@@ -88,12 +88,12 @@ describe('PdfAdapter.renderPage', () => {
 });
 
 describe('PdfAdapter.search', () => {
-  const run = (str: string, x: number, y: number, width: number) => ({ str, transform: [], width, height: 10, x, y, angle: 0 });
+  const run = (str: string, x: number, y: number, width: number) => ({ str, width, height: 10, x, y, angle: 0 });
   const searchable = (items: ReturnType<typeof run>[]) => {
     const adapter = new PdfAdapter();
     Object.assign(adapter, {
       docId: 1,
-      parsedPdf: { pageCount: 1, pages: [], docId: 1 },
+      pageCount: 1,
       remote: { getTextContent: async () => ({ items, viewportWidth: 1000, viewportHeight: 1000 }) },
     });
     return adapter;
