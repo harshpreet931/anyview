@@ -88,4 +88,8 @@ describe('annotation serialization', () => {
     expect(validAnnotations(undefined)).toEqual([]);
     expect(validAnnotations('nope')).toEqual([]);
   });
+
+  it('rejects inherited object keys as annotation types', () => {
+    expect(validAnnotations([{ ...highlight, type: 'constructor' }, { ...highlight, type: 'toString' }])).toEqual([]);
+  });
 });
