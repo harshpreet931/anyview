@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from '../../core/zoom';
 import { useViewerStore } from '../../hooks/useDocViewer';
 import { useStrings } from '../../i18n/I18nProvider';
@@ -18,13 +18,13 @@ export function Sidebar() {
   const setSidebarView = useViewerStore((s) => s.setSidebarView);
   const document = useViewerStore((s) => s.document);
   const adapter = useViewerStore((s) => s.adapter);
-  const currentPage = useViewerStore((s) => s.currentPage);
   const goToPageInStore = useViewerStore((s) => s.goToPage);
   const closeSidebarTransiently = useViewerStore((s) => s.closeSidebarTransiently);
   const setScrollOffset = useViewerStore((s) => s.setScrollOffset);
   const instanceId = useViewerStore((s) => s.instanceId);
   const strings = useStrings();
   const asideRef = useRef<HTMLElement>(null);
+  const [panel, setPanel] = useState<HTMLDivElement | null>(null);
   const { sidebarWidth, resizing, startResize, onResizeKey } = useSidebarResize();
 
   if (!sidebarOpen || !document) return null;
@@ -104,25 +104,27 @@ export function Sidebar() {
         </div>
 
         <div
+          ref={setPanel}
           id={panelId}
           role="tabpanel"
           aria-labelledby={tabId(activeView)}
           tabIndex={0}
           style={{ flex: 1, overflow: 'auto' }}
         >
-          {activeView === 'thumbnails' && (
+          {panel && activeView === 'thumbnails' && (
             <ThumbnailList
               pages={document.pages}
               format={document.format}
               adapter={adapter}
               live={!!adapter?.manifest.features.thumbnails || document.meta.size <= LIVE_PREVIEW_MAX_BYTES}
-              currentPage={currentPage}
+              scrollElement={panel}
+              resizing={resizing}
               onThumbnailClick={goToPage}
             />
           )}
 
-          {activeView === 'outline' && document.outline && (
-            <OutlineList nodes={document.outline} onNavigate={navigateToOutline} />
+          {panel && activeView === 'outline' && document.outline && (
+            <OutlineList nodes={document.outline} scrollElement={panel} onNavigate={navigateToOutline} />
           )}
 
           {activeView === 'attachments' && document.attachments && (
